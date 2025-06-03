@@ -1,13 +1,12 @@
-import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView } from 'react-native';
-import CategoryItem from '../(tabs)/component/category';
-import TabLayout from '../(tabs)/component/tabbar';
-import EventItem from '../(tabs)/component/Event';
-import HotItem from './component/hotcake';
-import logo from '../../assets/images/logo.png';
-import banner from '../../assets/images/banner.png';
-import banner2 from '../../assets/images/banner2.png';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import banner from '../../../assets/images/banner.png';
+import banner2 from '../../../assets/images/banner2.png';
+import logo from '../../../assets/images/logo.png';
+import CategoryItem from '../component/category';
+import EventItem from '../component/Event';
+import HotItem from '../component/hotcake';
+import TabLayout from '../component/tabbar';
 
 
 

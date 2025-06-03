@@ -3,9 +3,9 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryItem from '../(tabs)/component/category';
 import Tabbar from '../(tabs)/component/tabbar';
-import index from '../(tabs)/index';
-import Home from './Home';
-import Register from './Register';
+import Home from './screens/Home';
+import index from './screens/Login';
+import Register from './screens/Register';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();

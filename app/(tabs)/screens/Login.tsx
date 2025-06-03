@@ -1,26 +1,27 @@
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert , Image } from 'react-native';
-import  logo from '../../assets/images/logo.png'
-export default function Register() {
+import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import logo from '../../../assets/images/logo.png';
+
+
+export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-   const [password2, setPassword2] = useState('');
-    const navigation = useNavigation()
-   
-    
+  const navigation = useNavigation()
+
+
   const handleLogin = () => {
     // Bạn có thể thay thế phần này bằng gọi API thực tế
-     navigation.navigate('Login');
+    console.log('Email:', email);
+    console.log('Password:', password);
+    Alert.alert('Thông báo', `Đăng nhập với\nEmail: ${email}\nPassword: ${password}`);
+    navigation.navigate('Register');
   };
-  const handleRegister = () => {
-    // Bạn có thể thay thế phần này bằng gọi API thực tế
-   
-  };
+
   return (
     <View style={styles.container}>
        <Image  source={logo} style={styles.IMG} />
-      <Text style={styles.title}>Đăng Ký</Text>
+      <Text style={styles.title}>Đăng Nhập</Text>
 
       <TextInput
         style={styles.input}
@@ -38,19 +39,11 @@ export default function Register() {
         onChangeText={setPassword}
         secureTextEntry
       />
-
-       <TextInput
-        style={styles.input}
-        placeholder="Nhập lại mật khẩu"
-        value={password}
-        onChangeText={setPassword2}
-        secureTextEntry
-      />
     
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Đăng Nhập</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Đăng Ký</Text>
       </TouchableOpacity>
     </View>
@@ -58,14 +51,14 @@ export default function Register() {
 }
 
 const styles = StyleSheet.create({
-    IMG:{
+  IMG:{
      alignSelf: 'center',
   },
   container: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 30,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
   },
   title: {
     fontSize: 28,
