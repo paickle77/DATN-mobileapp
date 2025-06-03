@@ -9,7 +9,7 @@ const WelcomScreen = ({ navigation }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       navigation.replace('Splash');
-    }, 5000);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [navigation]);

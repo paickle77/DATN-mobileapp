@@ -21,7 +21,7 @@ export default function Splash() {
             <Text style={styles.subtitle}>
                 Không cần chờ đến dịp đặc biệt – vì mỗi ngày đều xứng đáng có một chiếc bánh tuyệt vời
             </Text>
-            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Register')}>
+            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Onboarding')}>
                 <Text style={styles.buttonText}>Hãy bắt đầu nào</Text>
             </TouchableOpacity>
             <Text style={styles.loginText}>
