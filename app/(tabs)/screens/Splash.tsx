@@ -1,9 +1,11 @@
-import { useRouter } from 'expo-router';
+import { useNavigation } from 'expo-router';
 import * as React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 export default function Splash() {
-    const router = useRouter();
+   
+
+    const navigation = useNavigation()
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
@@ -19,12 +21,12 @@ export default function Splash() {
             <Text style={styles.subtitle}>
                 Không cần chờ đến dịp đặc biệt – vì mỗi ngày đều xứng đáng có một chiếc bánh tuyệt vời
             </Text>
-            <TouchableOpacity style={styles.button} onPress={() => router.push('/(tabs)/screens/Register')}>
+            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Register')}>
                 <Text style={styles.buttonText}>Hãy bắt đầu nào</Text>
             </TouchableOpacity>
             <Text style={styles.loginText}>
                 Bạn đã có tài khoản?{' '}
-                <Text style={styles.loginLink} onPress={() => router.push('/(tabs)/screens/Login')}>
+                <Text style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
                     Đăng nhập
                 </Text>
             </Text>

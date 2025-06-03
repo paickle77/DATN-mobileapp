@@ -7,14 +7,16 @@ import Home from './screens/Home';
 import index from './screens/Login';
 import Register from './screens/Register';
 import Splash from './screens/Splash';
+import Welcom from './screens/Welcom';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
   return (
-      <Stack.Navigator initialRouteName="Splash">
+      <Stack.Navigator initialRouteName="Welcom">
         <Stack.Screen name="Home" component={Home}  options={{ headerShown: false }} />
         <Stack.Screen name="Splash" component={Splash}  options={{ headerShown: false }} />
+        <Stack.Screen name="Welcom" component={Welcom}  options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={index}  options={{ headerShown: false }} />
         <Stack.Screen name="Register" component={Register} options={{ headerShown: false }} />
             <Stack.Screen name="Tabbar" component={Tabbar} options={{ headerShown: false }} />
