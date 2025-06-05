@@ -6,6 +6,7 @@ interface ItemCart {
   name: string;
   price: number;
   image: string;
+  Size:number;
   quantily: number;
   Uptoquantily:(NewQuantily:number)=>void;
   Dowtoquantily:(NewQuantily:number)=>void
@@ -17,6 +18,7 @@ const CartItem: React.FC<ItemCart> = ({
   name,
   image,
   quantily,
+    Size,
   Dowtoquantily,
   Uptoquantily,
   onRemove
@@ -44,7 +46,8 @@ const CartItem: React.FC<ItemCart> = ({
       <Image source={{ uri: image }} style={styles.image} />
       <View style={styles.details}>
         <Text style={styles.name}>{name}</Text>
-        <Text style={styles.price}>${price}</Text>
+        <Text style={styles.size}>{Size} cm</Text>
+        <Text style={styles.price}>{price} VND</Text>
         <View style={styles.quantityRow}>
           <TouchableOpacity style={styles.button} onPress={handlePressDown}>
             <Feather name="minus" size={16} color="#333" />
@@ -77,8 +80,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
   },
   image: {
-    width: 70,
-    height: 70,
+    width: 90,
+    height: 90,
     borderRadius: 10,
     marginRight: 12,
   },
@@ -87,13 +90,21 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: '600',
+      fontWeight: 'bold',
     marginBottom: 4,
+    
   },
   price: {
     fontSize: 14,
-    color: '#5C4033',
+    color: 'red',
     marginBottom: 8,
+    fontWeight:'bold'
+  },
+   size: {
+    fontSize: 14,
+    color: 'black',
+    marginBottom: 8,
+    // fontWeight:'bold'
   },
   quantityRow: {
     flexDirection: 'row',
