@@ -1,31 +1,94 @@
-import { useNavigation } from "expo-router";
-import React from "react";
-import { View, Image, TouchableOpacity, StyleSheet } from "react-native"; // Import StyleSheet
-import iconhome from '../../../assets/images/iconhome.png';
-import iconproduct from '../../../assets/images/iconproduct.png';
-import iconheart from '../../../assets/images/iconheart.png';
-import iconshopping from '../../../assets/images/iconshopping.png';
-import iconprofile from '../../../assets/images/iconprofile.png';
+import React from 'react';
+import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation, useSegments } from 'expo-router';
+
+// Import các icon của bạn (đảm bảo những file PNG này đã được đặt trong đúng folder)
+import iconHome    from '../../../assets/images/iconhome.png';
+import iconBag     from '../../../assets/images/iconproduct.png';
+import iconHeart   from '../../../assets/images/iconheart.png';
+import iconChat    from '../../../assets/images/iconchat.png';
+import iconProfile from '../../../assets/images/iconprofile.png';
 
 export default function TabLayout() {
   const navigation = useNavigation();
+  const segments = useSegments();
+
+  // Lấy segment cuối cùng của URL, nếu trống thì mặc định 'home'
+  const current = segments.length > 0 ? segments[segments.length - 1] : 'home';
+
+  // Trả về true nếu segment hiện tại trùng key
+  const isActive = (key: string) => current === key;
 
   return (
     <View style={styles.tabBarContainer}>
-      <TouchableOpacity onPress={() => navigation.navigate('home')}>
-        <Image style={styles.icon} source={iconhome} />
+      {/* ---------- Home ---------- */}
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => navigation.navigate('home')}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconWrapper, isActive('home') && styles.activeWrapper]}>
+          <Image
+            source={iconHome}
+            style={[styles.icon, isActive('home') && styles.activeIcon]}
+          />
+        </View>
       </TouchableOpacity>
-      <TouchableOpacity >
-        <Image style={styles.icon} source={iconshopping} />
+
+      {/* ---------- Cart ---------- */}
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => navigation.navigate('cart')}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconWrapper, isActive('cart') && styles.activeWrapper]}>
+          <Image
+            source={iconBag}
+            style={[styles.icon, isActive('cart') && styles.activeIcon]}
+          />
+        </View>
       </TouchableOpacity>
-      <TouchableOpacity >
-        <Image style={styles.icon} source={iconproduct} />
+
+      {/* ---------- Wishlist ---------- */}
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => navigation.navigate('wishlist')}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconWrapper, isActive('wishlist') && styles.activeWrapper]}>
+          <Image
+            source={iconHeart}
+            style={[styles.icon, isActive('wishlist') && styles.activeIcon]}
+          />
+        </View>
       </TouchableOpacity>
-      <TouchableOpacity >
-        <Image style={styles.icon} source={iconheart} />
+
+      {/* ---------- Chat ---------- */}
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => navigation.navigate('chat')}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconWrapper, isActive('chat') && styles.activeWrapper]}>
+          <Image
+            source={iconChat}
+            style={[styles.icon, isActive('chat') && styles.activeIcon]}
+          />
+        </View>
       </TouchableOpacity>
-      <TouchableOpacity >
-        <Image style={styles.icon} source={iconprofile} />
+
+      {/* ---------- Profile ---------- */}
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => navigation.navigate('profile')}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconWrapper, isActive('profile') && styles.activeWrapper]}>
+          <Image
+            source={iconProfile}
+            style={[styles.icon, isActive('profile') && styles.activeIcon]}
+          />
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -33,22 +96,42 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBarContainer: {
-    flexDirection: 'row', // Arrange icons horizontally
-    justifyContent: 'space-around', // Distribute space evenly
-    alignItems: 'center', // Align icons vertically
-    backgroundColor: '#fff', // Or any background color you prefer
-    height: 60, // Set a fixed height for the tab bar
-    borderTopWidth: 1, // Optional: Add a top border
-    borderTopColor: '#e0e0e0', // Optional: Border color
-    position: 'absolute', // Position at the bottom of the screen
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 10, // Add some horizontal padding
+    flexDirection: 'row',
+    backgroundColor: '#111',        // Nền đen cho Tab Bar
+    height: 60,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+
+    // ----------------------------------------
+    // Bo góc hai bên (trên + dưới) để thấy “oval” phía sau:
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: 'hidden',             // Đảm bảo phần bo góc hiển thị chính xác
+    // ----------------------------------------
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  iconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,               // Vòng tròn cho icon container (khi active, sẽ có oval trắng)
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activeWrapper: {
+    backgroundColor: '#fff',        // Oval trắng phía sau icon active
   },
   icon: {
-    width: 28, // Set desired icon width
-    height: 28, // Set desired icon height
-    resizeMode: 'contain', // Ensure the image scales correctly
+    width: 24,
+    height: 24,
+    tintColor: '#fff',              // Icon trắng khi chưa active
+  },
+  activeIcon: {
+    tintColor: '#6B4F35',           // Icon nâu khi active
   },
 });
