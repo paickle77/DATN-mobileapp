@@ -64,7 +64,7 @@ const AddressScreen = () => {
       <View style={styles.buttonContainer}>
         <Button
           title="Nhập địa chỉ thủ công"
-        //   onPress={() => navigation.navigate('ManualAddress')}
+          onPress={() => navigation.navigate('ManualAddress')}
         />
       </View>
     </View>
