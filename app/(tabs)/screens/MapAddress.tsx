@@ -1,9 +1,10 @@
 import type { NavigationProp } from '@react-navigation/native';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { MapPressEvent, Marker, Region } from 'react-native-maps';
+
 
 // Define navigation types
 
@@ -14,9 +15,23 @@ type RootStackParamList = {
         latitude: string;
         longitude: string;
         address?: string;
+        email?: string;
+        password?: string;
+        fullName?: string;
+        phone?: string;
+        gender?: string;
+        avatar?: string;
     };
-    SelectLocation: undefined;
+    SelectLocation: {
+        email?: string;
+        password?: string;
+        fullName?: string;
+        phone?: string;
+        gender?: string;
+        avatar?: string;
+    };
 };
+
 
 const SelectLocationScreen = () => {
     const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -28,8 +43,11 @@ const SelectLocationScreen = () => {
         latitudeDelta: 0.05,
         longitudeDelta: 0.05,
     });
-    
+
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+   const route = useRoute<RouteProp<RootStackParamList, 'SelectLocation'>>();
+
 
     const handleConfirmLocation = () => {
         if (selectedLocation) {
@@ -37,6 +55,14 @@ const SelectLocationScreen = () => {
                 latitude: selectedLocation.latitude.toString(),
                 longitude: selectedLocation.longitude.toString(),
                 address: selectedAddress || `${selectedLocation.latitude.toFixed(5)}, ${selectedLocation.longitude.toFixed(5)}`,
+
+                // truyền lại các dữ liệu trước đó
+                email: route.params?.email,
+                password: route.params?.password,
+                fullName: route.params?.fullName,
+                phone: route.params?.phone,
+                gender: route.params?.gender,
+                avatar: route.params?.avatar,
             });
         } else {
             Alert.alert('Vui lòng chọn vị trí trên bản đồ');
@@ -76,14 +102,14 @@ const SelectLocationScreen = () => {
                 latitudeDelta: 0.05,
                 longitudeDelta: 0.05,
             };
-            
+
             setCurrentRegion(newRegion);
-            
+
             // Tự động chạy map đến vị trí hiện tại
             setTimeout(() => {
                 mapRef.current?.animateToRegion(newRegion, 1000);
             }, 500);
-            
+
             setIsLoading(false);
         } catch (error) {
             console.log('Lỗi khi lấy vị trí:', error);
@@ -114,7 +140,7 @@ const SelectLocationScreen = () => {
                     location.region,
                     location.country
                 ].filter(Boolean).join(', ');
-                
+
                 setSelectedAddress(address || 'Không thể xác định địa chỉ');
             } else {
                 setSelectedAddress('Không thể xác định địa chỉ');

@@ -1,14 +1,27 @@
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, RouteProp, useRoute } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import data from './vietnamAddress.json';
 
 type RootStackParamList = {
-  Address: {
-    address?: string;
-  };
-  SelectLocation: undefined;
+    Address: {
+        address?: string;
+        email?: string;
+        password?: string;
+        fullName?: string;
+        phone?: string;
+        gender?: string;
+        avatar?: string;
+    };
+    ManualAddress: {
+        email?: string;
+        password?: string;
+        fullName?: string;
+        phone?: string;
+        gender?: string;
+        avatar?: string;
+    };
 };
 
 interface Province {
@@ -35,6 +48,8 @@ interface AddressSelection {
   detail?: string;
 }
 
+
+
 interface Props {
   onAddressChange?: (address: AddressSelection) => void;
 }
@@ -47,7 +62,10 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
     detail: '',
   });
 
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+   const route = useRoute<RouteProp<RootStackParamList, 'ManualAddress'>>();
+  
   const [modalType, setModalType] = useState<'province' | 'district' | 'ward' | null>(null);
 
   const provinces = data;
@@ -83,10 +101,17 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
 
   const handleConfirmLocation = () => {
     if (selectedAddress.province && selectedAddress.district && selectedAddress.ward) {
-      const fullAddress = `${selectedAddress.detail ? selectedAddress.detail + ', ' : ''}${selectedAddress.ward.Name}, ${selectedAddress.district.Name}, ${selectedAddress.province.Name}`;
-      navigation.navigate('Address', {
-        address: fullAddress,
-      });
+       (navigation as any).navigate('Address', {
+              address: `${selectedAddress.detail ? selectedAddress.detail + ', ' : ''}${selectedAddress.ward?.Name}, ${selectedAddress.district?.Name}, ${selectedAddress.province?.Name}`,
+
+              // truyền lại các dữ liệu trước đó
+              email: route.params?.email,
+              password: route.params?.password,
+              fullName: route.params?.fullName,
+              phone: route.params?.phone,
+              gender: route.params?.gender,
+              avatar: route.params?.avatar,
+          });
     } else {
       Alert.alert('Vui lòng chọn đầy đủ Tỉnh, Huyện và Xã');
     }

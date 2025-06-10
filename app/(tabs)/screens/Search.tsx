@@ -1,4 +1,4 @@
-import { Search, Star } from 'lucide-react-native';
+import { Search, Star } from 'lucide-react';
 import React, { useState } from 'react';
 import { FlatList, ImageBackground, StyleSheet, Text, TextInput, View } from 'react-native';
 

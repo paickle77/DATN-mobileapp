@@ -21,12 +21,12 @@ export default function Splash() {
             <Text style={styles.subtitle}>
                 Không cần chờ đến dịp đặc biệt – vì mỗi ngày đều xứng đáng có một chiếc bánh tuyệt vời
             </Text>
-            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Onboarding')}>
+            <TouchableOpacity style={styles.button} onPress={() => (navigation as any).navigate('Onboarding')}>
                 <Text style={styles.buttonText}>Hãy bắt đầu nào</Text>
             </TouchableOpacity>
             <Text style={styles.loginText}>
                 Bạn đã có tài khoản?{' '}
-                <Text style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.loginLink} onPress={() => (navigation as any).navigate('Login')}>
                     Đăng nhập
                 </Text>
             </Text>
