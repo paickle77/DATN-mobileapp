@@ -1,70 +1,114 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import logo from '../../../assets/images/logo.png';
+import type { NavigationProp } from '@react-navigation/native';
+import { useNavigation } from 'expo-router';
+import React, { useState } from 'react';
+import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { validateRegisterForm } from '../utils/validation';
 
+type RootStackParamList = {
+    CompleteProfile: {
+        email: string;
+        password?: string;
+        
+    };
+    Login: undefined;
+};
 export default function Register() {
-  const [fullName, setFullName] = useState('');
+  // Khai báo state cho form
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agree, setAgree] = useState(false);
   const [secureText, setSecureText] = useState(true);
-  const navigation = useNavigation();
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
+  // Xử lý đăng ký
   const handleRegister = () => {
-    // TODO: thay bằng gọi API thực tế
-    console.log('Họ tên:', fullName);
+    // Reset lỗi trước khi validate
+    setErrors({
+      email: '',
+      password: '',
+      confirmPassword: '',
+    });
+
+    // Gọi validation từ file utils
+    const validation = validateRegisterForm(email, password, confirmPassword, agree);
+    
+    // Nếu có lỗi, hiển thị lỗi và dừng
+    if (!validation.isValid) {
+      setErrors({
+        email: validation.errors.email || '',
+        password: validation.errors.password || '',
+        confirmPassword: validation.errors.confirmPassword || '',
+      });
+      
+      // Kiểm tra riêng lỗi agree (không thuộc errors object)
+      if (validation.errors.agree) {
+        Alert.alert('Thông báo', validation.errors.agree);
+      }
+      return;
+    }
+
+    // Nếu validation thành công, log thông tin và chuyển trang
     console.log('Email:', email);
     console.log('Password:', password);
-    console.log('Confirm:', confirmPassword);
     console.log('Agree:', agree);
-    navigation.navigate('Login'); // ví dụ chuyển về màn hình Login sau khi đăng ký xong
+    
+    // Chuyển đến màn hình hoàn thiện hồ sơ với email và password
+    navigation.navigate('CompleteProfile', { 
+      email: email,
+      password: password 
+    });
   };
 
   return (
     <View style={styles.container}>
-      <Image source={logo} style={styles.logo} />
+      <Image source={require('../../../assets/images/logo.png')} style={styles.logo} />
       <Text style={styles.title}>Đăng Ký</Text>
       <Text style={styles.subtitle}>
         Điền thông tin của bạn hoặc đăng ký bằng tài khoản mạng xã hội
       </Text>
 
-      {/* Input Họ tên */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Họ tên"
-          placeholderTextColor="#999"
-          autoCapitalize="words"
-          value={fullName}
-          onChangeText={setFullName}
-        />
-      </View>
-
       {/* Input Email */}
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.email ? styles.inputError : null]}
           placeholder="abc@gmail.com"
           placeholderTextColor="#999"
           keyboardType="email-address"
           autoCapitalize="none"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            // Xóa lỗi khi người dùng bắt đầu nhập
+            if (errors.email) {
+              setErrors(prev => ({ ...prev, email: '' }));
+            }
+          }}
         />
+        {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
       </View>
 
       {/* Input Mật khẩu */}
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.password ? styles.inputError : null]}
           placeholder="Mật khẩu"
           placeholderTextColor="#999"
           secureTextEntry={secureText}
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            // Xóa lỗi khi người dùng bắt đầu nhập
+            if (errors.password) {
+              setErrors(prev => ({ ...prev, password: '' }));
+            }
+          }}
         />
         <TouchableOpacity
           style={styles.eyeIcon}
@@ -72,17 +116,24 @@ export default function Register() {
         >
           <Ionicons name={secureText ? 'eye-off' : 'eye'} size={20} color="#666" />
         </TouchableOpacity>
+        {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
       </View>
 
       {/* Input Nhập lại mật khẩu */}
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
           placeholder="Nhập lại mật khẩu"
           placeholderTextColor="#999"
           secureTextEntry={secureText}
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            // Xóa lỗi khi người dùng bắt đầu nhập
+            if (errors.confirmPassword) {
+              setErrors(prev => ({ ...prev, confirmPassword: '' }));
+            }
+          }}
         />
         <TouchableOpacity
           style={styles.eyeIcon}
@@ -90,6 +141,7 @@ export default function Register() {
         >
           <Ionicons name={secureText ? 'eye-off' : 'eye'} size={20} color="#666" />
         </TouchableOpacity>
+        {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
       </View>
 
       {/* Checkbox Terms & Conditions */}
@@ -115,7 +167,7 @@ export default function Register() {
         <Text style={styles.buttonText}>Đăng Ký</Text>
       </TouchableOpacity>
 
-      {/* Dòng ngăn “Hoặc” */}
+      {/* Dòng ngăn "Hoặc" */}
       <View style={styles.separatorContainer}>
         <View style={styles.separatorLine} />
         <Text style={styles.separatorText}>Hoặc</Text>
@@ -150,11 +202,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 30,
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#fbfbfb',
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 150,
+    height: 150,
     alignSelf: 'center',
     marginBottom: 20,
   },
@@ -183,6 +235,16 @@ const styles = StyleSheet.create({
     paddingRight: 45,
     color: '#333',
     backgroundColor: '#f9f9f9',
+  },
+  inputError: {
+    borderColor: '#ff6b6b',
+    borderWidth: 2,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 12,
+    marginTop: 5,
+    marginLeft: 20,
   },
   eyeIcon: {
     position: 'absolute',

@@ -4,8 +4,18 @@ import {
   StyleSheet,
   View
 } from 'react-native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-const WelcomScreen = ({ navigation }) => {
+type RootStackParamList = {
+  Splash: undefined;
+  // Add other screens here if needed
+};
+
+type WelcomScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Splash'>;
+};
+
+const WelcomScreen: React.FC<WelcomScreenProps> = ({ navigation }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       navigation.replace('Splash');

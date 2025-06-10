@@ -1,4 +1,3 @@
-
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryItem from '../(tabs)/component/category';
@@ -23,7 +22,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
   return (
-      <Stack.Navigator initialRouteName="Onboarding">
+      <Stack.Navigator initialRouteName="Address">
         <Stack.Screen name="Home" component={Home}  options={{ headerShown: false }} />
         <Stack.Screen name="Splash" component={Splash}  options={{ headerShown: false }} />
         <Stack.Screen name="Welcom" component={Welcom}  options={{ headerShown: false }} />

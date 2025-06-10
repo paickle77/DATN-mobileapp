@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { useNavigation, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
+import React, { useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function NewPassword() {
   // Lấy email từ param
@@ -13,16 +13,18 @@ export default function NewPassword() {
   const [secureText, setSecureText] = useState(true);
   const navigation = useNavigation();
 
-  const handleSetNewPassword = () => {
-    if (password !== confirmPassword) {
-      alert('Mật khẩu không khớp!');
-      return;
-    }
-    console.log('Set new password for:', userEmail);
-    console.log('Password mới:', password);
-    // TODO: gọi API đặt mật khẩu mới
-    navigation.navigate('CompleteProfile', { email: userEmail });
-  };
+ const handleSetNewPassword = () => {
+  if (password !== confirmPassword) {
+    alert('Mật khẩu không khớp!');
+    return;
+  }
+  console.log('Set new password for:', userEmail);
+  console.log('Password mới:', password);
+  // TODO: gọi API đặt mật khẩu mới
+  
+  alert('Đặt mật khẩu mới thành công!');
+  (navigation as any).navigate('Login');
+};
 
   return (
     <View style={styles.container}>
