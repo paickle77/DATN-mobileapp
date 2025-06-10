@@ -14,9 +14,8 @@ import OtpVerification from './screens/OtpVerification';
 import Register from './screens/Register';
 import Splash from './screens/Splash';
 import Welcom from './screens/Welcom';
-import OtpVerification from './screens/OtpVerification';
-import NewPassword   from './screens/NewPassword';
-import CompleteProfile from './screens/CompleteProfile';
+import CartScreen from './screens/Cart'
+import Favourite from './screens/Favourite';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -38,6 +37,7 @@ export default function TabLayout() {
             <Stack.Screen name="Tabbar" component={Tabbar} options={{ headerShown: false }} />
               <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
                  <Stack.Screen name="cart" component={CartScreen} options={{ headerShown: false }} />
+                 <Stack.Screen name="Favourite" component={Favourite} options={{ headerShown: false }} />
               
       </Stack.Navigator>
 

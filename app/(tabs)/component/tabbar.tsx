@@ -52,13 +52,13 @@ export default function TabLayout() {
       {/* ---------- Wishlist ---------- */}
       <TouchableOpacity
         style={styles.tabItem}
-        onPress={() => navigation.navigate('wishlist')}
+        onPress={() => navigation.navigate('Favourite')}
         activeOpacity={0.7}
       >
-        <View style={[styles.iconWrapper, isActive('wishlist') && styles.activeWrapper]}>
+        <View style={[styles.iconWrapper, isActive('Favourite') && styles.activeWrapper]}>
           <Image
             source={iconHeart}
-            style={[styles.icon, isActive('wishlist') && styles.activeIcon]}
+            style={[styles.icon, isActive('Favourite') && styles.activeIcon]}
           />
         </View>
       </TouchableOpacity>
