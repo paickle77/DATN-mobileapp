@@ -13,12 +13,14 @@ import OtpVerification from './screens/OtpVerification';
 import NewPassword   from './screens/NewPassword';
 import CompleteProfile from './screens/CompleteProfile';
 import CartScreen from './screens/Cart'
+import Favourite from './screens/Favourite';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
   return (
-      <Stack.Navigator initialRouteName="cart">
-        <Stack.Screen name="Home" component={Home}  options={{ headerShown: false }} />
+      <Stack.Navigator initialRouteName="Favourite">
+        <Stack.Screen name="Favourite" component={Favourite}  options={{ headerShown: false }} />
+         <Stack.Screen name="Home" component={Home}  options={{ headerShown: false }} />
         <Stack.Screen name="Splash" component={Splash}  options={{ headerShown: false }} />
         <Stack.Screen name="Welcom" component={Welcom}  options={{ headerShown: false }} />
         <Stack.Screen name="Onboarding" component={Onboarding}  options={{ headerShown: false }} />
