@@ -8,7 +8,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ScrollView
 } from "react-native";
+
 
 interface Product {
   image: string;
@@ -100,6 +102,7 @@ const ManCoffeeData: React.FC<Props> = ({ productId, onGoBack }) => {
 };
 
   return (
+    <ScrollView>
     <SafeAreaView style={styles.SafeAreaView}>
       <ImageBackground
         source={{ uri: product.image }}
@@ -192,6 +195,7 @@ const ManCoffeeData: React.FC<Props> = ({ productId, onGoBack }) => {
                 </TouchableOpacity>
       </View>
     </SafeAreaView>
+    </ScrollView>
   );
 };
 

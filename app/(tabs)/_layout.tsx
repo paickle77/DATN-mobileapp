@@ -16,12 +16,13 @@ import Splash from './screens/Splash';
 import Welcom from './screens/Welcom';
 import CartScreen from './screens/Cart'
 import Favourite from './screens/Favourite';
+import Detail from './screens/Detail';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
   return (
-      <Stack.Navigator initialRouteName="Address">
+      <Stack.Navigator initialRouteName="Welcom">
         <Stack.Screen name="Home" component={Home}  options={{ headerShown: false }} />
         <Stack.Screen name="Splash" component={Splash}  options={{ headerShown: false }} />
         <Stack.Screen name="Welcom" component={Welcom}  options={{ headerShown: false }} />
@@ -38,7 +39,8 @@ export default function TabLayout() {
               <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
                  <Stack.Screen name="cart" component={CartScreen} options={{ headerShown: false }} />
                  <Stack.Screen name="Favourite" component={Favourite} options={{ headerShown: false }} />
-              
+                 <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
+
       </Stack.Navigator>
 
   );

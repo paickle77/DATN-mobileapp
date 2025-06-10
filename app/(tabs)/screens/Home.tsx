@@ -1,25 +1,27 @@
 // screens/Home.tsx
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
+  Dimensions,
+  FlatList,
+  Image,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Image,
-  ScrollView,
-  FlatList,
-  Dimensions,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import TabLayout from '../component/tabbar';
 
 const { width } = Dimensions.get('window');
 
 // ----------------------------
 // Dữ liệu banner (dạng “card”):
-import bannerCard  from '../../../assets/images/banner.png';
+import bannerCard from '../../../assets/images/banner.png';
 import bannerCard2 from '../../../assets/images/banner2.png';
+
 
 const banners = [
   {
@@ -41,9 +43,9 @@ const banners = [
 // ----------------------------
 // Dữ liệu Loại Bánh
 import iconBanhKem from '../../../assets/images/iconbanhkem.png';
-import iconBanhQuy  from '../../../assets/images/iconbanhquy.png';
+import iconBanhQuy from '../../../assets/images/iconbanhquy.png';
+import iconDonut from '../../../assets/images/icondonut.png';
 import iconMacaron from '../../../assets/images/iconmacaron.png';
-import iconDonut   from '../../../assets/images/icondonut.png';
 
 const cakeCategories = [
   { key: 'cakes',   label: 'Bánh kem', icon: iconBanhKem },
@@ -112,6 +114,7 @@ export default function Home() {
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
   const [selectedFilter, setSelectedFilter] = useState('Tất cả');
+  const navigation = useNavigation();
 
   // Tự động chuyển slide banner mỗi 3s
   useEffect(() => {
@@ -143,19 +146,26 @@ export default function Home() {
 
   // Render từng ô sản phẩm trong grid
   const renderCakeItem = ({ item }: { item: typeof cakeItems[0] }) => (
-    <View style={styles.gridItem}>
+
+    <TouchableOpacity
+      style={styles.gridItem}
+      onPress={() => {
+  
+      navigation.navigate('Detail');
+      }}
+    >
       <Image source={{ uri: item.image }} style={styles.cakeImage} />
       <Text style={styles.cakeName} numberOfLines={1}>
-        {item.name}
+      {item.name}
       </Text>
       <View style={styles.cakeFooter}>
-        <View style={styles.ratingContainer}>
-          <Ionicons name="star" size={14} color="#FFD700" />
-          <Text style={styles.ratingText}>{item.rating}</Text>
-        </View>
-        <Text style={styles.priceText}>{item.price.toLocaleString()} vnđ</Text>
+      <View style={styles.ratingContainer}>
+        <Ionicons name="star" size={14} color="#FFD700" />
+        <Text style={styles.ratingText}>{item.rating}</Text>
       </View>
-    </View>
+      <Text style={styles.priceText}>{item.price.toLocaleString()} vnđ</Text>
+      </View>
+    </TouchableOpacity>
   );
 
   return (
