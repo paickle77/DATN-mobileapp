@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'space-around',
-
+    marginTop:30,
     // ----------------------------------------
     // Bo góc hai bên (trên + dưới) để thấy “oval” phía sau:
     borderTopLeftRadius: 30,
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     alignItems: 'center',
+    
   },
   iconWrapper: {
     width: 48,
@@ -124,7 +125,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeWrapper: {
-    backgroundColor: '#fff',        // Oval trắng phía sau icon active
+    backgroundColor: '#fff',
+    borderRadius:20        // Oval trắng phía sau icon active
   },
   icon: {
     width: 24,

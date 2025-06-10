@@ -15,13 +15,15 @@ import OtpVerification from './screens/OtpVerification';
 import Register from './screens/Register';
 import Splash from './screens/Splash';
 import Welcom from './screens/Welcom';
-
+import OtpVerification from './screens/OtpVerification';
+import NewPassword   from './screens/NewPassword';
+import CompleteProfile from './screens/CompleteProfile';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
   return (
-      <Stack.Navigator initialRouteName="Address">
+      <Stack.Navigator initialRouteName="Onboarding">
         <Stack.Screen name="Home" component={Home}  options={{ headerShown: false }} />
         <Stack.Screen name="Splash" component={Splash}  options={{ headerShown: false }} />
         <Stack.Screen name="Welcom" component={Welcom}  options={{ headerShown: false }} />
@@ -36,6 +38,7 @@ export default function TabLayout() {
         <Stack.Screen name="CompleteProfile" component={CompleteProfile} options={{ headerShown: false }} />
             <Stack.Screen name="Tabbar" component={Tabbar} options={{ headerShown: false }} />
               <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
+                 <Stack.Screen name="cart" component={CartScreen} options={{ headerShown: false }} />
               
       </Stack.Navigator>
 
