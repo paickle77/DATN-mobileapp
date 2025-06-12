@@ -18,6 +18,7 @@ type RootStackParamList = {
   Settings: undefined;
   UserProfile: undefined;
   Login: undefined;
+  PaymentMethods: undefined;
   // ... các routes khác
 };
 
@@ -149,6 +150,7 @@ const ProfileScreen = () => {
                 <MenuItem
                     icon={<FontAwesome5 name="credit-card" size={20} color="#222" />}
                     label="Phương thức thanh toán"
+                    onPress={() => navigation.navigate('PaymentMethods')}
                 />
                 <MenuItem
                     icon={<Feather name="file-text" size={22} color="#222" />}

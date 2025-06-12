@@ -2,8 +2,12 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryItem from '../(tabs)/component/category';
 import AddressScreen from './screens/Address';
+import Checkout from './screens/Checkout';
+import CheckoutCard from './screens/CheckoutCardScreen';
+import CheckoutSuccess from './screens/CheckoutSuccessScreen';
 import CompleteProfile from './screens/CompleteProfile';
 import Detail from './screens/Detail';
+import Home from './screens/Home';
 import index from './screens/Login';
 import ManualAddress from './screens/manual-address';
 import MapAddress from './screens/MapAddress';
@@ -26,6 +30,7 @@ export default function TabLayout() {
       {/* Screens không có tab bar */}
       <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
       <Stack.Screen name="Welcom" component={Welcom} options={{ headerShown: false }} />
+      <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
       <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false }} />
       <Stack.Screen name="Address" component={AddressScreen} options={{ headerShown: false }} />
       <Stack.Screen name="SelectLocation" component={MapAddress} options={{ headerShown: false }} />
@@ -35,6 +40,9 @@ export default function TabLayout() {
       <Stack.Screen name="OtpVerification" component={OtpVerification} options={{ headerShown: false }} />
       <Stack.Screen name="NewPassword" component={NewPassword} options={{ headerShown: false }} />
       <Stack.Screen name="CompleteProfile" component={CompleteProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false }} />
+      <Stack.Screen name="CheckoutSuccess" component={CheckoutSuccess} options={{ headerShown: false }} /> 
+      <Stack.Screen name="CheckoutCard" component={CheckoutCard} options={{ headerShown: false }} />
       
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}
       <Stack.Screen name="TabNavigator" component={TabNavigator} options={{ headerShown: false }} />
