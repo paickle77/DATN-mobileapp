@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import CartItem from '../component/CartItem'; // Component con
 import TabLayout from '../component/tabbar';
 
@@ -23,6 +24,7 @@ const initialItems = [
 ];
 
 export default function CartScreen() {
+  const navigation = useNavigation();
   const [items, setItems] = useState(initialItems);
   const [showConfirm, setShowConfirm] = useState(false);
 const [itemToRemoveIndex, setItemToRemoveIndex] = useState(null);
@@ -125,9 +127,12 @@ const [itemToRemoveIndex, setItemToRemoveIndex] = useState(null);
     <Text style={styles.totalPrice}>{total2.toFixed(2)}</Text>
   </View>
 
-  <TouchableOpacity style={styles.checkoutButton}>
-    <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
-  </TouchableOpacity>
+  <TouchableOpacity
+        style={styles.checkoutButton}
+        onPress={() => navigation.navigate('Checkout')}
+      >
+        <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
+      </TouchableOpacity>
 </View>
 
 

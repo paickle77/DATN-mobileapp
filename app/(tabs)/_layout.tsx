@@ -17,6 +17,10 @@ import Welcom from './screens/Welcom';
 import CartScreen from './screens/Cart'
 import Favourite from './screens/Favourite';
 import Detail from './screens/Detail';
+import CheckoutScreen from './screens/Checkout';
+import CheckoutCardScreen from './screens/CheckoutCardScreen'
+import CheckoutSuccessScreen from './screens/CheckoutSuccessScreen'
+
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -35,11 +39,14 @@ export default function TabLayout() {
         <Stack.Screen name="OtpVerification" component={OtpVerification} options={{ headerShown: false }} />
         <Stack.Screen name="NewPassword" component={NewPassword} options={{ headerShown: false }} />
         <Stack.Screen name="CompleteProfile" component={CompleteProfile} options={{ headerShown: false }} />
-            <Stack.Screen name="Tabbar" component={Tabbar} options={{ headerShown: false }} />
-              <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
-                 <Stack.Screen name="cart" component={CartScreen} options={{ headerShown: false }} />
-                 <Stack.Screen name="Favourite" component={Favourite} options={{ headerShown: false }} />
-                 <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
+        <Stack.Screen name="Tabbar" component={Tabbar} options={{ headerShown: false }} />
+        <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
+        <Stack.Screen name="cart" component={CartScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Favourite" component={Favourite} options={{ headerShown: false }} />
+        <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
+        <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CheckoutCard" component={CheckoutCardScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CheckoutSuccess" component={CheckoutSuccessScreen} options={{ headerShown: false }} />
 
       </Stack.Navigator>
 
