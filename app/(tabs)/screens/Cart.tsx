@@ -30,7 +30,7 @@ export default function CartScreen() {
   const [itemToRemoveIndex, setItemToRemoveIndex] = useState(null);
 
   // Cập nhật số lượng
-  const updateQuantity = (index, newQuantity) => {
+  const updateQuantity = (index: number, newQuantity: number) => {
     if (newQuantity < 1) return;
     const updatedItems = [...items];
     updatedItems[index].quantity = newQuantity;
@@ -38,7 +38,7 @@ export default function CartScreen() {
   };
 
   // Xoá sản phẩm
-  const removeItem = (index) => {
+  const removeItem = (index: number) => {
     const updatedItems = [...items];
     updatedItems.splice(index, 1);
     setItems(updatedItems);
@@ -142,10 +142,16 @@ export default function CartScreen() {
           <Text style={styles.totalPrice}>{total2.toFixed(2)}</Text>
         </View>
 
-        <TouchableOpacity style={styles.checkoutButton}>
-          <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity
+        style={styles.checkoutButton}
+        onPress={() => navigation.navigate('Checkout')}
+      >
+        <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
+      </TouchableOpacity>
+</View>
+
+
+      {/* <TabLayout /> */}
     </View>
   );
 }

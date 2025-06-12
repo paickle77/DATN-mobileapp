@@ -1,5 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -24,8 +26,13 @@ interface Props {
   productId: string;
   onGoBack: () => void;
 }
+type RootStackParamList = {
+  Checkout: undefined;
+  // add other routes here if needed
+};
 
 const ManCoffeeData: React.FC<Props> = ({ productId, onGoBack }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [product, setProduct] = useState<Product | null>(null);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -182,17 +189,11 @@ const ManCoffeeData: React.FC<Props> = ({ productId, onGoBack }) => {
                     </View>
 
                     <TouchableOpacity
-                    style={[
-                        styles.buyButton, 
-                        { 
-                            backgroundColor: quantity > 0 ? '#28a745' : '#ccc',
-                            opacity: quantity > 0 ? 1 : 0.5
-                        }
-                    ]}
-                    disabled={quantity === 0}
-                >
-                    <Text style={styles.buyButtonText}>CHỌN MUA</Text>
-                </TouchableOpacity>
+          style={[styles.buyButton, { backgroundColor: '#6B4F35' }]}
+          onPress={() => navigation.navigate('Checkout')}
+        >
+          <Text style={styles.buyButtonText}>CHỌN MUA</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
     </ScrollView>
@@ -356,6 +357,7 @@ const styles = StyleSheet.create({
         
     },
     buyButton: {
+        backgroundColor: '#6B4F35',
         padding: 16,
         borderRadius: 8,
         alignItems: 'center',
