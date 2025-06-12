@@ -3,7 +3,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryItem from '../(tabs)/component/category';
 import Tabbar from '../(tabs)/component/tabbar';
 import AddressScreen from './screens/Address';
+import CartScreen from './screens/Cart';
 import CompleteProfile from './screens/CompleteProfile';
+import Detail from './screens/Detail';
+import Favourite from './screens/Favourite';
 import Home from './screens/Home';
 import index from './screens/Login';
 import ManualAddress from './screens/manual-address';
@@ -11,12 +14,10 @@ import MapAddress from './screens/MapAddress';
 import NewPassword from './screens/NewPassword';
 import Onboarding from './screens/Onboarding';
 import OtpVerification from './screens/OtpVerification';
+import Profile from './screens/Profile';
 import Register from './screens/Register';
 import Splash from './screens/Splash';
 import Welcom from './screens/Welcom';
-import CartScreen from './screens/Cart'
-import Favourite from './screens/Favourite';
-import Detail from './screens/Detail';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -35,11 +36,12 @@ export default function TabLayout() {
         <Stack.Screen name="OtpVerification" component={OtpVerification} options={{ headerShown: false }} />
         <Stack.Screen name="NewPassword" component={NewPassword} options={{ headerShown: false }} />
         <Stack.Screen name="CompleteProfile" component={CompleteProfile} options={{ headerShown: false }} />
-            <Stack.Screen name="Tabbar" component={Tabbar} options={{ headerShown: false }} />
-              <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
-                 <Stack.Screen name="cart" component={CartScreen} options={{ headerShown: false }} />
-                 <Stack.Screen name="Favourite" component={Favourite} options={{ headerShown: false }} />
-                 <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
+        <Stack.Screen name="Tabbar" component={Tabbar} options={{ headerShown: false }} />
+        <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
+        <Stack.Screen name="cart" component={CartScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Favourite" component={Favourite} options={{ headerShown: false }} />
+        <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
+        <Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
 
       </Stack.Navigator>
 

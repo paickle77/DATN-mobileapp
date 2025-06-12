@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useSegments } from 'expo-router';
+import React from 'react';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // Import các icon của bạn (đảm bảo những file PNG này đã được đặt trong đúng folder)
-import iconHome    from '../../../assets/images/iconhome.png';
-import iconBag     from '../../../assets/images/iconproduct.png';
-import iconHeart   from '../../../assets/images/iconheart.png';
-import iconChat    from '../../../assets/images/iconchat.png';
+import iconChat from '../../../assets/images/iconchat.png';
+import iconHeart from '../../../assets/images/iconheart.png';
+import iconHome from '../../../assets/images/iconhome.png';
+import iconBag from '../../../assets/images/iconproduct.png';
 import iconProfile from '../../../assets/images/iconprofile.png';
 
 export default function TabLayout() {
@@ -24,13 +24,13 @@ export default function TabLayout() {
       {/* ---------- Home ---------- */}
       <TouchableOpacity
         style={styles.tabItem}
-        onPress={() => navigation.navigate('home')}
+        onPress={() => navigation.navigate('Home')}
         activeOpacity={0.7}
       >
-        <View style={[styles.iconWrapper, isActive('home') && styles.activeWrapper]}>
+        <View style={[styles.iconWrapper, isActive('Home') && styles.activeWrapper]}>
           <Image
             source={iconHome}
-            style={[styles.icon, isActive('home') && styles.activeIcon]}
+            style={[styles.icon, isActive('Home') && styles.activeIcon]}
           />
         </View>
       </TouchableOpacity>
@@ -80,13 +80,13 @@ export default function TabLayout() {
       {/* ---------- Profile ---------- */}
       <TouchableOpacity
         style={styles.tabItem}
-        onPress={() => navigation.navigate('profile')}
+        onPress={() => navigation.navigate('Profile')}
         activeOpacity={0.7}
       >
-        <View style={[styles.iconWrapper, isActive('profile') && styles.activeWrapper]}>
+        <View style={[styles.iconWrapper, isActive('Profile') && styles.activeWrapper]}>
           <Image
             source={iconProfile}
-            style={[styles.icon, isActive('profile') && styles.activeIcon]}
+            style={[styles.icon, isActive('Profile') && styles.activeIcon]}
           />
         </View>
       </TouchableOpacity>
