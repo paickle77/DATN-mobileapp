@@ -95,23 +95,20 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabBarContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#111',        // Nền đen cho Tab Bar
-    height: 60,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginTop:30,
-    // ----------------------------------------
-    // Bo góc hai bên (trên + dưới) để thấy “oval” phía sau:
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    overflow: 'hidden',             // Đảm bảo phần bo góc hiển thị chính xác
-    // ----------------------------------------
-  },
+tabBarContainer: {
+  flexDirection: 'row',
+  backgroundColor: '#111',
+  height: 60,                  // Giữ nguyên height của container
+  paddingHorizontal: 16,
+  alignItems: 'center',
+  justifyContent: 'space-around',
+  marginTop: 20,               // Giảm từ 30 xuống 20 để cân bằng với height wrapper
+  borderTopLeftRadius: 30,
+  borderTopRightRadius: 30,
+  borderBottomLeftRadius: 30,
+  borderBottomRightRadius: 30,
+  overflow: 'hidden',
+},
   tabItem: {
     flex: 1,
     alignItems: 'center',

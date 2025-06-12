@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import TabLayout from '../component/tabbar';
+
 
 const { width } = Dimensions.get('window');
 
@@ -284,9 +284,7 @@ export default function Home() {
       </ScrollView>
 
       {/* ===== Tab Bar “nổi” lên ở dưới ===== */}
-      <View style={styles.tabBarWrapper}>
-        <TabLayout />
-      </View>
+     
     </View>
   );
 }
@@ -508,13 +506,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  /*====== Tab Bar NỔI LÊN ======*/ 
-  tabBarWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 15,             
-    marginHorizontal: 16,   
-    height: 70,             
-  },
+
 });

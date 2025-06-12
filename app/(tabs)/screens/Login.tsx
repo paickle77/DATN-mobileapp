@@ -12,7 +12,7 @@ type RootStackParamList = {
   OtpVerification: { email: string };
   NewPassword: { email: string };
   CompleteProfile: { email: string };
-  Home: undefined;
+  TabNavigator: undefined; // Đã thay đổi từ Home thành TabNavigator
 };
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -46,7 +46,7 @@ export default function Login() {
       return;
     }
 
-    setLoading(true);
+    setLoading(false);
     
     // try {
     //   const response = await authService.login({ email, password });
@@ -58,7 +58,7 @@ export default function Login() {
     //       [
     //         {
     //           text: 'OK',
-    //           onPress: () => navigation.navigate('Home')
+    //           onPress: () => navigation.navigate('TabNavigator') // Đã thay đổi từ Home
     //         }
     //       ]
     //     );
@@ -70,6 +70,7 @@ export default function Login() {
     // } finally {
     //   setLoading(false);
     // }
+    navigation.navigate('TabNavigator'); // Đã thay đổi từ Home
   };
 
   const handleForgotPassword = async () => {

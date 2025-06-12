@@ -1,22 +1,30 @@
 import { Feather, FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import TabBar from '../component/tabbar';
 
 
-const MenuItem = ({ icon, label }: { icon: React.ReactNode; label: string }) => (
-    <TouchableOpacity style={styles.menuItem}>
+
+const MenuItem = ({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) => (
+    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
         <View style={styles.menuIcon}>{icon}</View>
         <Text style={styles.menuLabel}>{label}</Text>
         <Feather name="chevron-right" size={22} color="#222" style={styles.chevron} />
     </TouchableOpacity>
 );
 
+type RootStackParamList = {
+  Settings: undefined;
+  UserProfile: undefined;
+  Login: undefined;
+  // ... các routes khác
+};
+
 const ProfileScreen = () => {
     const [logoutVisible, setLogoutVisible] = useState(false);
 
-    const navigation = useNavigation();
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
     const handleLogout = () => {
         setLogoutVisible(false);
@@ -136,6 +144,7 @@ const ProfileScreen = () => {
                 <MenuItem
                     icon={<Ionicons name="person-outline" size={24} color="#222" />}
                     label="Hồ sơ của bạn"
+                    onPress={() => navigation.navigate('UserProfile')}
                 />
                 <MenuItem
                     icon={<FontAwesome5 name="credit-card" size={20} color="#222" />}
@@ -148,6 +157,7 @@ const ProfileScreen = () => {
                 <MenuItem
                     icon={<Feather name="settings" size={22} color="#222" />}
                     label="Cài đặt"
+                    onPress={() => navigation.navigate('Settings')}
                 />
             </View>
             <TouchableOpacity style={styles.logout} onPress={() => setLogoutVisible(true)}>
@@ -159,9 +169,7 @@ const ProfileScreen = () => {
                 onCancel={() => setLogoutVisible(false)}
                 onConfirm={handleLogout}
             />
-            <View style={styles.tabBarWrapper}>
-                <TabBar />
-            </View>
+
         </View>
     );
 };
@@ -246,12 +254,7 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         fontWeight: '500',
     },
-    tabBarWrapper: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-    },
+
 });
 
 export default ProfileScreen;

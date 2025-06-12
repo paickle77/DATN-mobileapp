@@ -1,7 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CartItem from '../component/CartItem'; // Component con
-import TabLayout from '../component/tabbar';
 
 const initialItems = [
   {
@@ -23,9 +24,10 @@ const initialItems = [
 ];
 
 export default function CartScreen() {
+  const navigation = useNavigation();
   const [items, setItems] = useState(initialItems);
   const [showConfirm, setShowConfirm] = useState(false);
-const [itemToRemoveIndex, setItemToRemoveIndex] = useState(null);
+  const [itemToRemoveIndex, setItemToRemoveIndex] = useState(null);
 
   // Cập nhật số lượng
   const updateQuantity = (index, newQuantity) => {
@@ -44,9 +46,23 @@ const [itemToRemoveIndex, setItemToRemoveIndex] = useState(null);
 
   // Tổng tiền
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total2 = total+35;
+  const total2 = total + 35;
+
   return (
     <View style={styles.container}>
+      {/* Header với nút Back */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Giỏ hàng</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -60,78 +76,76 @@ const [itemToRemoveIndex, setItemToRemoveIndex] = useState(null);
             quantily={item.quantity}
             Uptoquantily={(newQ) => updateQuantity(index, newQ)}
             Dowtoquantily={(newQ) => updateQuantity(index, newQ)}
-          onRemove={() => {
-  setItemToRemoveIndex(index);
-  setShowConfirm(true);
-}}
+            onRemove={() => {
+              setItemToRemoveIndex(index);
+              setShowConfirm(true);
+            }}
           />
         )}
       />
-{showConfirm && (
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalContent}>
-      <Text style={styles.modalTitle}>Xác nhận xóa sản phẩm này khỏi giỏ hàng?</Text>
-      <Text style={styles.modalSubtitle}>Thao tác này sẽ không thể khôi phục.</Text>
-      <View style={styles.modalButtons}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => setShowConfirm(false)}>
-          <Text style={styles.cancelText}>Hủy bỏ</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => {
-            removeItem(itemToRemoveIndex);
-            setShowConfirm(false);
-          }}>
-          <Text style={styles.deleteText}>Đồng ý , Xóa</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-)}
+
+      {showConfirm && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Xác nhận xóa sản phẩm này khỏi giỏ hàng?</Text>
+            <Text style={styles.modalSubtitle}>Thao tác này sẽ không thể khôi phục.</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowConfirm(false)}>
+                <Text style={styles.cancelText}>Hủy bỏ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => {
+                  removeItem(itemToRemoveIndex);
+                  setShowConfirm(false);
+                }}>
+                <Text style={styles.deleteText}>Đồng ý , Xóa</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Footer tổng tiền */}
-     <View style={styles.footer}>
-  {/* Nhập mã giảm giá */}
-  <View style={styles.discountContainer}>
-    <TextInput
-      style={styles.discountInput}
-      placeholder="Nhập mã giảm giá"
-      placeholderTextColor="#888"
-    />
-    <TouchableOpacity style={styles.applyButton}>
-      <Text style={styles.applyButtonText}>Áp dụng</Text>
-    </TouchableOpacity>
-  </View>
+      <View style={styles.footer}>
+        {/* Nhập mã giảm giá */}
+        <View style={styles.discountContainer}>
+          <TextInput
+            style={styles.discountInput}
+            placeholder="Nhập mã giảm giá"
+            placeholderTextColor="#888"
+          />
+          <TouchableOpacity style={styles.applyButton}>
+            <Text style={styles.applyButtonText}>Áp dụng</Text>
+          </TouchableOpacity>
+        </View>
 
-  {/* Chi tiết thanh toán */}
-  <View style={styles.paymentInfoRow}>
-    <Text style={styles.paymentLabel}>Tổng phụ</Text>
-    <Text style={styles.paymentValue}>{total.toFixed(2)}</Text>
-  </View>
-  <View style={styles.paymentInfoRow}>
-    <Text style={styles.paymentLabel}>Phí giao hàng</Text>
-    <Text style={styles.paymentValue}>35.000 vnd</Text>
-  </View>
-  <View style={styles.paymentInfoRow}>
-    <Text style={styles.paymentLabel}>Giảm giá</Text>
-    <Text style={[styles.paymentValue, { color: '#000', fontWeight: 'bold' }]}>-135.000 vnd</Text>
-  </View>
+        {/* Chi tiết thanh toán */}
+        <View style={styles.paymentInfoRow}>
+          <Text style={styles.paymentLabel}>Tổng phụ</Text>
+          <Text style={styles.paymentValue}>{total.toFixed(2)}</Text>
+        </View>
+        <View style={styles.paymentInfoRow}>
+          <Text style={styles.paymentLabel}>Phí giao hàng</Text>
+          <Text style={styles.paymentValue}>35.000 vnd</Text>
+        </View>
+        <View style={styles.paymentInfoRow}>
+          <Text style={styles.paymentLabel}>Giảm giá</Text>
+          <Text style={[styles.paymentValue, { color: '#000', fontWeight: 'bold' }]}>-135.000 vnd</Text>
+        </View>
 
-  {/* Tổng chi phí */}
-  <View style={styles.totalContainer}>
-    <Text style={styles.totalLabel}>Tổng chi phí</Text>
-    <Text style={styles.totalPrice}>{total2.toFixed(2)}</Text>
-  </View>
+        {/* Tổng chi phí */}
+        <View style={styles.totalContainer}>
+          <Text style={styles.totalLabel}>Tổng chi phí</Text>
+          <Text style={styles.totalPrice}>{total2.toFixed(2)}</Text>
+        </View>
 
-  <TouchableOpacity style={styles.checkoutButton}>
-    <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
-  </TouchableOpacity>
-</View>
-
-
-      {/* <TabLayout /> */}
+        <TouchableOpacity style={styles.checkoutButton}>
+          <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -141,173 +155,199 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fdfdfd',
   },
-modalOverlay: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',  // Lớp mờ nền
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 100,                            // Ưu tiên hiển thị trên cùng
-  // elevation: 10,                          // Android hỗ trợ bóng/đè lớp
 
-},
+  // Header styles
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10, 
+    paddingBottom: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#333',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  headerSpacer: {
+    width: 40, // Để cân bằng với nút back
+  },
 
-modalContent: {
-  width: '100%',
-  backgroundColor: 'white',
-  borderRadius: 16,
-  padding: 20,
-  alignItems: 'center',
-  shadowColor: '#000',
-  shadowOpacity: 0.25,
-  shadowRadius: 8,
-  elevation: 5,
-},
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
 
-modalTitle: {
-  fontSize: 16,
-  fontWeight: '600',
-  marginBottom: 8,
-  textAlign: 'center',
-},
+  modalContent: {
+    width: '100%',
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
 
-modalSubtitle: {
-  fontSize: 13,
-  color: '#888',
-  marginBottom: 20,
-  textAlign: 'center',
-},
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
 
-modalButtons: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  width: '100%',
-},
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
 
-cancelButton: {
-  flex: 1,
-  backgroundColor: '#f2f2f2',
-  paddingVertical: 10,
-  marginRight: 8,
-  borderRadius: 24,
-  alignItems: 'center',
-},
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
 
-cancelText: {
-  fontSize: 14,
-  fontWeight: '500',
-  color: '#333',
-},
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#f2f2f2',
+    paddingVertical: 10,
+    marginRight: 8,
+    borderRadius: 24,
+    alignItems: 'center',
+  },
 
-deleteButton: {
-  flex: 1,
-  backgroundColor: '#5C4033',
-  paddingVertical: 10,
-  marginLeft: 8,
-  borderRadius: 24,
-  alignItems: 'center',
-},
+  cancelText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
 
-deleteText: {
-  fontSize: 14,
-  fontWeight: '600',
-  color: '#fff',
-},
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#5C4033',
+    paddingVertical: 10,
+    marginLeft: 8,
+    borderRadius: 24,
+    alignItems: 'center',
+  },
+
+  deleteText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
 
   discountContainer: {
-  flexDirection: 'row',
-  backgroundColor: '#f2f2f2',
-  borderRadius: 24,
-  paddingHorizontal: 12,
-  paddingVertical: 8,
-  alignItems: 'center',
-  marginBottom: 16,
-},
+    flexDirection: 'row',
+    backgroundColor: '#f2f2f2',
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
 
-discountInput: {
-  flex: 1,
-  fontSize: 14,
-  paddingVertical: 6,
-  paddingHorizontal: 8,
-  color: '#000',
-},
+  discountInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    color: '#000',
+  },
 
-applyButton: {
-  backgroundColor: '#5C4033',
-  paddingVertical: 6,
-  paddingHorizontal: 16,
-  borderRadius: 20,
-},
+  applyButton: {
+    backgroundColor: '#5C4033',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
 
-applyButtonText: {
-  color: '#fff',
-  fontSize: 14,
-  fontWeight: '600',
-},
+  applyButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 
-paymentInfoRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginBottom: 4,
-},
+  paymentInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
 
-paymentLabel: {
-  fontSize: 14,
-  color: '#000',
-},
+  paymentLabel: {
+    fontSize: 14,
+    color: '#000',
+  },
 
-paymentValue: {
-  fontSize: 14,
-  fontWeight: 'bold',
-  color: '#000',
-},
+  paymentValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000',
+  },
 
-totalContainer: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginTop: 12,
-  marginBottom: 12,
-},
+  totalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    marginBottom: 12,
+  },
 
-totalLabel: {
-  fontSize: 16,
-  fontWeight: '600',
-},
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
 
-totalPrice: {
-  fontSize: 18,
-  fontWeight: 'bold',
-  color: '#5C4033',
-},
+  totalPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#5C4033',
+  },
 
-checkoutButton: {
-  backgroundColor: '#5C4033',
-  paddingVertical: 12,
-  borderRadius: 8,
-  alignItems: 'center',
-},
+  checkoutButton: {
+    backgroundColor: '#5C4033',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
 
-checkoutText: {
-  color: '#fff',
-  fontSize: 16,
-  fontWeight: '600',
-},
+  checkoutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 
- 
-    footer: {
+  footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#fff',
     padding: 16,
-    // paddingBottom: 100, // Đẩy lên 1 chút để không che TabBar
     borderTopWidth: 1,
     borderColor: '#eee',
   },
-
-
 });

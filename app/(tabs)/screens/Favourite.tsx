@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import {
+  ScrollView,
   StyleSheet,
-  View,
   Text,
   TouchableOpacity,
-  ScrollView,
+  View,
 } from 'react-native';
 import ProductGrid from '../component/ProductGrid';
-import TabLayout from '../component/tabbar';
 
 const sampleProducts = [
   {
@@ -109,7 +108,7 @@ const Favourite = () => {
         <ProductGrid data={filteredProducts} />
 
       </ScrollView>
-           <TabLayout />
+        
     </View>
   );
 };
@@ -140,6 +139,7 @@ const styles = StyleSheet.create({
   activeFilterText: {
     color: '#fff',
   },
+  
 });
 
 export default Favourite;
