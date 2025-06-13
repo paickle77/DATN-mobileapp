@@ -20,7 +20,9 @@ import Splash from './screens/Splash';
 import TabNavigator from './screens/TabNavigator';
 import UserProfile from './screens/UserProfile';
 import Welcom from './screens/Welcom';
-
+import NotificationScreen from './screens/NotificationScreen';
+import OrderHistoryScreen from './screens/OrderHistoryScreen';
+import ReviewScreen from './screens/ReviewScreen';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
@@ -28,6 +30,10 @@ export default function TabLayout() {
   return (
     <Stack.Navigator initialRouteName="Welcom">
       {/* Screens không có tab bar */}
+         <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
+       <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
+         <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
+    
       <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
       <Stack.Screen name="Welcom" component={Welcom} options={{ headerShown: false }} />
       <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />

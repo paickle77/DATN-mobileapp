@@ -168,6 +168,14 @@ export default function Home() {
     </TouchableOpacity>
   );
 
+
+
+
+  const handleNotification=()=>{
+     navigation.navigate('NotificationScreen');
+  }
+
+
   return (
     <View style={styles.screen}>
       {/* ===== Header: Search + Bell ===== */}
@@ -182,7 +190,9 @@ export default function Home() {
             onChangeText={setSearchText}
           />
         </View>
-        <TouchableOpacity style={styles.bellIcon}>
+
+
+        <TouchableOpacity style={styles.bellIcon} onPress={handleNotification}>
           <Ionicons name="notifications-outline" size={24} color="#333" />
         </TouchableOpacity>
       </View>
