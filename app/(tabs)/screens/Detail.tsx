@@ -117,7 +117,7 @@ const ManCoffeeData: React.FC<Props> = ({ productId, onGoBack }) => {
       >
         <View style={styles.overlay} />
         <View style={styles.header}>
-          <TouchableOpacity onPress={onGoBack} style={styles.iconButton}>
+          <TouchableOpacity onPress={()=>navigation.goBack()} style={styles.iconButton}>
             <Ionicons name="chevron-back" size={24} color="#1e1e1e" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>

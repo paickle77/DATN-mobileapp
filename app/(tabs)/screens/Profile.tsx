@@ -155,6 +155,7 @@ const ProfileScreen = () => {
                 <MenuItem
                     icon={<Feather name="file-text" size={22} color="#222" />}
                     label="Đơn hàng của bạn"
+                     onPress={() => navigation.navigate('OrderHistoryScreen')}
                 />
                 <MenuItem
                     icon={<Feather name="settings" size={22} color="#222" />}
