@@ -1,25 +1,24 @@
 // app/(tabs)/screens/Checkout.tsx
-import React, { useState, useEffect } from 'react'
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
   SafeAreaView,
   ScrollView,
-  ActivityIndicator,
-  GestureResponderEvent,
-} from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { useNavigation } from '@react-navigation/native';
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 // Giả sử bạn đã có 2 context trong dự án:
 //  - AuthContext export hook useAuth()
 //  - CartContext export hook useCart()
-import { useAuth } from '../../../hooks/useAuth'
-import { useCart } from '../../../hooks/useCart'
 import { router } from 'expo-router';
+import { useAuth } from '../../../../hooks/useAuth';
+import { useCart } from '../../../../hooks/useCart';
 
 export default function CheckoutScreen() {
   const navigation = useNavigation();

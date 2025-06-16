@@ -15,11 +15,12 @@ const MenuItem = ({ icon, label, onPress }: { icon: React.ReactNode; label: stri
 );
 
 type RootStackParamList = {
-  Settings: undefined;
-  UserProfile: undefined;
-  Login: undefined;
-  PaymentMethods: undefined;
-  // ... các routes khác
+    Settings: undefined;
+    UserProfile: undefined;
+    Login: undefined;
+    PaymentMethods: undefined;
+    OrderHistoryScreen: undefined;
+
 };
 
 const ProfileScreen = () => {
@@ -132,7 +133,7 @@ const ProfileScreen = () => {
             <View style={styles.avatarContainer}>
                 <View style={styles.avatarWrapper}>
                     <Image
-                        source={require('../../../assets/images/avatar-placeholder.png')}
+                        source={require('../../../../assets/images/avatar-placeholder.png')}
                         style={styles.avatar}
                     />
                     <TouchableOpacity style={styles.editIcon}>
@@ -155,7 +156,7 @@ const ProfileScreen = () => {
                 <MenuItem
                     icon={<Feather name="file-text" size={22} color="#222" />}
                     label="Đơn hàng của bạn"
-                     onPress={() => navigation.navigate('OrderHistoryScreen')}
+                    onPress={() => navigation.navigate('OrderHistoryScreen')}
                 />
                 <MenuItem
                     icon={<Feather name="settings" size={22} color="#222" />}

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import CartItem from '../component/CartItem'; // Component con
+import CartItem from '../../component/CartItem'; // Component con
 
 const initialItems = [
   {

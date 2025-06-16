@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { validateCompleteProfileForm } from '../utils/validation';
+import { validateCompleteProfileForm } from '../../utils/validation';
 
 // Danh sách các tùy chọn giới tính
 const GENDER_OPTIONS = [
@@ -164,7 +164,7 @@ export default function CompleteProfile() {
           <Image source={{ uri: avatar }} style={styles.avatar} />
         ) : (
           <View style={styles.avatarPlaceholder}>
-            <Image source={require('../../../assets/images/avatarmacdinh.png')} style={styles.avatar} />
+            <Image source={require('../../../../assets/images/avatarmacdinh.png')} style={styles.avatar} />
           </View>
         )}
         <View style={styles.editIconContainer}>

@@ -19,8 +19,8 @@ const { width } = Dimensions.get('window');
 
 // ----------------------------
 // Dữ liệu banner (dạng “card”):
-import bannerCard from '../../../assets/images/banner.png';
-import bannerCard2 from '../../../assets/images/banner2.png';
+import bannerCard from '../../../../assets/images/banner.png';
+import bannerCard2 from '../../../../assets/images/banner2.png';
 
 
 const banners = [
@@ -42,10 +42,10 @@ const banners = [
 
 // ----------------------------
 // Dữ liệu Loại Bánh
-import iconBanhKem from '../../../assets/images/iconbanhkem.png';
-import iconBanhQuy from '../../../assets/images/iconbanhquy.png';
-import iconDonut from '../../../assets/images/icondonut.png';
-import iconMacaron from '../../../assets/images/iconmacaron.png';
+import iconBanhKem from '../../../../assets/images/iconbanhkem.png';
+import iconBanhQuy from '../../../../assets/images/iconbanhquy.png';
+import iconDonut from '../../../../assets/images/icondonut.png';
+import iconMacaron from '../../../../assets/images/iconmacaron.png';
 
 const cakeCategories = [
   { key: 'cakes',   label: 'Bánh kem', icon: iconBanhKem },

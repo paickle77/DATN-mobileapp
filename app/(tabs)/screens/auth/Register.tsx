@@ -3,7 +3,7 @@ import type { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { validateRegisterForm } from '../utils/validation';
+import { validateRegisterForm } from '../../utils/validation';
 
 type RootStackParamList = {
     CompleteProfile: {
@@ -68,7 +68,7 @@ export default function Register() {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../../../assets/images/logo.png')} style={styles.logo} />
+      <Image source={require('../../../../assets/images/logo.png')} style={styles.logo} />
       <Text style={styles.title}>Đăng Ký</Text>
       <Text style={styles.subtitle}>
         Điền thông tin của bạn hoặc đăng ký bằng tài khoản mạng xã hội

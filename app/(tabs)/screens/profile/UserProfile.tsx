@@ -24,7 +24,7 @@ const UserProfileScreen = () => {
     
     // State cho các thông tin người dùng
     const [profileData, setProfileData] = useState({
-        avatar: require('../../../assets/images/avatar-placeholder.png'),
+        avatar: require('../../../../assets/images/avatar-placeholder.png'),
         fullName: 'Nguyễn Văn A',
         email: 'nguyenvana@email.com',
         phone: '0123456789',

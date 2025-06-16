@@ -1,8 +1,8 @@
+import { Feather } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import OrderCard from '../component/OrderCard';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from 'expo-router';
+import OrderCard from '../../component/OrderCard';
 
 const OrderHistoryScreen = () => {
   const navigation = useNavigation();
@@ -42,15 +42,12 @@ const OrderHistoryScreen = () => {
   return (
     <View style={styles.container}>
        <View style={styles.header}>
-         <TouchableOpacity 
-           style={styles.backButton}
-           onPress={() => navigation.navigate('Profile')}
-         >
-           <Ionicons name="arrow-back" size={24} color="#333" />
-         </TouchableOpacity>
-         <Text style={styles.headerTitle}>Giỏ hàng</Text>
-         <View style={styles.headerSpacer} />
-       </View>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={24} color="#222" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Phương thức thanh toán</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {orders.map(order => (

@@ -29,7 +29,7 @@ const WelcomScreen: React.FC<WelcomScreenProps> = ({ navigation }) => {
       <View style={styles.content}>
         {/* Logo */}
         <Image
-          source={require('../../../assets/images/logo.png')} // Đường dẫn tới logo của bạn
+          source={require('../../../../assets/images/logo.png')} // Đường dẫn tới logo của bạn
           style={styles.logo}
           resizeMode="contain"
         />

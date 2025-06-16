@@ -3,7 +3,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AddPaymentModal from '../component/AddPaymentModal';
+import AddPaymentModal from '../../component/AddPaymentModal';
 
 type PaymentMethod = {
   id: string;

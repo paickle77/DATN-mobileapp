@@ -1,36 +1,37 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryItem from '../(tabs)/component/category';
-import AddressScreen from './screens/Address';
-import Checkout from './screens/Checkout';
-import CheckoutCard from './screens/CheckoutCardScreen';
-import CheckoutSuccess from './screens/CheckoutSuccessScreen';
-import CompleteProfile from './screens/CompleteProfile';
-import Detail from './screens/Detail';
-import Home from './screens/Home';
-import index from './screens/Login';
-import ManualAddress from './screens/manual-address';
-import MapAddress from './screens/MapAddress';
-import NewPassword from './screens/NewPassword';
-import Onboarding from './screens/Onboarding';
-import OtpVerification from './screens/OtpVerification';
-import Register from './screens/Register';
-import Settings from './screens/Settings';
-import Splash from './screens/Splash';
-import TabNavigator from './screens/TabNavigator';
-import UserProfile from './screens/UserProfile';
-import Welcom from './screens/Welcom';
-import NotificationScreen from './screens/NotificationScreen';
-import OrderHistoryScreen from './screens/OrderHistoryScreen';
-import ReviewScreen from './screens/ReviewScreen';
-import ProfileScreen from './screens/Profile';
+import AddressScreen from './screens/address/Address';
+import ManualAddress from './screens/address/manual-address';
+import MapAddress from './screens/address/MapAddress';
+import index from './screens/auth/Login';
+import NewPassword from './screens/auth/NewPassword';
+import Onboarding from './screens/auth/Onboarding';
+import OtpVerification from './screens/auth/OtpVerification';
+import Register from './screens/auth/Register';
+import Splash from './screens/auth/Splash';
+import TabNavigator from './screens/navigation/TabNavigator';
+import NotificationScreen from './screens/notification/NotificationScreen';
+import Checkout from './screens/order/Checkout';
+import CheckoutCard from './screens/order/CheckoutCardScreen';
+import CheckoutSuccess from './screens/order/CheckoutSuccessScreen';
+import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
+import PaymentMethods from './screens/order/PaymentMethods';
+import Detail from './screens/product/Detail';
+import Home from './screens/product/Home';
+import ReviewScreen from './screens/product/ReviewScreen';
+import CompleteProfile from './screens/profile/CompleteProfile';
+import ProfileScreen from './screens/profile/Profile';
+import Settings from './screens/profile/Settings';
+import UserProfile from './screens/profile/UserProfile';
+import Welcom from './screens/auth/Welcom';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
   
   return (
-    <Stack.Navigator initialRouteName="Welcom">
+    <Stack.Navigator initialRouteName="TabNavigator">
       {/* Screens không có tab bar */}
          <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
        <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
@@ -62,6 +63,7 @@ export default function TabLayout() {
        {/* Settings Screen - được navigate từ Profile */}
       <Stack.Screen name="Settings" component={Settings} options={{ headerShown: false }} />
       <Stack.Screen name="UserProfile" component={UserProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="PaymentMethods" component={PaymentMethods} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

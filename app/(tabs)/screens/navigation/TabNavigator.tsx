@@ -3,19 +3,19 @@ import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
 // Import các màn hình
-import CartScreen from './Cart';
-import ChatScreen from './Chat';
-import FavouriteScreen from './Favourite';
-import HomeScreen from './Home';
-import ProfileScreen from './Profile';
+import ChatScreen from '../chat/Chat';
+import CartScreen from '../order/Cart';
+import FavouriteScreen from '../product/Favourite';
+import HomeScreen from '../product/Home';
+import ProfileScreen from '../profile/Profile';
 
 // Import icons
 import { TouchableOpacity } from 'react-native';
-import iconChat from '../../../assets/images/iconchat.png';
-import iconHeart from '../../../assets/images/iconheart.png';
-import iconHome from '../../../assets/images/iconhome.png';
-import iconBag from '../../../assets/images/iconproduct.png';
-import iconProfile from '../../../assets/images/iconprofile.png';
+import iconChat from '../../../../assets/images/iconchat.png';
+import iconHeart from '../../../../assets/images/iconheart.png';
+import iconHome from '../../../../assets/images/iconhome.png';
+import iconBag from '../../../../assets/images/iconproduct.png';
+import iconProfile from '../../../../assets/images/iconprofile.png';
 
 const Tab = createBottomTabNavigator();
 

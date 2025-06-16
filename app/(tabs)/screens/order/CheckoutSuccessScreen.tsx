@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { useCart } from '../../../hooks/useCart'
+import { useCart } from '../../../../hooks/useCart'
 
 // — Thêm định nghĩa Params để route.params có kiểu rõ ràng —
 type RootStackParamList = {

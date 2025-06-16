@@ -1,10 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import DetailedReview from '../component/DetailedReview';
-import ProductCard from '../component/ProductCard';
-import StarRating from '../component/StarRating';
-import { useNavigation } from 'expo-router';
+import DetailedReview from '../../component/DetailedReview';
+import ProductCard from '../../component/ProductCard';
+import StarRating from '../../component/StarRating';
 
 const ReviewScreen = () => {
   const navigation = useNavigation();

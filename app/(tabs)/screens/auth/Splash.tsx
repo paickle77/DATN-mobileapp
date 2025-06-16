@@ -10,7 +10,7 @@ export default function Splash() {
     return (
         <ScrollView contentContainerStyle={styles.container}>
             <Image
-                source={require('../../../assets/images/splash.png')}
+                source={require('../../../../assets/images/splash.png')}
                 style={{ width: 400, height: 500, marginBottom: 32, borderRadius: 40 }}
                 resizeMode="cover"
             />

@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { validateLoginForm } from '../utils/validation';
+import { validateLoginForm } from '../../utils/validation';
 
 type RootStackParamList = {
   Login: undefined;
@@ -118,7 +118,7 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../../../assets/images/logo.png')} style={styles.logo} />
+      <Image source={require('../../../../assets/images/logo.png')} style={styles.logo} />
       <Text style={styles.title}>Đăng Nhập</Text>
       <Text style={styles.subtitle}>Xin chào! Chào mừng bạn đã trở lại</Text>
 

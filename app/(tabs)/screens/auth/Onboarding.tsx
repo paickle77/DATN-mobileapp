@@ -18,19 +18,19 @@ const onboardingData = [
         title: "Cùng thưởng thức",
         subtitle: "cách làm bánh ngọt mới trên thế giới chi có tại",
         highlight: "CakeShop",
-        image: require('../../../assets/images/onboarding3.png'), // Thay đổi đường dẫn cho phù hợp
+        image: require('../../../../assets/images/onboarding3.png'), // Thay đổi đường dẫn cho phù hợp
     },
     {
         id: 2,
         title: "Đây do thể loại",
         subtitle: "hương vị màu sắc",
-        image: require('../../../assets/images/onboarding3.png'), // Thay đổi đường dẫn cho phù hợp
+        image: require('../../../../assets/images/onboarding3.png'), // Thay đổi đường dẫn cho phù hợp
     },
     {
         id: 3,
         title: "Cùng đặt hàng ngay thôi",
         subtitle: "",
-        image: require('../../../assets/images/onboarding3.png'), // Thay đổi đường dẫn cho phù hợp
+        image: require('../../../../assets/images/onboarding3.png'), // Thay đổi đường dẫn cho phù hợp
     }
 ];
 
