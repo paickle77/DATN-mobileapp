@@ -29,14 +29,14 @@ import Welcom from './screens/auth/Welcom';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
-  
+
   return (
     <Stack.Navigator initialRouteName="TabNavigator">
       {/* Screens không có tab bar */}
-         <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
-       <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
-         <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
       <Stack.Screen name="Welcom" component={Welcom} options={{ headerShown: false }} />
       <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
@@ -50,17 +50,17 @@ export default function TabLayout() {
       <Stack.Screen name="NewPassword" component={NewPassword} options={{ headerShown: false }} />
       <Stack.Screen name="CompleteProfile" component={CompleteProfile} options={{ headerShown: false }} />
       <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false }} />
-      <Stack.Screen name="CheckoutSuccess" component={CheckoutSuccess} options={{ headerShown: false }} /> 
+      <Stack.Screen name="CheckoutSuccess" component={CheckoutSuccess} options={{ headerShown: false }} />
       <Stack.Screen name="CheckoutCard" component={CheckoutCard} options={{ headerShown: false }} />
-      
+
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}
       <Stack.Screen name="TabNavigator" component={TabNavigator} options={{ headerShown: false }} />
-      
+
       {/* Screens có thể được navigate từ tab navigator */}
       <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
 
-       {/* Settings Screen - được navigate từ Profile */}
+      {/* Settings Screen - được navigate từ Profile */}
       <Stack.Screen name="Settings" component={Settings} options={{ headerShown: false }} />
       <Stack.Screen name="UserProfile" component={UserProfile} options={{ headerShown: false }} />
       <Stack.Screen name="PaymentMethods" component={PaymentMethods} options={{ headerShown: false }} />
