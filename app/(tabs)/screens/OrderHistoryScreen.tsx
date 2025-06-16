@@ -41,12 +41,16 @@ const OrderHistoryScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
-          <Ionicons name="arrow-back-circle-outline" size={30} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Lịch sử đơn hàng</Text>
-      </View>
+       <View style={styles.header}>
+         <TouchableOpacity 
+           style={styles.backButton}
+           onPress={() => navigation.navigate('Profile')}
+         >
+           <Ionicons name="arrow-back" size={24} color="#333" />
+         </TouchableOpacity>
+         <Text style={styles.headerTitle}>Giỏ hàng</Text>
+         <View style={styles.headerSpacer} />
+       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {orders.map(order => (
@@ -69,22 +73,45 @@ const OrderHistoryScreen = () => {
 export default OrderHistoryScreen;
 
 const styles = StyleSheet.create({
+   backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#333',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  headerSpacer: {
+    width: 40, // Để cân bằng với nút back
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10, 
+    paddingBottom: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F0F0F0',
-    paddingTop: 40,
-    paddingHorizontal: 8,
+    // paddingHorizontal: 8,
   },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-  },
-  backIcon: {
-    position: 'absolute',
-    left: 0,
-    marginLeft: 8,
   },
   title: {
     fontSize: 22,

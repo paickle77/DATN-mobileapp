@@ -23,6 +23,8 @@ import Welcom from './screens/Welcom';
 import NotificationScreen from './screens/NotificationScreen';
 import OrderHistoryScreen from './screens/OrderHistoryScreen';
 import ReviewScreen from './screens/ReviewScreen';
+import ProfileScreen from './screens/Profile';
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
@@ -33,7 +35,7 @@ export default function TabLayout() {
          <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
        <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
          <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
-    
+        <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
       <Stack.Screen name="Welcom" component={Welcom} options={{ headerShown: false }} />
       <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
