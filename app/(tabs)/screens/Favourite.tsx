@@ -63,6 +63,34 @@ const sampleProducts = [
     image:
       'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
   },
+   {
+    id: '7',
+    name: 'Tiramisu Việt Quất',
+    price: 290000,
+    rating: 5.0,
+    category: 'Tiramisu',
+    image:
+      'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
+  },
+   {
+    id: '8',
+    name: 'Tiramisu Việt Quất',
+    price: 290000,
+    rating: 5.0,
+    category: 'Tiramisu',
+    image:
+      'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
+  },
+   {
+    id: '9',
+    name: 'Tiramisu Việt Quất',
+    price: 290000,
+    rating: 5.0,
+    category: 'Tiramisu',
+    image:
+      'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
+  },
+  
 ];
 
 const category = ['Tất cả', 'Su kem', 'Macaron', 'Tiramisu', 'Gato', 'Quy'];
@@ -80,9 +108,8 @@ const Favourite = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView>
-        <View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {category.map((filter) => (
               <TouchableOpacity
                 key={filter}
@@ -103,11 +130,13 @@ const Favourite = () => {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
+      
+      </View>
 
-        <ProductGrid data={filteredProducts} />
 
-      </ScrollView>
+          <ProductGrid data={filteredProducts} />
+
+
         
     </View>
   );
