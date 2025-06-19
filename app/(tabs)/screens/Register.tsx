@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { validateRegisterForm } from '../utils/validation';
+import axios from 'axios';
 
 type RootStackParamList = {
     CompleteProfile: {
-        email: string;
-        password?: string;
+      id:string
         
     };
     Login: undefined;
@@ -20,6 +20,8 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agree, setAgree] = useState(false);
   const [secureText, setSecureText] = useState(true);
+  const [data, setData] = useState<any[]>([]);
+
   const [errors, setErrors] = useState({
     email: '',
     password: '',
@@ -27,44 +29,79 @@ export default function Register() {
   });
    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  // Xử lý đăng ký
-  const handleRegister = () => {
-    // Reset lỗi trước khi validate
-    setErrors({
-      email: '',
-      password: '',
-      confirmPassword: '',
-    });
+  const url='http://172.20.20.15:3000/api/users'
 
-    // Gọi validation từ file utils
-    const validation = validateRegisterForm(email, password, confirmPassword, agree);
-    
-    // Nếu có lỗi, hiển thị lỗi và dừng
-    if (!validation.isValid) {
-      setErrors({
-        email: validation.errors.email || '',
-        password: validation.errors.password || '',
-        confirmPassword: validation.errors.confirmPassword || '',
-      });
-      
-      // Kiểm tra riêng lỗi agree (không thuộc errors object)
-      if (validation.errors.agree) {
-        Alert.alert('Thông báo', validation.errors.agree);
+  useEffect(() => {
+  axios.get(url)
+    .then((res) => {
+      if (res.data && res.data.data) {
+        setData(res.data.data);
+        console.log('Dữ liệu người dùng:', res.data.data);
       }
-      return;
-    }
-
-    // Nếu validation thành công, log thông tin và chuyển trang
-    console.log('Email:', email);
-    console.log('Password:', password);
-    console.log('Agree:', agree);
-    
-    // Chuyển đến màn hình hoàn thiện hồ sơ với email và password
-    navigation.navigate('CompleteProfile', { 
-      email: email,
-      password: password 
+    })
+    .catch((err) => {
+      console.error('Lỗi khi lấy dữ liệu:', err);
     });
-  };
+}, []);
+
+
+
+
+
+
+
+
+
+
+
+  // Xử lý đăng ký
+const handleRegister = () => {
+  setErrors({
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const validation = validateRegisterForm(email, password, confirmPassword, agree);
+
+  if (!validation.isValid) {
+    setErrors({
+      email: validation.errors.email || '',
+      password: validation.errors.password || '',
+      confirmPassword: validation.errors.confirmPassword || '',
+    });
+
+    if (validation.errors.agree) {
+      Alert.alert('Thông báo', validation.errors.agree);
+    }
+    return;
+  }
+
+  // ✅ Kiểm tra trùng email
+  const existedUser = data.find((user) => user.email === email);
+
+  if (existedUser) {
+    Alert.alert('Lỗi', 'Email đã tồn tại. Vui lòng chọn email khác.');
+    return;
+  }
+
+  // ✅ Nếu không trùng → gửi POST tạo user mới
+  axios.post(url, { email, password })
+    .then((res) => {
+      if (res.data && res.data.data) {
+        const newUser = res.data.data;
+        console.log('Đăng ký thành công. ID:', newUser._id);
+
+        // Chuyển đến màn hình tiếp theo
+      navigation.navigate('CompleteProfile', { id: newUser._id });
+
+      }
+    })
+    .catch((error) => {
+      console.error('Lỗi khi đăng ký:', error);
+      Alert.alert('Lỗi', 'Không thể đăng ký. Vui lòng thử lại sau.');
+    });
+};
 
   return (
     <View style={styles.container}>

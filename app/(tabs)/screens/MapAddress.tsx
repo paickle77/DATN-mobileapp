@@ -21,6 +21,7 @@ type RootStackParamList = {
         phone?: string;
         gender?: string;
         avatar?: string;
+          id: string;
     };
     SelectLocation: {
         email?: string;
@@ -29,6 +30,7 @@ type RootStackParamList = {
         phone?: string;
         gender?: string;
         avatar?: string;
+          id: string;
     };
 };
 
@@ -57,6 +59,7 @@ const SelectLocationScreen = () => {
                 address: selectedAddress || `${selectedLocation.latitude.toFixed(5)}, ${selectedLocation.longitude.toFixed(5)}`,
 
                 // truyền lại các dữ liệu trước đó
+                 id: route.params?.id,  
                 email: route.params?.email,
                 password: route.params?.password,
                 fullName: route.params?.fullName,
