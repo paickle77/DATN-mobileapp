@@ -37,6 +37,7 @@ interface RouteParams {
 
 type RootStackParamList = {
   Checkout: undefined;
+  Review: { productId: string };
 };
 
 const Detail: React.FC = () => {
@@ -52,7 +53,7 @@ const Detail: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const baseUrl = 'http://192.168.1.102:3000/api/productsandcategoryid';
+  const baseUrl = 'http://192.168.0.116:3000/api/productsandcategoryid';
 
   useEffect(() => {
     fetchProductDetails();
@@ -308,7 +309,7 @@ const decrementQuantity = () => {
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.secondaryButton]}
-              // onPress={() => navigation.navigate('Reviews', { productId: product._id })}
+              onPress={() => navigation.navigate('Review', { productId: product._id })}
             >
               <Text style={styles.secondaryButtonText}>Xem đánh giá</Text>
             </TouchableOpacity>

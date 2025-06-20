@@ -57,6 +57,7 @@ export default function TabLayout() {
       <Stack.Screen name="CheckoutSuccess" component={CheckoutSuccess} options={{ headerShown: false }} />
       <Stack.Screen name="CheckoutCard" component={CheckoutCard} options={{ headerShown: false }} />
       <Stack.Screen name="CartScreen" component={CartScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
 
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}
       <Stack.Screen name="TabNavigator" component={TabNavigator} options={{ headerShown: false }} />
