@@ -4,7 +4,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { validateCompleteProfileForm } from '../../utils/validation';
+import { validateCompleteProfileForm } from '../utils/validation';
+import axios from 'axios';
 
 // Danh sách các tùy chọn giới tính
 const GENDER_OPTIONS = [
@@ -22,17 +23,13 @@ type RootStackParamList = {
     password?: string;
   };
   Address: {
-    email: string;
-    password?: string;
-    fullName: string;
-    phone: string;
-    gender: string;
-    avatar: string;
+   id:string
   };
 };
 
 export default function CompleteProfile() {
-
+const route = useRoute();
+const { id } = route.params as { id: string };
   // Khai báo state cho form
   const [avatar, setAvatar] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
@@ -41,6 +38,7 @@ export default function CompleteProfile() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showGenderModal, setShowGenderModal] = useState(false);
+   const [data, setData] = useState<any[]>([]);
   const [errors, setErrors] = useState({
     fullName: '',
     phone: '',
@@ -48,7 +46,34 @@ export default function CompleteProfile() {
   });
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  const route = useRoute()
+
+
+   useEffect(() => {
+  const { id } = route.params as { id: string };
+
+  if (id) {
+    axios.get(`http://192.168.2.6:3000/api/users/${id}`)
+      .then(res => {
+        const user = res.data.data;
+        if (user) {
+          setFullName(user.name || '');
+          setPhone(user.phone || '');
+          // setGender(user.gender || '');
+          setAvatar(user.avatar || null);
+          setEmail(user.email || '');
+        }
+      })
+      .catch(err => {
+        console.error('Lỗi khi lấy người dùng:', err);
+      });
+  }
+}, []);
+
+
+
+
+
+
   useEffect(() => {
     if (route.params) {
       const { email, password } = route.params as {
@@ -123,26 +148,47 @@ export default function CompleteProfile() {
 
     // Xác định avatar cuối cùng (nếu không có avatar tự chọn thì dùng ảnh mặc định)
     const finalAvatar = avatar || DEFAULT_AVATAR;
+   
 
-    // Log tất cả thông tin nếu validation thành công
-    console.log('=== THÔNG TIN HỒ SƠ HOÀN THIỆN ===');
-    console.log('Email:', email);
-    console.log('Password:', password);
-    console.log('Họ tên:', fullName);
-    console.log('Số điện thoại:', phone);
-    console.log('Giới tính:', gender);
-    console.log('Avatar:', finalAvatar);
-    console.log('===================================');
+// Gửi dữ liệu cập nhật
+axios.put(`http://172.20.20.15:3000/api/users/${id}`, {
+  name: fullName,
+  phone,
+  gender,
+  avatar: finalAvatar
+})
+  .then(res => {
+    console.log('Cập nhật thành công anle :', id);
+    Alert.alert('Thành công', 'Cập nhật hồ sơ thành công');
+  
+    navigation.navigate('Address', {
+     id
+    });
+  })
+  .catch(err => {
+    console.error('Lỗi khi cập nhật:', err);
+    Alert.alert('Lỗi', 'Không thể cập nhật hồ sơ');
+  });
+
+    // // Log tất cả thông tin nếu validation thành công
+    // console.log('=== THÔNG TIN HỒ SƠ HOÀN THIỆN ===');
+    // console.log('Email:', email);
+    // console.log('Password:', password);
+    // console.log('Họ tên:', fullName);
+    // console.log('Số điện thoại:', phone);
+    // console.log('Giới tính:', gender);
+    // console.log('Avatar:', finalAvatar);
+    // console.log('===================================');
 
     // Hiển thị thông báo thành công và chuyển trang
-    navigation.navigate('Address', {
-      email,
-      password,
-      fullName,
-      phone,
-      gender,
-      avatar: finalAvatar
-    });
+    // navigation.navigate('Address', {
+    //   email,
+    //   password,
+    //   fullName,
+    //   phone,
+    //   gender,
+    //   avatar: finalAvatar
+    // });
 
   };
 

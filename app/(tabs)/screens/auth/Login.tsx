@@ -2,10 +2,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { validateLoginForm } from '../../utils/validation';
+import { validateLoginForm } from '../utils/validation';
+import axios from 'axios';
 
 type RootStackParamList = {
   Login: undefined;
@@ -19,14 +19,41 @@ type RootStackParamList = {
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function Login() {
+  const url='http://192.168.2.6:3000/api/users'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
+const [data, setData] = useState<any[]>([]);
   const [errors, setErrors] = useState({
     email: '',
     password: '',
   });
+
+
+
+
+
+  useEffect(() => {
+    axios.get(url) // thay URL bằng URL thực tế
+      .then((res) => {
+        if (res.data && res.data.data) {
+          setData(res.data.data);
+          console.log(res.data.data)
+          console.log('Lấy API thành công')
+        }
+      })
+      .catch((err) => {
+        console.error('Lỗi khi lấy dữ liệu:', err);
+      })
+      .finally(() => {
+        // setLoading(true);
+        console.log('không')
+      });
+  }, []);
+
+
+
   const navigation = useNavigation<LoginNavigationProp>();
   const [data, setData] = useState<any[]>([]);
 
@@ -49,7 +76,7 @@ export default function Login() {
       });
   }, []);
 
-const handleLogin = async () => {
+ const handleLogin = async () => {
   // Reset errors
   setErrors({
     email: '',
@@ -85,6 +112,7 @@ const handleLogin = async () => {
   }
 };
 
+
   const handleForgotPassword = async () => {
     if (!email.trim()) {
       Alert.alert('Thông báo', 'Vui lòng nhập email trước khi quên mật khẩu');
@@ -98,30 +126,30 @@ const handleLogin = async () => {
       return;
     }
 
-    setLoading(true);
-
-    //   try {
-    //     const response = await authService.sendForgotPasswordOTP(email);
-
-    //     if (response.success) {
-    //       Alert.alert(
-    //         'Thành công',
-    //         response.message,
-    //         [
-    //           {
-    //             text: 'OK',
-    //             onPress: () => navigation.navigate('OtpVerification', { email: email })
-    //           }
-    //         ]
-    //       );
-    //     } else {
-    //       Alert.alert('Lỗi', response.message);
-    //     }
-    //   } catch (error) {
-    //     Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-    //   } finally {
-    //     setLoading(false);
-    //   }
+    // setLoading(true);
+    
+  //   try {
+  //     const response = await authService.sendForgotPasswordOTP(email);
+      
+  //     if (response.success) {
+  //       Alert.alert(
+  //         'Thành công',
+  //         response.message,
+  //         [
+  //           {
+  //             text: 'OK',
+  //             onPress: () => navigation.navigate('OtpVerification', { email: email })
+  //           }
+  //         ]
+  //       );
+  //     } else {
+  //       Alert.alert('Lỗi', response.message);
+  //     }
+  //   } catch (error) {
+  //     Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
   };
 
   const handleGoToRegister = () => {
