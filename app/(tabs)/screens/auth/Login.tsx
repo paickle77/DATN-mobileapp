@@ -2,7 +2,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { validateLoginForm } from '../../utils/validation';
 
@@ -27,51 +28,62 @@ export default function Login() {
     password: '',
   });
   const navigation = useNavigation<LoginNavigationProp>();
+  const [data, setData] = useState<any[]>([]);
 
-  const handleLogin = async () => {
-    // Reset errors
-    setErrors({
-      email: '',
-      password: '',
-    });
 
-    // Validate form
-    const { isValid, errors: validationErrors } = validateLoginForm(email, password);
-    
-    if (!isValid) {
-      setErrors({
-        email: validationErrors.email || '',
-        password: validationErrors.password || '',
+  useEffect(() => {
+    axios.get('http://192.168.0.116:3000/api/users') // thay URL bằng URL thực tế
+      .then((res) => {
+        if (res.data && res.data.data) {
+          setData(res.data.data);
+          console.log(res.data.data)
+          console.log('Lấy API thành công')
+        }
+      })
+      .catch((err) => {
+        console.error('Lỗi khi lấy dữ liệu:', err);
+      })
+      .finally(() => {
+        // setLoading(true);
+        console.log('không')
       });
-      return;
-    }
+  }, []);
 
-    setLoading(false);
-    
-    // try {
-    //   const response = await authService.login({ email, password });
-      
-    //   if (response.success) {
-    //     Alert.alert(
-    //       'Thành công',
-    //       response.message,
-    //       [
-    //         {
-    //           text: 'OK',
-    //           onPress: () => navigation.navigate('TabNavigator') // Đã thay đổi từ Home
-    //         }
-    //       ]
-    //     );
-    //   } else {
-    //     Alert.alert('Lỗi', response.message);
-    //   }
-    // } catch (error) {
-    //   Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-    // } finally {
-    //   setLoading(false);
-    // }
-    navigation.navigate('TabNavigator'); // Đã thay đổi từ Home
-  };
+const handleLogin = async () => {
+  // Reset errors
+  setErrors({
+    email: '',
+    password: '',
+  });
+
+  const { isValid, errors: validationErrors } = validateLoginForm(email, password);
+
+  if (!isValid) {
+    setErrors({
+      email: validationErrors.email || '',
+      password: validationErrors.password || '',
+    });
+    return;
+  }
+
+  if (!data) {
+    Alert.alert('Lỗi', 'Không thể lấy dữ liệu người dùng.');
+    return;
+  }
+
+  // So sánh email và password nhập vào với danh sách người dùng
+  const matchedUser = data.find((user: any) => {
+    return user.email === email && user.password === password;
+  });
+
+  if (matchedUser) {
+    console.log('Đăng nhập thành công:', matchedUser);
+    Alert.alert('Thành công', 'Đăng nhập thành công!');
+    navigation.navigate('TabNavigator');
+  } else {
+    Alert.alert('Lỗi', 'Email hoặc mật khẩu không chính xác!');
+  }
+};
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -87,29 +99,29 @@ export default function Login() {
     }
 
     setLoading(true);
-    
-  //   try {
-  //     const response = await authService.sendForgotPasswordOTP(email);
-      
-  //     if (response.success) {
-  //       Alert.alert(
-  //         'Thành công',
-  //         response.message,
-  //         [
-  //           {
-  //             text: 'OK',
-  //             onPress: () => navigation.navigate('OtpVerification', { email: email })
-  //           }
-  //         ]
-  //       );
-  //     } else {
-  //       Alert.alert('Lỗi', response.message);
-  //     }
-  //   } catch (error) {
-  //     Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-  //   } finally {
-  //     setLoading(false);
-  //   }
+
+    //   try {
+    //     const response = await authService.sendForgotPasswordOTP(email);
+
+    //     if (response.success) {
+    //       Alert.alert(
+    //         'Thành công',
+    //         response.message,
+    //         [
+    //           {
+    //             text: 'OK',
+    //             onPress: () => navigation.navigate('OtpVerification', { email: email })
+    //           }
+    //         ]
+    //       );
+    //     } else {
+    //       Alert.alert('Lỗi', response.message);
+    //     }
+    //   } catch (error) {
+    //     Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    //   } finally {
+    //     setLoading(false);
+    //   }
   };
 
   const handleGoToRegister = () => {
@@ -176,8 +188,8 @@ export default function Login() {
       </TouchableOpacity>
 
       {/* Nút Đăng nhập */}
-      <TouchableOpacity 
-        style={[styles.button, loading && styles.buttonDisabled]} 
+      <TouchableOpacity
+        style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleLogin}
         disabled={loading}
       >
@@ -197,16 +209,16 @@ export default function Login() {
 
       {/* Nút Social Login */}
       <View style={styles.socialContainer}>
-        <TouchableOpacity 
-          style={[styles.socialButton, loading && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.socialButton, loading && styles.buttonDisabled]}
           onPress={() => { /* TODO: Google login */ }}
           disabled={loading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
           <Text style={styles.socialText}>Google</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.socialButton, loading && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.socialButton, loading && styles.buttonDisabled]}
           onPress={() => { /* TODO: Facebook login */ }}
           disabled={loading}
         >

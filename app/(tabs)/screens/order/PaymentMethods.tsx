@@ -1,7 +1,7 @@
 import { AntDesign, Feather, FontAwesome5 } from '@expo/vector-icons';
 import { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AddPaymentModal from '../../component/AddPaymentModal';
 
@@ -16,7 +16,15 @@ type PaymentMethod = {
 };
 
 type RootStackParamList = {
-  // Add your route types here
+  Checkout: {
+    selectedPaymentMethod: {
+      id: string;
+      type: string;
+      name: string;
+      accountNumber?: string;
+      cardNumber?: string;
+    };
+  };
 };
 
 const PaymentMethodsScreen = () => {
@@ -95,6 +103,10 @@ const PaymentMethodsScreen = () => {
           style: 'destructive',
           onPress: () => {
             setPaymentMethods(prev => prev.filter(method => method.id !== id));
+            // Nếu phương thức đang được chọn bị xóa, chuyển về COD
+            if (selectedPaymentId === id) {
+              setSelectedPaymentId('cod');
+            }
           }
         }
       ]
@@ -132,7 +144,37 @@ const PaymentMethodsScreen = () => {
     setCardholderName('');
   };
 
-  
+  const handleComplete = () => {
+    let selectedPaymentMethod;
+    
+    if (selectedPaymentId === 'cod') {
+      selectedPaymentMethod = {
+        id: 'cod',
+        type: 'cod',
+        name: 'Thanh toán khi nhận hàng',
+        accountNumber: undefined,
+        cardNumber: undefined,
+      };
+    } else {
+      const method = paymentMethods.find(m => m.id === selectedPaymentId);
+      if (method) {
+        selectedPaymentMethod = {
+          id: method.id,
+          type: method.type,
+          name: method.name,
+          accountNumber: method.accountNumber,
+          cardNumber: method.cardNumber,
+        };
+      }
+    }
+
+    if (selectedPaymentMethod) {
+      // Navigate back to Checkout with selected payment method
+      navigation.navigate('Checkout', {
+        selectedPaymentMethod
+      });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -254,6 +296,16 @@ const PaymentMethodsScreen = () => {
           <Text style={styles.addPaymentText}>Thêm phương thức thanh toán</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Complete Button */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.completeButton}
+          onPress={handleComplete}
+        >
+          <Text style={styles.completeButtonText}>Hoàn thành</Text>
+        </TouchableOpacity>
+      </View>
 
       <AddPaymentModal
         visible={showAddModal}
@@ -446,6 +498,25 @@ const styles = StyleSheet.create({
     color: '#795548',
     fontWeight: '500',
     marginLeft: 8,
+  },
+  // Footer với nút Hoàn thành
+  footer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    backgroundColor: '#fff',
+  },
+  completeButton: {
+    backgroundColor: '#795548',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   // Modal Styles
   modalOverlay: {

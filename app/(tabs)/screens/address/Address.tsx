@@ -137,7 +137,7 @@ const AddressScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.completeButton} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity style={styles.completeButton} onPress={() => navigation.navigate('TabNavigator')}>
         <Text style={styles.completeButtonText}>Hoàn thành</Text>
       </TouchableOpacity>
 

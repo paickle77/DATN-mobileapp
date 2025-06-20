@@ -20,7 +20,7 @@ type RootStackParamList = {
     Login: undefined;
     PaymentMethods: undefined;
     OrderHistoryScreen: undefined;
-
+    AddressList: undefined;
 };
 
 const ProfileScreen = () => {
@@ -147,6 +147,11 @@ const ProfileScreen = () => {
                     icon={<Ionicons name="person-outline" size={24} color="#222" />}
                     label="Hồ sơ của bạn"
                     onPress={() => navigation.navigate('UserProfile')}
+                />
+                <MenuItem
+                    icon={<Ionicons name="location-outline" size={24} color="#222" />}
+                    label="Danh sách địa chỉ"
+                    onPress={() => navigation.navigate('AddressList')}
                 />
                 <MenuItem
                     icon={<FontAwesome5 name="credit-card" size={20} color="#222" />}

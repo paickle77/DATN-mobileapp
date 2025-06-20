@@ -54,7 +54,7 @@ export default function CartScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('TabNavigator')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
