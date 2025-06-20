@@ -1,7 +1,7 @@
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import axios from 'axios';
 
 type RootStackParamList = {
   CompleteProfile: {
@@ -125,9 +125,10 @@ const AddressScreen = () => {
   <Text>Chọn vị trí trên bản đồ</Text>
 </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.button1} 
-          onPress={() => 
+        <TouchableOpacity
+          style={styles.button1}
+          onPress={() => {
+            console.log('[AddressScreen] navigating to ManualAddress with id =', route.params?.id);
             navigation.navigate('ManualAddress', {
               email: route.params?.email,
               password: route.params?.password,
@@ -135,8 +136,9 @@ const AddressScreen = () => {
               phone: route.params?.phone,
               gender: route.params?.gender,
               avatar: route.params?.avatar,
-            })
-          }
+              id: route.params?.id,
+            });
+          }}
         >
           <Text>Chọn vị trí thủ công</Text>
         </TouchableOpacity>
@@ -170,10 +172,10 @@ const AddressScreen = () => {
 
             console.log('🔼 Dữ liệu gửi lên API:', JSON.stringify(body, null, 2));
 
-            const response = await axios.post('http://172.20.20.15:3000/api/addresses', body);
+            const response = await axios.post('http://192.168.0.116:3000/api/addresses', body);
             console.log('✅ Phản hồi từ API:', response.data);
 
-            navigation.navigate('Home');
+            navigation.navigate('TabNavigator');
           } catch (error: any) {
             console.error('❌ Lỗi khi gửi API:', error?.response?.data || error.message);
             alert('Gửi địa chỉ thất bại!');

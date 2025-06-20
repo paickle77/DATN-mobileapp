@@ -1,107 +1,87 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { validateRegisterForm } from '../utils/validation';
-import axios from 'axios';
+import { RegisterAuthService } from '../../services/RegisterAuthService';
+import { validateRegisterForm } from '../../utils/validation';
 
 type RootStackParamList = {
-    CompleteProfile: {
-      id:string
-        
-    };
-    Login: undefined;
+  CompleteProfile: {
+    id: string;
+  };
+  Login: undefined;
 };
+
 export default function Register() {
-  // Khai báo state cho form
+  // State cho form
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agree, setAgree] = useState(false);
   const [secureText, setSecureText] = useState(true);
-  const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [errors, setErrors] = useState({
     email: '',
     password: '',
     confirmPassword: '',
   });
-   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  const url='http://172.20.20.15:3000/api/users'
-
-  useEffect(() => {
-  axios.get(url)
-    .then((res) => {
-      if (res.data && res.data.data) {
-        setData(res.data.data);
-        console.log('Dữ liệu người dùng:', res.data.data);
-      }
-    })
-    .catch((err) => {
-      console.error('Lỗi khi lấy dữ liệu:', err);
-    });
-}, []);
-
-
-
-
-
-
-
-
-
-
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   // Xử lý đăng ký
-const handleRegister = () => {
-  setErrors({
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
-
-  const validation = validateRegisterForm(email, password, confirmPassword, agree);
-
-  if (!validation.isValid) {
+  const handleRegister = async () => {
+    // Reset errors
     setErrors({
-      email: validation.errors.email || '',
-      password: validation.errors.password || '',
-      confirmPassword: validation.errors.confirmPassword || '',
+      email: '',
+      password: '',
+      confirmPassword: '',
     });
 
-    if (validation.errors.agree) {
-      Alert.alert('Thông báo', validation.errors.agree);
+    // Validate form
+    const validation = validateRegisterForm(email, password, confirmPassword, agree);
+
+    if (!validation.isValid) {
+      setErrors({
+        email: validation.errors.email || '',
+        password: validation.errors.password || '',
+        confirmPassword: validation.errors.confirmPassword || '',
+      });
+
+      if (validation.errors.agree) {
+        Alert.alert('Thông báo', validation.errors.agree);
+      }
+      return;
     }
-    return;
-  }
 
-  // ✅ Kiểm tra trùng email
-  const existedUser = data.find((user) => user.email === email);
+    setIsLoading(true);
 
-  if (existedUser) {
-    Alert.alert('Lỗi', 'Email đã tồn tại. Vui lòng chọn email khác.');
-    return;
-  }
+    try {
+      // Gọi service để đăng ký
+      const newUser = await RegisterAuthService.registerUser({
+        email: email.trim().toLowerCase(),
+        password
+      });
 
-  // ✅ Nếu không trùng → gửi POST tạo user mới
-  axios.post(url, { email, password })
-    .then((res) => {
-      if (res.data && res.data.data) {
-        const newUser = res.data.data;
-        console.log('Đăng ký thành công. ID:', newUser._id);
-
-        // Chuyển đến màn hình tiếp theo
+      console.log('Đăng ký thành công. ID:', newUser._id);
+      
+      // Chuyển đến màn hình hoàn thiện hồ sơ
       navigation.navigate('CompleteProfile', { id: newUser._id });
 
-      }
-    })
-    .catch((error) => {
+    } catch (error) {
       console.error('Lỗi khi đăng ký:', error);
-      Alert.alert('Lỗi', 'Không thể đăng ký. Vui lòng thử lại sau.');
-    });
-};
+      
+      // Hiển thị lỗi cụ thể
+      if (error instanceof Error) {
+        Alert.alert('Lỗi', error.message);
+      } else {
+        Alert.alert('Lỗi', 'Không thể đăng ký. Vui lòng thử lại sau.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -127,6 +107,7 @@ const handleRegister = () => {
               setErrors(prev => ({ ...prev, email: '' }));
             }
           }}
+          editable={!isLoading}
         />
         {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
       </View>
@@ -146,10 +127,12 @@ const handleRegister = () => {
               setErrors(prev => ({ ...prev, password: '' }));
             }
           }}
+          editable={!isLoading}
         />
         <TouchableOpacity
           style={styles.eyeIcon}
           onPress={() => setSecureText(!secureText)}
+          disabled={isLoading}
         >
           <Ionicons name={secureText ? 'eye-off' : 'eye'} size={20} color="#666" />
         </TouchableOpacity>
@@ -171,10 +154,12 @@ const handleRegister = () => {
               setErrors(prev => ({ ...prev, confirmPassword: '' }));
             }
           }}
+          editable={!isLoading}
         />
         <TouchableOpacity
           style={styles.eyeIcon}
           onPress={() => setSecureText(!secureText)}
+          disabled={isLoading}
         >
           <Ionicons name={secureText ? 'eye-off' : 'eye'} size={20} color="#666" />
         </TouchableOpacity>
@@ -185,6 +170,7 @@ const handleRegister = () => {
       <TouchableOpacity
         style={styles.termsContainer}
         onPress={() => setAgree(!agree)}
+        disabled={isLoading}
       >
         <Ionicons
           name={agree ? 'checkbox' : 'checkbox-outline'}
@@ -197,11 +183,16 @@ const handleRegister = () => {
 
       {/* Nút Đăng Ký */}
       <TouchableOpacity
-        style={[styles.button, { opacity: agree ? 1 : 0.5 }]}
+        style={[
+          styles.button, 
+          { opacity: (agree && !isLoading) ? 1 : 0.5 }
+        ]}
         onPress={handleRegister}
-        disabled={!agree}
+        disabled={!agree || isLoading}
       >
-        <Text style={styles.buttonText}>Đăng Ký</Text>
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Đang xử lý...' : 'Đăng Ký'}
+        </Text>
       </TouchableOpacity>
 
       {/* Dòng ngăn "Hoặc" */}
@@ -213,11 +204,19 @@ const handleRegister = () => {
 
       {/* Nút Social Login */}
       <View style={styles.socialContainer}>
-        <TouchableOpacity style={styles.socialButton} onPress={() => { /* TODO: Google login */ }}>
+        <TouchableOpacity 
+          style={styles.socialButton} 
+          onPress={() => { /* TODO: Google login */ }}
+          disabled={isLoading}
+        >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
           <Text style={styles.socialText}>Google</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.socialButton} onPress={() => { /* TODO: Facebook login */ }}>
+        <TouchableOpacity 
+          style={styles.socialButton} 
+          onPress={() => { /* TODO: Facebook login */ }}
+          disabled={isLoading}
+        >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />
           <Text style={styles.socialText}>Facebook</Text>
         </TouchableOpacity>
@@ -226,7 +225,10 @@ const handleRegister = () => {
       {/* Footer: Đã có tài khoản? */}
       <View style={styles.footerContainer}>
         <Text style={styles.footerText}>Tôi đã có tài khoản </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Login')}
+          disabled={isLoading}
+        >
           <Text style={styles.footerLink}>Đăng nhập</Text>
         </TouchableOpacity>
       </View>

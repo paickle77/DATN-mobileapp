@@ -140,7 +140,7 @@ const ProfileScreen = () => {
                         <MaterialIcons name="edit" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
-                <Text style={styles.name}>Nguyễn Văn A</Text>
+                <Text style={styles.name}>Người Dùng</Text>
             </View>
             <View style={styles.menu}>
                 <MenuItem

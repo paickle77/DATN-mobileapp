@@ -2,10 +2,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { validateLoginForm } from '../utils/validation';
-import axios from 'axios';
+import { loginAuthService } from '../../services/LoginAuthService';
+import { validateLoginForm } from '../../utils/validation';
 
 type RootStackParamList = {
   Login: undefined;
@@ -13,105 +13,57 @@ type RootStackParamList = {
   OtpVerification: { email: string };
   NewPassword: { email: string };
   CompleteProfile: { email: string };
-  TabNavigator: undefined; // Đã thay đổi từ Home thành TabNavigator
+  TabNavigator: undefined;
 };
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function Login() {
-  const url='http://192.168.2.6:3000/api/users'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
-const [data, setData] = useState<any[]>([]);
   const [errors, setErrors] = useState({
     email: '',
     password: '',
   });
 
-
-
-
-
-  useEffect(() => {
-    axios.get(url) // thay URL bằng URL thực tế
-      .then((res) => {
-        if (res.data && res.data.data) {
-          setData(res.data.data);
-          console.log(res.data.data)
-          console.log('Lấy API thành công')
-        }
-      })
-      .catch((err) => {
-        console.error('Lỗi khi lấy dữ liệu:', err);
-      })
-      .finally(() => {
-        // setLoading(true);
-        console.log('không')
-      });
-  }, []);
-
-
-
   const navigation = useNavigation<LoginNavigationProp>();
-  const [data, setData] = useState<any[]>([]);
 
-
-  useEffect(() => {
-    axios.get('http://192.168.0.116:3000/api/users') // thay URL bằng URL thực tế
-      .then((res) => {
-        if (res.data && res.data.data) {
-          setData(res.data.data);
-          console.log(res.data.data)
-          console.log('Lấy API thành công')
-        }
-      })
-      .catch((err) => {
-        console.error('Lỗi khi lấy dữ liệu:', err);
-      })
-      .finally(() => {
-        // setLoading(true);
-        console.log('không')
-      });
-  }, []);
-
- const handleLogin = async () => {
-  // Reset errors
-  setErrors({
-    email: '',
-    password: '',
-  });
-
-  const { isValid, errors: validationErrors } = validateLoginForm(email, password);
-
-  if (!isValid) {
+  const handleLogin = async () => {
+    // Reset errors
     setErrors({
-      email: validationErrors.email || '',
-      password: validationErrors.password || '',
+      email: '',
+      password: '',
     });
-    return;
-  }
 
-  if (!data) {
-    Alert.alert('Lỗi', 'Không thể lấy dữ liệu người dùng.');
-    return;
-  }
+    const { isValid, errors: validationErrors } = validateLoginForm(email, password);
 
-  // So sánh email và password nhập vào với danh sách người dùng
-  const matchedUser = data.find((user: any) => {
-    return user.email === email && user.password === password;
-  });
+    if (!isValid) {
+      setErrors({
+        email: validationErrors.email || '',
+        password: validationErrors.password || '',
+      });
+      return;
+    }
 
-  if (matchedUser) {
-    console.log('Đăng nhập thành công:', matchedUser);
-    Alert.alert('Thành công', 'Đăng nhập thành công!');
-    navigation.navigate('TabNavigator');
-  } else {
-    Alert.alert('Lỗi', 'Email hoặc mật khẩu không chính xác!');
-  }
-};
+    setLoading(true);
 
+    try {
+      const result = await loginAuthService.login(email, password);
+      
+      if (result.success) {
+        Alert.alert('Thành công', result.message);
+        navigation.navigate('TabNavigator');
+      } else {
+        Alert.alert('Lỗi', result.message);
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -126,30 +78,25 @@ const [data, setData] = useState<any[]>([]);
       return;
     }
 
-    // setLoading(true);
+    setLoading(true);
     
-  //   try {
-  //     const response = await authService.sendForgotPasswordOTP(email);
-      
-  //     if (response.success) {
-  //       Alert.alert(
-  //         'Thành công',
-  //         response.message,
-  //         [
-  //           {
-  //             text: 'OK',
-  //             onPress: () => navigation.navigate('OtpVerification', { email: email })
-  //           }
-  //         ]
-  //       );
-  //     } else {
-  //       Alert.alert('Lỗi', response.message);
-  //     }
-  //   } catch (error) {
-  //     Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-  //   } finally {
-  //     setLoading(false);
-  //   }
+    // TODO: Implement forgot password logic
+    // try {
+    //   const response = await forgotPasswordService.sendOTP(email);
+    //   if (response.success) {
+    //     Alert.alert('Thành công', response.message, [
+    //       { text: 'OK', onPress: () => navigation.navigate('OtpVerification', { email }) }
+    //     ]);
+    //   } else {
+    //     Alert.alert('Lỗi', response.message);
+    //   }
+    // } catch (error) {
+    //   Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    // } finally {
+    //   setLoading(false);
+    // }
+    
+    setLoading(false);
   };
 
   const handleGoToRegister = () => {
