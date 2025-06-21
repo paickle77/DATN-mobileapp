@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 60,
     flexDirection: 'row',
-    backgroundColor: '#111',
+      backgroundColor: 'rgba(78, 46, 5, 0.5)',  // nâu nhạt + trong suốt 50%
     alignItems: 'center',
     justifyContent: 'space-around',
     borderRadius: 30,

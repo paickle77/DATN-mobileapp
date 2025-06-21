@@ -1,7 +1,7 @@
 // screens/Home.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -14,7 +14,6 @@ import {
   View,
 } from 'react-native';
 
-
 const { width } = Dimensions.get('window');
 
 
@@ -22,7 +21,9 @@ const { width } = Dimensions.get('window');
 // Dữ liệu banner (dạng “card”):
 import bannerCard from '../../../../assets/images/banner.png';
 import bannerCard2 from '../../../../assets/images/banner2.png';
-
+import type { Product } from '../../services/ProductsService';
+import productService from '../../services/ProductsService';
+import { getUserData } from '../utils/storage';
 
 const banners = [
   {
@@ -43,7 +44,6 @@ const banners = [
 
 // ----------------------------
 // Dữ liệu Loại Bánh
-import axios from 'axios';
 import iconBanhKem from '../../../../assets/images/iconbanhkem.png';
 import iconBanhQuy from '../../../../assets/images/iconbanhquy.png';
 import iconDonut from '../../../../assets/images/icondonut.png';
@@ -68,33 +68,57 @@ export default function Home() {
   const bannerScrollRef = useRef<ScrollView>(null);
   const [selectedFilter, setSelectedFilter] = useState('Tất cả');
   const navigation = useNavigation();
-  const [data,setData] = useState([]);
-    const url='http://192.168.0.116:3000/api/productsandcategoryid'
+const [data, setData] = useState<Product[]>([]);
 
-  useEffect(() => {
-axios.get(url)
-  .then((res) => {
-    console.log('API response:', res.data); 
-    if (Array.isArray(res.data)) {
-      setData(res.data);
-    } else if (Array.isArray(res.data.data)) {
-      setData(res.data.data);
-    } else {
-      console.warn('Unexpected response format');
+
+
+
+//     const url='http://192.168.0.116:3000/api/productsandcategoryid'
+
+//   useEffect(() => {
+// axios.get(url)
+//   .then((res) => {
+//     console.log('API response:', res.data); 
+//     if (Array.isArray(res.data)) {
+//       setData(res.data);
+//     } else if (Array.isArray(res.data.data)) {
+//       setData(res.data.data);
+//     } else {
+//       console.warn('Unexpected response format');
+//       setData([]);
+//     }
+//   })
+//   .catch((err) => {
+//     console.error('API error:', err);
+//     setData([]);
+//   });
+
+//   }, []);
+
+
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const products = await productService.getAllProducts();
+      setData(products);
+    } catch (error) {
       setData([]);
     }
-  })
-  .catch((err) => {
-    console.error('API error:', err);
-    setData([]);
-  });
+  };
 
-  }, []);
+  fetchProducts();
+}, []);
 
 
-
-
-
+useEffect(() => {
+  const fetchData = async () => {
+    const user = await getUserData();
+    if (user) {
+      console.log('User ID:', user.userId);
+    }
+  };
+  fetchData();
+}, []);
 
 
 
@@ -120,13 +144,15 @@ const filteredCakes = useMemo(() => {
 
     let matchesFilter = true;
     if (selectedFilter !== 'Tất cả') {
-      // Lọc theo tên category
       matchesFilter = categoryName.includes(selectedFilter.toLowerCase());
     }
 
     return matchesSearch && matchesFilter;
   });
 }, [searchText, selectedFilter, data]);
+
+
+
 
 
 

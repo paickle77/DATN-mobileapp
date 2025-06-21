@@ -1,6 +1,14 @@
 // services/LoginAuthService.ts
 import axios from 'axios';
+import { saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
+
+
+
+
+
+
+
 
 export interface User {
   id: string;
@@ -48,6 +56,12 @@ class LoginAuthService {
 
       if (matchedUser) {
         console.log('Đăng nhập thành công:', matchedUser);
+        console.log('id người dùng: ',matchedUser._id);
+
+         saveUserData({
+    userId: matchedUser._id,
+          });
+
         return {
           success: true,
           message: 'Đăng nhập thành công!',
