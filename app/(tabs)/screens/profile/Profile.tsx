@@ -1,10 +1,10 @@
 import { Feather, FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { profileService, Users } from '../../services/ProfileService';
+import { getUserData } from '../utils/storage';
 
 const MenuItem = ({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -15,22 +15,66 @@ const MenuItem = ({ icon, label, onPress }: { icon: React.ReactNode; label: stri
 );
 
 type RootStackParamList = {
-    Settings: undefined;
-    UserProfile: undefined;
+    Settings: { userId: string } | undefined;
+    UserProfile: { userId: string } | undefined;
+    AddressList: { userId: string } | undefined;
+    PaymentMethods: { userId: string } | undefined;
+    OrderHistoryScreen: { userId: string } | undefined;
     Login: undefined;
-    PaymentMethods: undefined;
-    OrderHistoryScreen: undefined;
-    AddressList: undefined;
 };
 
 const ProfileScreen = () => {
     const [logoutVisible, setLogoutVisible] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [userProfile, setUserProfile] = useState<Users | null>(null);
 
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
+    // Fetch user profile data
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            setLoading(true);
+            try {
+                const userData = await getUserData();
+                console.log('Current user data:', userData);
+
+                const result = await profileService.getAll();
+                console.log('✅ Dữ liệu trả về từ API:', JSON.stringify(result, null, 2));
+
+                // Check if data exists (the API response has 'data' and 'msg' properties)
+                if (result.data && result.data.length > 0 && userData && userData.userId) {
+                    // Find user by userId from storage
+                    const currentUser = result.data.find((item: any) => item._id === userData.userId);
+                    console.log('Current user:', currentUser);
+                    
+                    if (currentUser) {
+                        console.log('🟢 Found current user:', JSON.stringify(currentUser, null, 2));
+                        setUserProfile(currentUser);
+                    } else {
+                        console.log('⚠️ User not found in API data');
+                        Alert.alert('Thông báo', 'Không tìm thấy thông tin người dùng');
+                    }
+                } else if (!userData || !userData.userId) {
+                    Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng trong bộ nhớ');
+                    console.error('❌ Error: userData is null or missing userId');
+                } else {
+                    Alert.alert('Lỗi', 'Không thể tải thông tin người dùng');
+                    console.error('❌ Error fetching user data:', result?.msg ?? 'Không có dữ liệu');
+                }
+            } catch (error) {
+                console.error('❌ Error fetching profile:', error);
+                Alert.alert('Lỗi', 'Có lỗi xảy ra khi tải thông tin người dùng');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserProfile();
+    }, []);
+
     const handleLogout = () => {
         setLogoutVisible(false);
-        // TODO: Add your logout logic here
+        // TODO: Add your logout logic here (clear storage, etc.)
     };
 
     const LogoutDialog = ({
@@ -127,6 +171,16 @@ const ProfileScreen = () => {
         </Modal>
     );
 
+    // Show loading indicator while fetching data
+    if (loading) {
+        return (
+            <View style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color="#795548" />
+                <Text style={styles.loadingText}>Đang tải thông tin...</Text>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             <Text style={styles.header}>Hồ sơ</Text>
@@ -140,33 +194,35 @@ const ProfileScreen = () => {
                         <MaterialIcons name="edit" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
-                <Text style={styles.name}>Người Dùng</Text>
+                <Text style={styles.name}>
+                    {userProfile?.name || 'Người Dùng'}
+                </Text>
             </View>
             <View style={styles.menu}>
                 <MenuItem
                     icon={<Ionicons name="person-outline" size={24} color="#222" />}
                     label="Hồ sơ của bạn"
-                    onPress={() => navigation.navigate('UserProfile')}
+                    onPress={() => navigation.navigate('UserProfile', { userId: userProfile?._id ?? '' })}
                 />
                 <MenuItem
                     icon={<Ionicons name="location-outline" size={24} color="#222" />}
                     label="Danh sách địa chỉ"
-                    onPress={() => navigation.navigate('AddressList')}
+                    onPress={() => navigation.navigate('AddressList', { userId: userProfile?._id ?? '' })}
                 />
                 <MenuItem
                     icon={<FontAwesome5 name="credit-card" size={20} color="#222" />}
                     label="Phương thức thanh toán"
-                    onPress={() => navigation.navigate('PaymentMethods')}
+                    onPress={() => navigation.navigate('PaymentMethods', { userId: userProfile?._id ?? '' })}
                 />
                 <MenuItem
                     icon={<Feather name="file-text" size={22} color="#222" />}
                     label="Đơn hàng của bạn"
-                    onPress={() => navigation.navigate('OrderHistoryScreen')}
+                    onPress={() => navigation.navigate('OrderHistoryScreen', { userId: userProfile?._id ?? '' })}
                 />
                 <MenuItem
                     icon={<Feather name="settings" size={22} color="#222" />}
                     label="Cài đặt"
-                    onPress={() => navigation.navigate('Settings')}
+                    onPress={() => navigation.navigate('Settings', { userId: userProfile?._id ?? '' })}
                 />
             </View>
             <TouchableOpacity style={styles.logout} onPress={() => setLogoutVisible(true)}>
@@ -178,7 +234,6 @@ const ProfileScreen = () => {
                 onCancel={() => setLogoutVisible(false)}
                 onConfirm={handleLogout}
             />
-
         </View>
     );
 };
@@ -188,6 +243,15 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#fff',
         paddingTop: 32,
+    },
+    loadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 16,
+        color: '#666',
     },
     header: {
         fontSize: 22,
@@ -203,7 +267,7 @@ const styles = StyleSheet.create({
         position: 'relative',
         width: 90,
         height: 90,
-        marginBottom: 4,
+        marginBottom: 8,
     },
     avatar: {
         width: 90,
@@ -223,8 +287,19 @@ const styles = StyleSheet.create({
     },
     name: {
         fontWeight: '600',
-        fontSize: 15,
+        fontSize: 16,
         marginTop: 2,
+        color: '#222',
+    },
+    email: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 2,
+    },
+    phone: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 1,
     },
     menu: {
         marginHorizontal: 0,
@@ -263,7 +338,6 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         fontWeight: '500',
     },
-
 });
 
 export default ProfileScreen;

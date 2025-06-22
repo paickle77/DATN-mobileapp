@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { BASE_URL } from "../../services/api";
 
 interface Product {
   _id: string;
@@ -53,7 +54,7 @@ const Detail: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const baseUrl = 'http://192.168.0.116:3000/api/productsandcategoryid';
+  const baseUrl = BASE_URL + '/productsandcategoryid';
 
   useEffect(() => {
     fetchProductDetails();
