@@ -26,7 +26,8 @@ const initialItems = [
 
 type RootStackParamList = {
   Checkout: undefined;
-  
+  TabNavigator: undefined;
+  Home: undefined;
 };
 
 export default function CartScreen() {
@@ -61,7 +62,7 @@ export default function CartScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Home')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
