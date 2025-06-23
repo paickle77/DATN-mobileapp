@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { loginAuthService } from '../../services/LoginAuthService';
 import { validateLoginForm } from '../../utils/validation';
 
 type RootStackParamList = {
@@ -12,7 +13,7 @@ type RootStackParamList = {
   OtpVerification: { email: string };
   NewPassword: { email: string };
   CompleteProfile: { email: string };
-  TabNavigator: undefined; // Đã thay đổi từ Home thành TabNavigator
+  TabNavigator: undefined;
 };
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -26,6 +27,7 @@ export default function Login() {
     email: '',
     password: '',
   });
+
   const navigation = useNavigation<LoginNavigationProp>();
 
   const handleLogin = async () => {
@@ -35,9 +37,8 @@ export default function Login() {
       password: '',
     });
 
-    // Validate form
     const { isValid, errors: validationErrors } = validateLoginForm(email, password);
-    
+
     if (!isValid) {
       setErrors({
         email: validationErrors.email || '',
@@ -46,31 +47,22 @@ export default function Login() {
       return;
     }
 
-    setLoading(false);
-    
-    // try {
-    //   const response = await authService.login({ email, password });
+    setLoading(true);
+
+    try {
+      const result = await loginAuthService.login(email, password);
       
-    //   if (response.success) {
-    //     Alert.alert(
-    //       'Thành công',
-    //       response.message,
-    //       [
-    //         {
-    //           text: 'OK',
-    //           onPress: () => navigation.navigate('TabNavigator') // Đã thay đổi từ Home
-    //         }
-    //       ]
-    //     );
-    //   } else {
-    //     Alert.alert('Lỗi', response.message);
-    //   }
-    // } catch (error) {
-    //   Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-    // } finally {
-    //   setLoading(false);
-    // }
-    navigation.navigate('TabNavigator'); // Đã thay đổi từ Home
+      if (result.success) {
+        Alert.alert('Thành công', result.message);
+        navigation.navigate('TabNavigator');
+      } else {
+        Alert.alert('Lỗi', result.message);
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleForgotPassword = async () => {
@@ -88,28 +80,23 @@ export default function Login() {
 
     setLoading(true);
     
-  //   try {
-  //     const response = await authService.sendForgotPasswordOTP(email);
-      
-  //     if (response.success) {
-  //       Alert.alert(
-  //         'Thành công',
-  //         response.message,
-  //         [
-  //           {
-  //             text: 'OK',
-  //             onPress: () => navigation.navigate('OtpVerification', { email: email })
-  //           }
-  //         ]
-  //       );
-  //     } else {
-  //       Alert.alert('Lỗi', response.message);
-  //     }
-  //   } catch (error) {
-  //     Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-  //   } finally {
-  //     setLoading(false);
-  //   }
+    // TODO: Implement forgot password logic
+    // try {
+    //   const response = await forgotPasswordService.sendOTP(email);
+    //   if (response.success) {
+    //     Alert.alert('Thành công', response.message, [
+    //       { text: 'OK', onPress: () => navigation.navigate('OtpVerification', { email }) }
+    //     ]);
+    //   } else {
+    //     Alert.alert('Lỗi', response.message);
+    //   }
+    // } catch (error) {
+    //   Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    // } finally {
+    //   setLoading(false);
+    // }
+    
+    setLoading(false);
   };
 
   const handleGoToRegister = () => {
@@ -176,8 +163,8 @@ export default function Login() {
       </TouchableOpacity>
 
       {/* Nút Đăng nhập */}
-      <TouchableOpacity 
-        style={[styles.button, loading && styles.buttonDisabled]} 
+      <TouchableOpacity
+        style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleLogin}
         disabled={loading}
       >
@@ -197,16 +184,16 @@ export default function Login() {
 
       {/* Nút Social Login */}
       <View style={styles.socialContainer}>
-        <TouchableOpacity 
-          style={[styles.socialButton, loading && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.socialButton, loading && styles.buttonDisabled]}
           onPress={() => { /* TODO: Google login */ }}
           disabled={loading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
           <Text style={styles.socialText}>Google</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.socialButton, loading && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.socialButton, loading && styles.buttonDisabled]}
           onPress={() => { /* TODO: Facebook login */ }}
           disabled={loading}
         >

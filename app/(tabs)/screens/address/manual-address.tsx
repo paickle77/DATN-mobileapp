@@ -13,6 +13,7 @@ type RootStackParamList = {
         phone?: string;
         gender?: string;
         avatar?: string;
+        id: string;
     };
     ManualAddress: {
         email?: string;
@@ -21,6 +22,7 @@ type RootStackParamList = {
         phone?: string;
         gender?: string;
         avatar?: string;
+        id: string;
     };
 };
 
@@ -48,8 +50,6 @@ interface AddressSelection {
   detail?: string;
 }
 
-
-
 interface Props {
   onAddressChange?: (address: AddressSelection) => void;
 }
@@ -62,9 +62,8 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
     detail: '',
   });
 
-    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-
-   const route = useRoute<RouteProp<RootStackParamList, 'ManualAddress'>>();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'ManualAddress'>>();
   
   const [modalType, setModalType] = useState<'province' | 'district' | 'ward' | null>(null);
 
@@ -101,17 +100,25 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
 
   const handleConfirmLocation = () => {
     if (selectedAddress.province && selectedAddress.district && selectedAddress.ward) {
-       (navigation as any).navigate('Address', {
-              address: `${selectedAddress.detail ? selectedAddress.detail + ', ' : ''}${selectedAddress.ward?.Name}, ${selectedAddress.district?.Name}, ${selectedAddress.province?.Name}`,
+      // Tạo địa chỉ đầy đủ
+      const fullAddress = `${selectedAddress.detail ? selectedAddress.detail + ', ' : ''}${selectedAddress.ward?.Name}, ${selectedAddress.district?.Name}, ${selectedAddress.province?.Name}`;
+      
+      console.log('[ManualAddress] Navigating back to Address with:', {
+        address: fullAddress,
+        id: route.params?.id
+      });
 
-              // truyền lại các dữ liệu trước đó
-              email: route.params?.email,
-              password: route.params?.password,
-              fullName: route.params?.fullName,
-              phone: route.params?.phone,
-              gender: route.params?.gender,
-              avatar: route.params?.avatar,
-          });
+      (navigation as any).navigate('Address', {
+        address: fullAddress,
+        // Đảm bảo truyền lại tất cả thông tin bao gồm ID
+        id: route.params?.id,
+        email: route.params?.email,
+        password: route.params?.password,
+        fullName: route.params?.fullName,
+        phone: route.params?.phone,
+        gender: route.params?.gender,
+        avatar: route.params?.avatar,
+      });
     } else {
       Alert.alert('Vui lòng chọn đầy đủ Tỉnh, Huyện và Xã');
     }
@@ -124,12 +131,17 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
   ) => (
     <Modal visible={modalType === type} animationType="slide">
       <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>
+            Chọn {type === 'province' ? 'Tỉnh/Thành phố' : type === 'district' ? 'Quận/Huyện' : 'Phường/Xã'}
+          </Text>
+        </View>
         <FlatList
           data={options}
           keyExtractor={(item) => item.Id}
           renderItem={({ item }) => (
             <TouchableOpacity onPress={() => onSelect(item)} style={styles.optionItem}>
-              <Text>{item.Name}</Text>
+              <Text style={styles.optionText}>{item.Name}</Text>
             </TouchableOpacity>
           )}
         />
@@ -145,30 +157,40 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' }}>
-        Chọn địa chỉ
-      </Text>
+      <Text style={styles.title}>Chọn địa chỉ</Text>
+      
+      {/* Debug info */}
+      <View style={styles.debugContainer}>
+        <Text style={styles.debugText}>Debug - User ID: {route.params?.id}</Text>
+      </View>
+
       <Text style={styles.label}>Tỉnh/Thành phố</Text>
       <TouchableOpacity style={styles.selectBox} onPress={() => setModalType('province')}>
-        <Text>{selectedAddress.province?.Name || 'Chọn Tỉnh/Thành phố'}</Text>
+        <Text style={styles.selectText}>
+          {selectedAddress.province?.Name || 'Chọn Tỉnh/Thành phố'}
+        </Text>
       </TouchableOpacity>
 
       <Text style={styles.label}>Quận/Huyện</Text>
       <TouchableOpacity
-        style={styles.selectBox}
+        style={[styles.selectBox, !selectedAddress.province && styles.selectBoxDisabled]}
         onPress={() => selectedAddress.province && setModalType('district')}
         disabled={!selectedAddress.province}
       >
-        <Text>{selectedAddress.district?.Name || 'Chọn Quận/Huyện'}</Text>
+        <Text style={[styles.selectText, !selectedAddress.province && styles.selectTextDisabled]}>
+          {selectedAddress.district?.Name || 'Chọn Quận/Huyện'}
+        </Text>
       </TouchableOpacity>
 
       <Text style={styles.label}>Phường/Xã</Text>
       <TouchableOpacity
-        style={styles.selectBox}
+        style={[styles.selectBox, !selectedAddress.district && styles.selectBoxDisabled]}
         onPress={() => selectedAddress.district && setModalType('ward')}
         disabled={!selectedAddress.district}
       >
-        <Text>{selectedAddress.ward?.Name || 'Chọn Phường/Xã'}</Text>
+        <Text style={[styles.selectText, !selectedAddress.district && styles.selectTextDisabled]}>
+          {selectedAddress.ward?.Name || 'Chọn Phường/Xã'}
+        </Text>
       </TouchableOpacity>
 
       <Text style={styles.label}>Địa chỉ chi tiết</Text>
@@ -181,7 +203,7 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
 
       {selectedAddress.ward && (
         <View style={styles.resultBox}>
-          <Text style={styles.resultText}>Địa chỉ đã chọn:</Text>
+          <Text style={styles.resultLabel}>Địa chỉ đã chọn:</Text>
           <Text style={styles.resultText}>
             {selectedAddress.detail ? selectedAddress.detail + ', ' : ''}
             {selectedAddress.ward.Name}, {selectedAddress.district?.Name},{' '}
@@ -194,35 +216,48 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
       {renderModal('district', districts, handleSelectDistrict)}
       {renderModal('ward', wards, handleSelectWard)}
 
-      <View style={{ padding: 16 }}>
-        <TouchableOpacity
-          style={{
-            backgroundColor: '#007aff',
-            paddingVertical: 14,
-            borderRadius: 8,
-            alignItems: 'center',
-            opacity: isAddressComplete ? 1 : 0.5,
-          }}
-          onPress={handleConfirmLocation}
-          disabled={!isAddressComplete}
-        >
-          <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
-            Xác nhận vị trí
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={[styles.confirmButton, !isAddressComplete && styles.confirmButtonDisabled]}
+        onPress={handleConfirmLocation}
+        disabled={!isAddressComplete}
+      >
+        <Text style={[styles.confirmButtonText, !isAddressComplete && styles.confirmButtonTextDisabled]}>
+          Xác nhận vị trí
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: 16,
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+    color: '#333',
+  },
+  debugContainer: {
+    padding: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
   label: {
     fontWeight: 'bold',
     marginTop: 12,
     marginBottom: 4,
+    color: '#333',
   },
   selectBox: {
     borderWidth: 1,
@@ -230,6 +265,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     backgroundColor: '#fff',
+    marginBottom: 8,
+  },
+  selectBoxDisabled: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#e0e0e0',
+  },
+  selectText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectTextDisabled: {
+    color: '#999',
   },
   inputBox: {
     borderWidth: 1,
@@ -238,35 +285,81 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#fff',
     marginTop: 4,
+    fontSize: 16,
   },
   modalContainer: {
     flex: 1,
-    padding: 16,
     backgroundColor: '#fff',
   },
+  modalHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#f9f9f9',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#333',
+  },
   optionItem: {
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  optionText: {
+    fontSize: 16,
+    color: '#333',
+  },
   cancelButton: {
-    marginTop: 20,
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#eee',
+    margin: 16,
+    padding: 16,
+    backgroundColor: '#f0f0f0',
     borderRadius: 8,
+    alignItems: 'center',
   },
   cancelText: {
-    color: 'red',
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
   },
   resultBox: {
     marginTop: 20,
-    padding: 12,
-    backgroundColor: '#e6ffed',
+    padding: 16,
+    backgroundColor: '#e8f5e8',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4caf50',
+  },
+  resultLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2e7d32',
+    marginBottom: 4,
   },
   resultText: {
-    fontSize: 14,
+    fontSize: 16,
+    color: '#2e7d32',
+  },
+  confirmButton: {
+    marginTop: 20,
+    paddingVertical: 16,
+    backgroundColor: '#6B4F35',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  confirmButtonTextDisabled: {
+    color: '#999',
   },
 });
 

@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CartItem from '../../component/CartItem'; // Component con
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const initialItems = [
   {
@@ -23,11 +24,17 @@ const initialItems = [
   },
 ];
 
+type RootStackParamList = {
+  Checkout: undefined;
+  
+};
+
 export default function CartScreen() {
-  const navigation = useNavigation();
+ 
   const [items, setItems] = useState(initialItems);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [itemToRemoveIndex, setItemToRemoveIndex] = useState(null);
+  const [itemToRemoveIndex, setItemToRemoveIndex] = useState<number | null>(null);
+   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Cập nhật số lượng
   const updateQuantity = (index: number, newQuantity: number) => {
@@ -54,7 +61,7 @@ export default function CartScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -98,7 +105,9 @@ export default function CartScreen() {
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => {
-                  removeItem(itemToRemoveIndex);
+                  if (itemToRemoveIndex !== null) {
+                    removeItem(itemToRemoveIndex);
+                  }
                   setShowConfirm(false);
                 }}>
                 <Text style={styles.deleteText}>Đồng ý , Xóa</Text>

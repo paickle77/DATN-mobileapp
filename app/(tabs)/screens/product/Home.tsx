@@ -1,7 +1,7 @@
 // screens/Home.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -14,14 +14,16 @@ import {
   View,
 } from 'react-native';
 
-
 const { width } = Dimensions.get('window');
+
 
 // ----------------------------
 // Dữ liệu banner (dạng “card”):
 import bannerCard from '../../../../assets/images/banner.png';
 import bannerCard2 from '../../../../assets/images/banner2.png';
-
+import type { Product } from '../../services/ProductsService';
+import productService from '../../services/ProductsService';
+import { getUserData, saveUserData } from '../utils/storage';
 
 const banners = [
   {
@@ -56,65 +58,78 @@ const cakeCategories = [
 
 // ----------------------------
 // Dữ liệu Filter ngang (nhóm “Bánh”)
-const cakeFilters = ['Tất cả', 'Su kem', 'Macaron', 'Tiramisu', 'Flan'];
+const cakeFilters = ['Tất cả', 'Bánh bông lan', 'Bánh quy', 'Bánh kem', 'Flan'];
 
 // ----------------------------
 // Dữ liệu sản phẩm (grid 2 cột)
-const cakeItems = [
-  {
-    id: 'cake001',
-    name: 'Tiramisu Dâu',
-    rating: 4.8,
-    price: 135000,
-    image: 'https://tiki.vn/blog/wp-content/uploads/2024/08/thumb-15.jpg',
-  },
-  {
-    id: 'cake002',
-    name: 'Tiramisu Trái cây',
-    rating: 4.9,
-    price: 195000,
-    image:
-      'https://www.huongnghiepaau.com/wp-content/uploads/2017/11/tart-trai-cay-tot-cho-suc-khoe.jpg',
-  },
-  {
-    id: 'cake003',
-    name: 'Cheesecake Dâu',
-    rating: 4.7,
-    price: 150000,
-    image:
-      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRXDFjLB5H_9o42-ZEPwWHCaDN3sdNWQZFrlg&s',
-  },
-  {
-    id: 'cake004',
-    name: 'Bánh su kem',
-    rating: 4.6,
-    price: 120000,
-    image:
-      'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-  },
-  {
-    id: 'cake005',
-    name: 'Bánh tart trứng',
-    rating: 4.5,
-    price: 130000,
-    image:
-      'https://cdn.tgdd.vn/Files/2015/03/23/624011/cach-lam-banh-tart-trung-banh-trung-kfc-egg-tart-hong-kong-7.jpg',
-  },
-  {
-    id: 'cake006',
-    name: 'Bánh mì ngọt kem',
-    rating: 4.4,
-    price: 100000,
-    image: 'https://lambanhngon.com/news_pictures/eks1360998762.jpg',
-  },
-];
-
 export default function Home() {
   const [searchText, setSearchText] = useState('');
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
   const [selectedFilter, setSelectedFilter] = useState('Tất cả');
   const navigation = useNavigation();
+const [data, setData] = useState<Product[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+
+
+//     const url='http://192.168.0.116:3000/api/productsandcategoryid'
+
+//   useEffect(() => {
+// axios.get(url)
+//   .then((res) => {
+//     console.log('API response:', res.data); 
+//     if (Array.isArray(res.data)) {
+//       setData(res.data);
+//     } else if (Array.isArray(res.data.data)) {
+//       setData(res.data.data);
+//     } else {
+//       console.warn('Unexpected response format');
+//       setData([]);
+//     }
+//   })
+//   .catch((err) => {
+//     console.error('API error:', err);
+//     setData([]);
+//   });
+
+//   }, []);
+
+
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const products = await productService.getAllProducts();
+      setData(products);
+    } catch (error) {
+      setData([]);
+    }
+  };
+
+  fetchProducts();
+}, []);
+
+
+useEffect(() => {
+  const fetchData = async () => {
+    const user = await getUserData('userData');
+    if (user) {
+      console.log('User ID:', user);
+    }
+  };
+  fetchData();
+}, []);
+
+const toggleFavorite = (itemId: string): void => {
+  setFavorites(prev =>
+    prev.includes(itemId)
+      ? prev.filter(id => id !== itemId)
+      : [...prev, itemId] 
+      
+  );
+};
+
+
 
   // Tự động chuyển slide banner mỗi 3s
   useEffect(() => {
@@ -127,46 +142,71 @@ export default function Home() {
   }, [currentBannerIndex]);
 
   // Dựa vào searchText và selectedFilter để lọc danh sách
-  const filteredCakes = useMemo(() => {
-    return cakeItems.filter((item) => {
-      // 1. Lọc theo searchText (nếu người dùng có nhập)
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchText.toLowerCase().trim());
+const filteredCakes = useMemo(() => {
+  if (!Array.isArray(data)) return [];
 
-      // 2. Lọc theo selectedFilter (nếu khác "Tất cả")
-      let matchesFilter = true;
-      if (selectedFilter !== 'Tất cả') {
-        // Nếu tên bánh chứa đúng từ khóa của filter (case-insensitive)
-        matchesFilter = item.name.toLowerCase().includes(selectedFilter.toLowerCase());
-      }
+  return data.filter((item) => {
+    const name = item.name.toLowerCase();
+    const categoryName = item.category_id?.name?.toLowerCase() || '';
 
-      return matchesSearch && matchesFilter;
-    });
-  }, [searchText, selectedFilter]);
+    const matchesSearch = name.includes(searchText.toLowerCase().trim());
+
+    let matchesFilter = true;
+    if (selectedFilter !== 'Tất cả') {
+      matchesFilter = categoryName.includes(selectedFilter.toLowerCase());
+    }
+
+    return matchesSearch && matchesFilter;
+  });
+}, [searchText, selectedFilter, data]);
+
+
+
+
+
+
 
   // Render từng ô sản phẩm trong grid
-  const renderCakeItem = ({ item }: { item: typeof cakeItems[0] }) => (
+ const renderCakeItem = ({ item }: { item: typeof data[0] }) => (
+  <TouchableOpacity
+    style={styles.gridItem}
+    onPress={async () => {
 
-    <TouchableOpacity
-      style={styles.gridItem}
-      onPress={() => {
-  
-      navigation.navigate('Detail');
-      }}
-    >
-      <Image source={{ uri: item.image }} style={styles.cakeImage} />
-      <Text style={styles.cakeName} numberOfLines={1}>
+      // Anh gọi ở màn Home:
+      await saveUserData({ value: item._id, key: 'productID' });
+
+      console.log("item._id products:",item._id)
+      navigation.navigate('Detail'); // Có thể truyền id nếu cần
+
+
+    }}
+  >
+    <Image source={{ uri: item.image_url }} style={styles.cakeImage} />
+       {/* <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={() => toggleFavorite(item._id)}
+          >
+            <Ionicons
+              name={favorites.includes(item._id) ? 'heart' : 'heart-outline'}
+              size={20}
+              color={favorites.includes(item._id) ? '#FF6B6B' : '#666'}
+            />
+          </TouchableOpacity> */}
+    <Text style={styles.cakeName} numberOfLines={1}>
       {item.name}
-      </Text>
-      <View style={styles.cakeFooter}>
+    </Text>
+    <View style={styles.cakeFooter}>
       <View style={styles.ratingContainer}>
         <Ionicons name="star" size={14} color="#FFD700" />
         <Text style={styles.ratingText}>{item.rating}</Text>
       </View>
-      <Text style={styles.priceText}>{item.price.toLocaleString()} vnđ</Text>
-      </View>
-    </TouchableOpacity>
-  );
+      <Text style={styles.priceText}>
+        {item.price.toLocaleString()} vnđ
+      </Text>
+    </View>
+  </TouchableOpacity>
+);
+
 
 
 
@@ -278,19 +318,20 @@ export default function Home() {
         </View>
 
         {/* ===== Grid Sản Phẩm ===== */}
-        <FlatList
-          data={filteredCakes}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          renderItem={renderCakeItem}
-          contentContainerStyle={styles.gridContainer}
-          scrollEnabled={false} // Cho FlatList hiển thị hết trong ScrollView
-          ListEmptyComponent={() => (
-            <View style={{ marginTop: 20, alignItems: 'center' }}>
-              <Text style={{ color: '#555' }}>Không có sản phẩm phù hợp.</Text>
-            </View>
-          )}
-        />
+    <FlatList
+  data={filteredCakes}
+  keyExtractor={(item) => item._id}
+  numColumns={2}
+  renderItem={renderCakeItem}
+  contentContainerStyle={styles.gridContainer}
+  scrollEnabled={false}
+  ListEmptyComponent={() => (
+    <View style={{ marginTop: 20, alignItems: 'center' }}>
+      <Text style={{ color: '#555' }}>Không có sản phẩm phù hợp.</Text>
+    </View>
+  )}
+/>
+
       </ScrollView>
 
       {/* ===== Tab Bar “nổi” lên ở dưới ===== */}
@@ -300,6 +341,7 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  
   screen: {
     flex: 1,
     backgroundColor: '#fff',
@@ -313,6 +355,25 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
     backgroundColor: '#fff',
+  },
+   favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   searchBox: {
     flex: 1,

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -9,7 +10,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-
+import { favoriteAuthService } from '../../services/FavoritesService';
+import { getUserData } from '../utils/storage';
 // Types
 interface FavoriteItem {
   id: string;
@@ -20,95 +22,91 @@ interface FavoriteItem {
   image: string;
 }
 
-type Category = 'Tất cả' | 'Su kem' | 'Macaron' | 'Tiramisu' | 'Gato' | 'Quy';
+type Category = 'Tất cả' | 'Bánh bông lan' | 'Bánh quy' | 'Bánh kem' | 'Flan' | 'Quy';
 
 const { width } = Dimensions.get('window');
 const itemWidth = (width - 48) / 2;
 
 const FavoritesScreen: React.FC = () => {
-  const categories: Category[] = ['Tất cả', 'Su kem', 'Macaron', 'Tiramisu', 'Gato', 'Quy'];
-
-  const favoriteItems: FavoriteItem[] = [
-    {
-      id: '1',
-      name: 'Tiramisu Dâu',
-      price: 235000,
-      rating: 4.8,
-      category: 'Tiramisu',
-      image: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-    },
-    {
-      id: '2',
-      name: 'Su Kem Vanilla',
-      price: 125000,
-      rating: 4.7,
-      category: 'Su kem',
-      image: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-    },
-    {
-      id: '3',
-      name: 'Macaron Chocolate',
-      price: 185000,
-      rating: 4.9,
-      category: 'Macaron',
-      image: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-    },
-    {
-      id: '4',
-      name: 'Gato Socola Đen',
-      price: 295000,
-      rating: 4.6,
-      category: 'Gato',
-      image: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-    },
-    {
-      id: '5',
-      name: 'Quy Bơ Đậu Phộng',
-      price: 85000,
-      rating: 4.5,
-      category: 'Quy',
-      image: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-    },
-    {
-      id: '6',
-      name: 'Tiramisu Cà Phê',
-      price: 245000,
-      rating: 4.8,
-      category: 'Tiramisu',
-      image: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-    },
-    {
-      id: '7',
-      name: 'Su Kem Matcha',
-      price: 135000,
-      rating: 4.7,
-      category: 'Su kem',
-      image: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-    },
-    {
-      id: '8',
-      name: 'Macaron Dâu Tây',
-      price: 195000,
-      rating: 4.9,
-      category: 'Macaron',
-      image: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/487/455/products/choux-1695873488314.jpg?v=1724205292207',
-    },
-  ];
-
+  const categories: Category[] = ['Tất cả', 'Bánh bông lan', 'Bánh quy', 'Bánh kem', 'Flan','Quy'];
+  const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>('Tất cả');
-  const [favorites, setFavorites] = useState<string[]>(favoriteItems.map(item => item.id));
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [userProducts, setUserProducts] = useState<any[]>([]);
 
-  const filteredItems = selectedCategory === 'Tất cả' 
-    ? favoriteItems 
-    : favoriteItems.filter(item => item.category === selectedCategory);
 
-  const toggleFavorite = (itemId: string): void => {
-    setFavorites(prev => 
-      prev.includes(itemId) 
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
-    );
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const user = await getUserData('userData');
+      if (user) {
+        console.log('User ID:', user);
+      }
+    };
+    fetchData();
+  }, []);
+
+
+useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const user = await getUserData('userData');
+      console.log('User ID yêu thích:', user);
+
+      const result = await favoriteAuthService.getAll();
+      console.log('✅ Dữ liệu trả về từ API:', JSON.stringify(result, null, 2));
+
+      if (result.data && result.data.length > 0) {
+        // So sánh userId với user_id trong data
+        const matched = result.data.filter((item: any) => item.user_id === user);
+        
+        console.log('🟢 Matched data:', JSON.stringify(matched, null, 2));
+
+        // Lấy tất cả sản phẩm từ các matched item
+        const products = matched.flatMap((item: any) => item.product_id);
+
+        console.log('🟣 Sản phẩm cần render:', JSON.stringify(products, null, 2));
+
+        setUserProducts(products);
+
+        Alert.alert('Thành công', `Đã tìm thấy ${products.length} sản phẩm yêu thích`);
+      } else {
+        Alert.alert('Thông báo', 'Không tìm thấy dữ liệu yêu thích');
+      }
+
+    } catch (error) {
+      console.error('❌ Lỗi khi gọi API:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  fetchData();
+}, []);
+
+const toggleFavorite = (itemId: string): void => {
+  setFavorites(prev =>
+    prev.includes(itemId)
+      ? prev.filter(id => id !== itemId)
+      : [...prev, itemId]
+  );
+};
+
+const filteredItems = selectedCategory === 'Tất cả'
+  ? userProducts
+  : userProducts.filter((item: any) => {
+      // Lọc theo tên sản phẩm hoặc logic khác tuỳ anh muốn
+      if (selectedCategory === 'Bánh kem') return item.name.toLowerCase().includes('kem');
+      if (selectedCategory === 'Bánh quy') return item.name.toLowerCase().includes('quy');
+      if (selectedCategory === 'Bánh bông lan') return item.name.toLowerCase().includes('bông lan');
+      if (selectedCategory === 'Flan') return item.name.toLowerCase().includes('flan');
+      if (selectedCategory === 'Quy') return item.name.toLowerCase().includes('quy'); // nếu cần riêng biệt
+      return false;
+    });
+
 
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('vi-VN', {
@@ -136,38 +134,39 @@ const FavoritesScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
-  const renderFavoriteItem = ({ item }: { item: FavoriteItem }) => (
-    <View style={styles.itemContainer}>
-      <View style={styles.imageContainer}>
-        <Image source={{ uri: item.image }} style={styles.itemImage} />
-        <TouchableOpacity
-          style={styles.favoriteButton}
-          onPress={() => toggleFavorite(item.id)}
-        >
-          <Ionicons
-            name={favorites.includes(item.id) ? 'heart' : 'heart-outline'}
-            size={20}
-            color={favorites.includes(item.id) ? '#FF6B6B' : '#666'}
-          />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemName} numberOfLines={2}>
-          {item.name}
-        </Text>
-        
-        <View style={styles.ratingContainer}>
-          <Ionicons name="star" size={12} color="#FFD700" />
-          <Text style={styles.ratingText}>{item.rating}</Text>
-        </View>
-        
-        <Text style={styles.priceText}>
-          {formatPrice(item.price)}
-        </Text>
-      </View>
+const renderFavoriteItem = ({ item }: { item: any }) => (
+  <View style={styles.itemContainer}>
+    <View style={styles.imageContainer}>
+      <Image source={{ uri: item.image_url }} style={styles.itemImage} />
+      <TouchableOpacity
+        style={styles.favoriteButton}
+        onPress={() => toggleFavorite(item._id)}
+      >
+        <Ionicons
+          name={favorites.includes(item._id) ? 'heart' : 'heart-outline'}
+          size={20}
+          color={favorites.includes(item._id) ? '#FF6B6B' : '#666'}
+        />
+      </TouchableOpacity>
     </View>
-  );
+
+    <View style={styles.itemInfo}>
+      <Text style={styles.itemName} numberOfLines={2}>
+        {item.name}
+      </Text>
+
+      <View style={styles.ratingContainer}>
+        <Ionicons name="star" size={12} color="#FFD700" />
+        <Text style={styles.ratingText}>{item.rating}</Text>
+      </View>
+
+      <Text style={styles.priceText}>
+        {formatPrice(item.discount_price || item.price)}
+      </Text>
+    </View>
+  </View>
+);
+
 
   return (
     <View style={styles.container}>
@@ -176,7 +175,7 @@ const FavoritesScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Yêu thích</Text>
         <View style={styles.favoriteCount}>
           <Ionicons name="heart" size={20} color="#FF6B6B" />
-          <Text style={styles.countText}>{favorites.length}</Text>
+          <Text style={styles.countText}>{filteredItems.length}</Text>
         </View>
       </View>
 
@@ -193,15 +192,17 @@ const FavoritesScreen: React.FC = () => {
       </View>
 
       {/* Items Grid */}
-      <FlatList
-        data={filteredItems}
-        renderItem={renderFavoriteItem}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.itemsList}
-        columnWrapperStyle={styles.row}
-        showsVerticalScrollIndicator={false}
-      />
+<FlatList
+  data={filteredItems}
+  renderItem={renderFavoriteItem}
+  keyExtractor={(item) => item._id}
+  numColumns={2}
+  contentContainerStyle={styles.itemsList}
+  columnWrapperStyle={styles.row}
+  showsVerticalScrollIndicator={false}
+/>
+
+
     </View>
   );
 };

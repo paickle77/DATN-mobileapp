@@ -3,67 +3,84 @@ import type { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateRegisterForm } from '../../utils/validation';
 
 type RootStackParamList = {
-    CompleteProfile: {
-        email: string;
-        password?: string;
-        
-    };
-    Login: undefined;
+  CompleteProfile: {
+    id: string;
+  };
+  Login: undefined;
 };
+
 export default function Register() {
-  // Khai báo state cho form
+  // State cho form
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agree, setAgree] = useState(false);
   const [secureText, setSecureText] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [errors, setErrors] = useState({
     email: '',
     password: '',
     confirmPassword: '',
   });
-   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   // Xử lý đăng ký
-  const handleRegister = () => {
-    // Reset lỗi trước khi validate
+  const handleRegister = async () => {
+    // Reset errors
     setErrors({
       email: '',
       password: '',
       confirmPassword: '',
     });
 
-    // Gọi validation từ file utils
+    // Validate form
     const validation = validateRegisterForm(email, password, confirmPassword, agree);
-    
-    // Nếu có lỗi, hiển thị lỗi và dừng
+
     if (!validation.isValid) {
       setErrors({
         email: validation.errors.email || '',
         password: validation.errors.password || '',
         confirmPassword: validation.errors.confirmPassword || '',
       });
-      
-      // Kiểm tra riêng lỗi agree (không thuộc errors object)
+
       if (validation.errors.agree) {
         Alert.alert('Thông báo', validation.errors.agree);
       }
       return;
     }
 
-    // Nếu validation thành công, log thông tin và chuyển trang
-    console.log('Email:', email);
-    console.log('Password:', password);
-    console.log('Agree:', agree);
-    
-    // Chuyển đến màn hình hoàn thiện hồ sơ với email và password
-    navigation.navigate('CompleteProfile', { 
-      email: email,
-      password: password 
-    });
+    setIsLoading(true);
+
+    try {
+      // Gọi service để đăng ký
+      const newUser = await RegisterAuthService.registerUser({
+        email: email.trim().toLowerCase(),
+        password
+      });
+
+      console.log('Đăng ký thành công. ID:', newUser._id);
+      
+      // Chuyển đến màn hình hoàn thiện hồ sơ
+      navigation.navigate('CompleteProfile', { id: newUser._id });
+
+    } catch (error) {
+      console.error('Lỗi khi đăng ký:', error);
+      
+      // Hiển thị lỗi cụ thể
+      if (error instanceof Error) {
+        Alert.alert('Lỗi', error.message);
+      } else {
+        Alert.alert('Lỗi', 'Không thể đăng ký. Vui lòng thử lại sau.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -90,6 +107,7 @@ export default function Register() {
               setErrors(prev => ({ ...prev, email: '' }));
             }
           }}
+          editable={!isLoading}
         />
         {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
       </View>
@@ -109,10 +127,12 @@ export default function Register() {
               setErrors(prev => ({ ...prev, password: '' }));
             }
           }}
+          editable={!isLoading}
         />
         <TouchableOpacity
           style={styles.eyeIcon}
           onPress={() => setSecureText(!secureText)}
+          disabled={isLoading}
         >
           <Ionicons name={secureText ? 'eye-off' : 'eye'} size={20} color="#666" />
         </TouchableOpacity>
@@ -134,10 +154,12 @@ export default function Register() {
               setErrors(prev => ({ ...prev, confirmPassword: '' }));
             }
           }}
+          editable={!isLoading}
         />
         <TouchableOpacity
           style={styles.eyeIcon}
           onPress={() => setSecureText(!secureText)}
+          disabled={isLoading}
         >
           <Ionicons name={secureText ? 'eye-off' : 'eye'} size={20} color="#666" />
         </TouchableOpacity>
@@ -148,6 +170,7 @@ export default function Register() {
       <TouchableOpacity
         style={styles.termsContainer}
         onPress={() => setAgree(!agree)}
+        disabled={isLoading}
       >
         <Ionicons
           name={agree ? 'checkbox' : 'checkbox-outline'}
@@ -160,11 +183,16 @@ export default function Register() {
 
       {/* Nút Đăng Ký */}
       <TouchableOpacity
-        style={[styles.button, { opacity: agree ? 1 : 0.5 }]}
+        style={[
+          styles.button, 
+          { opacity: (agree && !isLoading) ? 1 : 0.5 }
+        ]}
         onPress={handleRegister}
-        disabled={!agree}
+        disabled={!agree || isLoading}
       >
-        <Text style={styles.buttonText}>Đăng Ký</Text>
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Đang xử lý...' : 'Đăng Ký'}
+        </Text>
       </TouchableOpacity>
 
       {/* Dòng ngăn "Hoặc" */}
@@ -176,11 +204,19 @@ export default function Register() {
 
       {/* Nút Social Login */}
       <View style={styles.socialContainer}>
-        <TouchableOpacity style={styles.socialButton} onPress={() => { /* TODO: Google login */ }}>
+        <TouchableOpacity 
+          style={styles.socialButton} 
+          onPress={() => { /* TODO: Google login */ }}
+          disabled={isLoading}
+        >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
           <Text style={styles.socialText}>Google</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.socialButton} onPress={() => { /* TODO: Facebook login */ }}>
+        <TouchableOpacity 
+          style={styles.socialButton} 
+          onPress={() => { /* TODO: Facebook login */ }}
+          disabled={isLoading}
+        >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />
           <Text style={styles.socialText}>Facebook</Text>
         </TouchableOpacity>
@@ -189,7 +225,10 @@ export default function Register() {
       {/* Footer: Đã có tài khoản? */}
       <View style={styles.footerContainer}>
         <Text style={styles.footerText}>Tôi đã có tài khoản </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Login')}
+          disabled={isLoading}
+        >
           <Text style={styles.footerLink}>Đăng nhập</Text>
         </TouchableOpacity>
       </View>

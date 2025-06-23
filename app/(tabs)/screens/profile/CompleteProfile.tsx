@@ -3,7 +3,8 @@ import { NavigationProp, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateCompleteProfileForm } from '../../utils/validation';
 
 // Danh sách các tùy chọn giới tính
@@ -13,53 +14,67 @@ const GENDER_OPTIONS = [
   { value: 'khác', label: 'Khác' }
 ];
 
-// Đường dẫn ảnh mặc định
-const DEFAULT_AVATAR = 'avatarmacdinh.png';
-
 type RootStackParamList = {
   CompleteProfile: {
-    email: string;
-    password?: string;
+    id: string;
   };
   Address: {
-    email: string;
-    password?: string;
-    fullName: string;
-    phone: string;
-    gender: string;
-    avatar: string;
+    id: string;
   };
 };
 
 export default function CompleteProfile() {
+  const route = useRoute();
+  const { id } = route.params as { id: string };
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  // Khai báo state cho form
+  // State cho form
   const [avatar, setAvatar] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [gender, setGender] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showGenderModal, setShowGenderModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
   const [errors, setErrors] = useState({
     fullName: '',
     phone: '',
     gender: '',
   });
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  const route = useRoute()
+  // Load thông tin user hiện tại (nếu có)
   useEffect(() => {
-    if (route.params) {
-      const { email, password } = route.params as {
-        email?: string;
-        password?: string;
+    const loadUserData = async () => {
+      if (!id) return;
 
-      };
-      setEmail(email || '')
-      setPassword(password || '')
-    }
-  }, [route.params]);
+      try {
+        setIsLoadingUser(true);
+        const user = await RegisterAuthService.getUserById(id);
+        
+        if (user) {
+          setFullName(user.name || '');
+          setPhone(user.phone || '');
+          setGender(user.gender || '');
+          
+          // Xử lý avatar - lấy full URL
+          if (user.avatar && user.avatar !== 'avatarmacdinh.png') {
+            const avatarUrl = RegisterAuthService.getAvatarUrl(user.avatar);
+            setAvatar(avatarUrl);
+          }
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy thông tin user:', error);
+        // Không hiển thị alert ở đây vì có thể là user mới chưa có thông tin
+      } finally {
+        setIsLoadingUser(false);
+      }
+    };
+
+    loadUserData();
+  }, [id]);
+
   // Chọn ảnh từ thư viện
   const pickImage = async () => {
     try {
@@ -76,12 +91,13 @@ export default function CompleteProfile() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
+        exif: false, // Không cần metadata
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedImage = result.assets[0];
         setAvatar(selectedImage.uri);
-
+        console.log('Đã chọn ảnh:', selectedImage.uri);
       }
     } catch (error) {
       console.error('Lỗi khi chọn ảnh:', error);
@@ -100,7 +116,7 @@ export default function CompleteProfile() {
   };
 
   // Xử lý submit form
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Reset lỗi trước khi validate
     setErrors({
       fullName: '',
@@ -109,7 +125,7 @@ export default function CompleteProfile() {
     });
 
     // Gọi validation từ file utils
-    const validation = validateCompleteProfileForm(fullName, phone, gender);
+    const validation = validateCompleteProfileForm(fullName.trim(), phone.trim(), gender);
 
     // Nếu có lỗi, hiển thị lỗi và dừng
     if (!validation.isValid) {
@@ -121,30 +137,72 @@ export default function CompleteProfile() {
       return;
     }
 
-    // Xác định avatar cuối cùng (nếu không có avatar tự chọn thì dùng ảnh mặc định)
-    const finalAvatar = avatar || DEFAULT_AVATAR;
+    setIsLoading(true);
 
-    // Log tất cả thông tin nếu validation thành công
-    console.log('=== THÔNG TIN HỒ SƠ HOÀN THIỆN ===');
-    console.log('Email:', email);
-    console.log('Password:', password);
-    console.log('Họ tên:', fullName);
-    console.log('Số điện thoại:', phone);
-    console.log('Giới tính:', gender);
-    console.log('Avatar:', finalAvatar);
-    console.log('===================================');
+    try {
+      // Format phone number
+      const formattedPhone = RegisterAuthService.formatPhoneNumber(phone.trim());
 
-    // Hiển thị thông báo thành công và chuyển trang
-    navigation.navigate('Address', {
-      email,
-      password,
-      fullName,
-      phone,
-      gender,
-      avatar: finalAvatar
-    });
+      // Cập nhật hồ sơ (avatar sẽ được xử lý trong service)
+      await RegisterAuthService.updateUserProfile(id, {
+        name: fullName.trim(),
+        phone: formattedPhone,
+        gender,
+        avatar: avatar || undefined
+      });
 
+      console.log('Cập nhật hồ sơ thành công cho user ID:', id);
+      Alert.alert(
+        'Thành công', 
+        'Cập nhật hồ sơ thành công',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Chuyển đến màn hình tiếp theo
+              navigation.navigate('Address', { id });
+            }
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('Lỗi khi cập nhật hồ sơ:', error);
+      
+      if (error instanceof Error) {
+        Alert.alert('Lỗi', error.message);
+      } else {
+        Alert.alert('Lỗi', 'Không thể cập nhật hồ sơ');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Render avatar
+  const renderAvatar = () => {
+    if (avatar) {
+      return <Image source={{ uri: avatar }} style={styles.avatar} />;
+    } else {
+      return (
+        <View style={styles.avatarPlaceholder}>
+          <Image 
+            source={require('../../../../assets/images/avatarmacdinh.png')} 
+            style={styles.avatar} 
+          />
+        </View>
+      );
+    }
+  };
+
+  if (isLoadingUser) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#6B4F35" />
+        <Text style={styles.loadingText}>Đang tải thông tin...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -159,16 +217,18 @@ export default function CompleteProfile() {
       </Text>
 
       {/* Avatar & nút chọn ảnh */}
-      <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
-        {avatar ? (
-          <Image source={{ uri: avatar }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Image source={require('../../../../assets/images/avatarmacdinh.png')} style={styles.avatar} />
-          </View>
-        )}
+      <TouchableOpacity 
+        style={styles.avatarContainer} 
+        onPress={pickImage}
+        disabled={isLoading || isUploadingAvatar}
+      >
+        {renderAvatar()}
         <View style={styles.editIconContainer}>
-          <Ionicons name="pencil" size={20} color="#fff" />
+          {isUploadingAvatar ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="pencil" size={20} color="#fff" />
+          )}
         </View>
       </TouchableOpacity>
 
@@ -186,6 +246,7 @@ export default function CompleteProfile() {
               setErrors(prev => ({ ...prev, fullName: '' }));
             }
           }}
+          editable={!isLoading}
         />
         {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
       </View>
@@ -205,6 +266,7 @@ export default function CompleteProfile() {
               setErrors(prev => ({ ...prev, phone: '' }));
             }
           }}
+          editable={!isLoading}
         />
         {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
       </View>
@@ -214,6 +276,7 @@ export default function CompleteProfile() {
         <TouchableOpacity
           style={[styles.pickerContainer, errors.gender ? styles.inputError : null]}
           onPress={() => setShowGenderModal(true)}
+          disabled={isLoading}
         >
           <Text style={[styles.pickerText, gender ? { color: '#333' } : { color: '#999' }]}>
             {gender ? GENDER_OPTIONS.find(option => option.value === gender)?.label : 'Lựa chọn giới tính'}
@@ -224,8 +287,19 @@ export default function CompleteProfile() {
       </View>
 
       {/* Nút Hoàn thành hồ sơ */}
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Hoàn thành hồ sơ</Text>
+      <TouchableOpacity 
+        style={[styles.button, isLoading && styles.buttonDisabled]} 
+        onPress={handleSubmit}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <View style={styles.buttonContent}>
+            <ActivityIndicator size="small" color="#fff" style={styles.buttonLoader} />
+            <Text style={styles.buttonText}>Đang xử lý...</Text>
+          </View>
+        ) : (
+          <Text style={styles.buttonText}>Hoàn thành hồ sơ</Text>
+        )}
       </TouchableOpacity>
 
       {/* Modal chọn giới tính */}
@@ -312,6 +386,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B4F35',
     borderRadius: 12,
     padding: 4,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inputContainer: {
     marginBottom: 20,
@@ -357,10 +435,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  buttonLoader: {
+    marginRight: 10,
+  },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+    fontSize: 16,
   },
   // Styles cho Modal
   modalOverlay: {

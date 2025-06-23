@@ -1,4 +1,5 @@
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -11,6 +12,7 @@ type RootStackParamList = {
     phone?: string;
     gender?: string;
     avatar?: string;
+    id: string;
   };
   Address: {
     email?: string;
@@ -19,21 +21,24 @@ type RootStackParamList = {
     phone?: string;
     gender?: string;
     avatar?: string;
+    id: string;
+    latitude?: string;
+    longitude?: string;
+    address?: string;
   };
 };
+
+
 const AddressScreen = () => {
   const navigation = useNavigation() as any;
   const route = useRoute<RouteProp<RootStackParamList, 'Address'>>();
 
-
-  // State để lưu dữ liệu địa chỉ
   const [locationData, setLocationData] = useState({
     latitude: '',
     longitude: '',
     address: ''
   });
 
-  // Lấy params từ route khi component mount hoặc params thay đổi
   useEffect(() => {
     if (route.params) {
       const {
@@ -45,18 +50,9 @@ const AddressScreen = () => {
         fullName,
         phone,
         gender,
-        avatar
-      } = route.params as {
-        latitude?: string;
-        longitude?: string;
-        address?: string;
-        email?: string;
-        password?: string;
-        fullName?: string;
-        phone?: string;
-        gender?: string;
-        avatar?: string;
-      };
+        avatar,
+        id
+      } = route.params;
 
       setLocationData({
         latitude: latitude || '',
@@ -64,27 +60,33 @@ const AddressScreen = () => {
         address: address || ''
       });
 
-      // Bạn có thể log thử để kiểm tra
-      console.log('===================================');
-      console.log('Dữ liệu ');
-      console.log('Email:', email);
-      console.log('Password:', password);
-      console.log('Họ tên:', fullName);
-      console.log('SĐT:', phone);
-      console.log('Giới tính:', gender);
-      console.log('Avatar:', avatar);
-      console.log('Địa chỉ từ input hoặc bản đồ:', address);
-
+      console.log('ID nhận được từ CompleteProfile:', route.params?.id);
+      console.log('ID nhận được từ MapAddress:',id);
+      console.log('Vĩ độ (latitude):', latitude);
+      console.log('Kinh độ (longitude):', longitude);
     }
-  }, [route.params]);
-
+  }, [route.params?.id]);
 
   const displayAddress = locationData.address
     ? locationData.address
     : locationData.latitude && locationData.longitude
-      ? `Lat: ${locationData.latitude}, Lng: ${locationData.longitude}`
-      : 'Chưa có địa chỉ được chọn';
+    ? `Lat: ${locationData.latitude}, Lng: ${locationData.longitude}`
+    : 'Chưa có địa chỉ được chọn';
 
+  const parts = displayAddress.split(',').map(part => part.trim());
+  let detail_address = '';
+  let ward = '';
+  let district = '';
+  let city = '';
+
+  if (parts.length >= 4) {
+    detail_address = parts[0];
+    ward = parts[1];
+    district = parts[2];
+    city = parts[3];
+  } else {
+    console.warn('Địa chỉ không đủ 4 phần để tách');
+  }
 
   return (
     <View style={styles.container}>
@@ -103,26 +105,30 @@ const AddressScreen = () => {
       </View>
 
       <View style={styles.bottomButtonContainer}>
+       <TouchableOpacity
+  style={styles.button}
+  onPress={() => {
+    // debug log trước khi navigate
+    console.log('[AddressScreen] navigating to SelectLocation with id =', route.params?.id);
+
+    navigation.navigate('SelectLocation', {
+      id: route.params?.id,                // nhớ thêm id
+      email: route.params?.email,
+      password: route.params?.password,
+      fullName: route.params?.fullName,
+      phone: route.params?.phone,
+      gender: route.params?.gender,
+      avatar: route.params?.avatar,
+    });
+  }}
+>
+  <Text>Chọn vị trí trên bản đồ</Text>
+</TouchableOpacity>
+
         <TouchableOpacity
-          style={styles.button}
-          onPress={() =>
-            navigation.navigate('SelectLocation', {
-              email: route.params?.email,
-              password: route.params?.password,
-              fullName: route.params?.fullName,
-              phone: route.params?.phone,
-              gender: route.params?.gender,
-              avatar: route.params?.avatar,
-            })
-          }
-        >
-          <Text>Chọn vị trí trên bản đồ</Text>
-        </TouchableOpacity>
-
-
-        <TouchableOpacity 
-          style={styles.button1} 
-          onPress={() => 
+          style={styles.button1}
+          onPress={() => {
+            console.log('[AddressScreen] navigating to ManualAddress with id =', route.params?.id);
             navigation.navigate('ManualAddress', {
               email: route.params?.email,
               password: route.params?.password,
@@ -130,18 +136,54 @@ const AddressScreen = () => {
               phone: route.params?.phone,
               gender: route.params?.gender,
               avatar: route.params?.avatar,
-            })
-          }
+              id: route.params?.id,
+            });
+          }}
         >
           <Text>Chọn vị trí thủ công</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.completeButton} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity
+        style={styles.completeButton}
+        onPress={async () => {
+          try {
+            const { latitude, longitude, address } = locationData;
+
+            const parts = address.split(',').map(part => part.trim());
+
+            let body: any = { user_id: route.params?.id };
+
+            if (parts.length >= 4) {
+              body = {
+                ...body,
+                detail_address: parts[0],
+                ward: parts[1],
+                district: parts[2],
+                city: parts[3],
+              };
+            } else {
+              body = {
+                ...body,
+                latitude,
+                longitude,
+              };
+            }
+
+            console.log('🔼 Dữ liệu gửi lên API:', JSON.stringify(body, null, 2));
+
+            const response = await axios.post('http://192.168.0.116:3000/api/addresses', body);
+            console.log('✅ Phản hồi từ API:', response.data);
+
+            navigation.navigate('TabNavigator');
+          } catch (error: any) {
+            console.error('❌ Lỗi khi gửi API:', error?.response?.data || error.message);
+            alert('Gửi địa chỉ thất bại!');
+          }
+        }}
+      >
         <Text style={styles.completeButtonText}>Hoàn thành</Text>
       </TouchableOpacity>
-
-
     </View>
   );
 };
@@ -160,10 +202,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: 'center',
     fontWeight: 'bold',
-  },
-  buttonContainer: {
-    marginVertical: 12,
-    backgroundColor: '#5F3C1E',
   },
   inputContainer: {
     marginVertical: 16,
@@ -189,7 +227,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
   },
-  // Thay thế các style sau trong phần StyleSheet
   button: {
     flex: 1,
     backgroundColor: '#fff',
@@ -201,7 +238,6 @@ const styles = StyleSheet.create({
     borderColor: '#6B4F35',
     borderWidth: 1,
   },
-
   button1: {
     flex: 1,
     backgroundColor: '#fff',
@@ -213,13 +249,11 @@ const styles = StyleSheet.create({
     borderColor: '#6B4F35',
     borderWidth: 1,
   },
-
   bottomButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
   },
-
   completeButton: {
     marginTop: 20,
     padding: 14,
@@ -232,6 +266,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
-
 });
