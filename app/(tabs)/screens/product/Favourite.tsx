@@ -39,9 +39,9 @@ const FavoritesScreen: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const user = await getUserData();
+      const user = await getUserData('userData');
       if (user) {
-        console.log('User ID:', user.userId);
+        console.log('User ID:', user);
       }
     };
     fetchData();
@@ -52,15 +52,15 @@ useEffect(() => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const user = await getUserData();
-      console.log('User ID:', user?.userId);
+      const user = await getUserData('userData');
+      console.log('User ID yêu thích:', user);
 
       const result = await favoriteAuthService.getAll();
       console.log('✅ Dữ liệu trả về từ API:', JSON.stringify(result, null, 2));
 
       if (result.data && result.data.length > 0) {
         // So sánh userId với user_id trong data
-        const matched = result.data.filter((item: any) => item.user_id === user.userId);
+        const matched = result.data.filter((item: any) => item.user_id === user);
         
         console.log('🟢 Matched data:', JSON.stringify(matched, null, 2));
 
@@ -179,7 +179,7 @@ const renderFavoriteItem = ({ item }: { item: any }) => (
         <Text style={styles.headerTitle}>Yêu thích</Text>
         <View style={styles.favoriteCount}>
           <Ionicons name="heart" size={20} color="#FF6B6B" />
-          <Text style={styles.countText}>{favorites.length}</Text>
+          <Text style={styles.countText}>{filteredItems.length}</Text>
         </View>
       </View>
 

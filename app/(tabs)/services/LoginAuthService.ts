@@ -11,7 +11,7 @@ import { BASE_URL } from './api';
 
 
 export interface User {
-  id: string;
+  _id: string;
   email: string;
   password: string;
   name?: string;
@@ -58,9 +58,8 @@ class LoginAuthService {
         console.log('Đăng nhập thành công:', matchedUser);
         console.log('id người dùng: ',matchedUser._id);
 
-         saveUserData({
-    userId: matchedUser._id,
-          });
+         await saveUserData({ value: matchedUser._id, key: 'userData' });
+
 
         return {
           success: true,
