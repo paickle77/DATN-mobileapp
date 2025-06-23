@@ -23,7 +23,7 @@ import bannerCard from '../../../../assets/images/banner.png';
 import bannerCard2 from '../../../../assets/images/banner2.png';
 import type { Product } from '../../services/ProductsService';
 import productService from '../../services/ProductsService';
-import { getUserData } from '../utils/storage';
+import { getUserData, saveUserData } from '../utils/storage';
 
 const banners = [
   {
@@ -69,7 +69,7 @@ export default function Home() {
   const [selectedFilter, setSelectedFilter] = useState('Tất cả');
   const navigation = useNavigation();
 const [data, setData] = useState<Product[]>([]);
-
+  const [favorites, setFavorites] = useState<string[]>([]);
 
 
 
@@ -112,13 +112,22 @@ useEffect(() => {
 
 useEffect(() => {
   const fetchData = async () => {
-    const user = await getUserData();
+    const user = await getUserData('userData');
     if (user) {
-      console.log('User ID:', user.userId);
+      console.log('User ID:', user);
     }
   };
   fetchData();
 }, []);
+
+const toggleFavorite = (itemId: string): void => {
+  setFavorites(prev =>
+    prev.includes(itemId)
+      ? prev.filter(id => id !== itemId)
+      : [...prev, itemId] 
+      
+  );
+};
 
 
 
@@ -161,11 +170,28 @@ const filteredCakes = useMemo(() => {
  const renderCakeItem = ({ item }: { item: typeof data[0] }) => (
   <TouchableOpacity
     style={styles.gridItem}
-    onPress={() => {
-      navigation.navigate('Detail', { id: item._id }); // Có thể truyền id nếu cần
+    onPress={async () => {
+
+      // Anh gọi ở màn Home:
+      await saveUserData({ value: item._id, key: 'productID' });
+
+      console.log("item._id products:",item._id)
+      navigation.navigate('Detail'); // Có thể truyền id nếu cần
+
+
     }}
   >
     <Image source={{ uri: item.image_url }} style={styles.cakeImage} />
+       {/* <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={() => toggleFavorite(item._id)}
+          >
+            <Ionicons
+              name={favorites.includes(item._id) ? 'heart' : 'heart-outline'}
+              size={20}
+              color={favorites.includes(item._id) ? '#FF6B6B' : '#666'}
+            />
+          </TouchableOpacity> */}
     <Text style={styles.cakeName} numberOfLines={1}>
       {item.name}
     </Text>
@@ -315,6 +341,7 @@ const filteredCakes = useMemo(() => {
 }
 
 const styles = StyleSheet.create({
+  
   screen: {
     flex: 1,
     backgroundColor: '#fff',
@@ -328,6 +355,25 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
     backgroundColor: '#fff',
+  },
+   favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   searchBox: {
     flex: 1,

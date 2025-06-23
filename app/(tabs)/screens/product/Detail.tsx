@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { getUserData } from "../utils/storage";
 
 interface Product {
   _id: string;
@@ -23,12 +24,24 @@ interface Product {
   discount_price: number;
   image_url: string;
   rating: number;
-  stock: number;
+  // stock: number;
   is_active: boolean;
   category_id: {
     _id: string;
     name: string;
   };
+   ingredient_id: {
+    _id: string;
+    name: string;
+  };
+}
+
+interface Size {
+  _id:string;
+  Product_id:string;
+  quantity:number;
+  size:number;
+  price_increase:number;
 }
 
 interface RouteParams {
@@ -43,9 +56,11 @@ type RootStackParamList = {
 const Detail: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute();
-  const { id } = route.params as RouteParams;
+  // const { id } = route.params as RouteParams;
   
   const [product, setProduct] = useState<Product | null>(null);
+  const [sizes, setSizes] = useState<Size[]>([]);
+
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -53,33 +68,82 @@ const Detail: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const baseUrl = 'http://192.168.0.116:3000/api/productsandcategoryid';
+  const baseUrl = 'http://172.20.20.7:3000/api/productsandcategoryid';
+
+
+  const sizeOptions = [
+  { label: '13x6cm (mini)', value: 1 },
+  { label: '17x8cm (nhỏ)', value: 2 },
+  { label: '21x8cm (vừa)', value: 3 }
+];
+
 
   useEffect(() => {
     fetchProductDetails();
-  }, [id]);
+    fetchsize();
+  }, []);
 
-  useEffect(() => {
-    if (product) {
-      let unitPrice = product.discount_price || product.price;
-      if (selectedSize === "17x8cm (nhỏ)") {
-        unitPrice += 60000;
-      } else if (selectedSize === "21x8cm (vừa)") {
-        unitPrice += 90000;
-      }
-      setTotalPrice(quantity * unitPrice);
+
+  
+ useEffect(() => {
+  if (product) {
+    let basePrice = product.discount_price || product.price;
+
+    const sizeData = sizes.find(s => {
+      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+      return label === selectedSize;
+    });
+
+    if (sizeData) {
+      basePrice += sizeData.price_increase * 1000; // vì price_increase là đơn vị ngàn
     }
-  }, [quantity, product, selectedSize]);
 
+    setTotalPrice(quantity * basePrice);
+  }
+}, [quantity, product, selectedSize, sizes]);
+
+
+
+
+  const fetchsize=async ()=>{
+    try{
+      setLoading(true);
+      setError(null);
+       const dateSize = await axios.get("http://172.20.20.7:3000/api/sizes");
+        console.log('API response dateSize:', dateSize.data);
+      let size = [];
+      if (Array.isArray(dateSize.data)) {
+        size = dateSize.data;
+      } else if (Array.isArray(dateSize.data.data)) {
+        size = dateSize.data.data;
+      } else {
+        throw new Error('Unexpected response format');
+      }
+       const id = await getUserData('productID');
+      console.log("productID lấy ra1:", id);
+     const foundSizes = size.filter((item: Size) => item.Product_id === id);
+      setSizes(foundSizes);
+
+           if (foundSizes) {
+        console.log("foundSize lấy ra ID:", foundSizes);
+        setProduct(foundSizes);
+      } else {
+        setError('Không tìm thấy sản phẩm');
+      }
+    }catch(err){
+      console.log(err)
+    }
+
+
+  }
 
 
   const fetchProductDetails = async () => {
     try {
       setLoading(true);
       setError(null);
-      
       const response = await axios.get(baseUrl);
-      console.log('API response:', response.data);
+      console.log('API response orderDetails:', response.data);
       
       let products = [];
       if (Array.isArray(response.data)) {
@@ -89,10 +153,13 @@ const Detail: React.FC = () => {
       } else {
         throw new Error('Unexpected response format');
       }
-
-      const foundProduct = products.find((item: Product) => item._id === id);
+     const id = await getUserData('productID');
+      console.log("productID lấy ra:", id);
+      
+      const foundProduct = products.find((item: Product) => item._id === id,)
       
       if (foundProduct) {
+        console.log("Id lấy ra:", foundProduct._id);
         setProduct(foundProduct);
       } else {
         setError('Không tìm thấy sản phẩm');
@@ -105,11 +172,15 @@ const Detail: React.FC = () => {
     }
   };
 
-  const incrementQuantity = () => {
-  if (product && quantity < product.stock) {
+const incrementQuantity = () => {
+  const sizeData = sizes.find(s => {
+    const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+    return label === selectedSize;
+  });
+  if (sizeData && quantity < sizeData.quantity) {
     setQuantity(prev => prev + 1);
-  } else if (product && quantity >= product.stock) {
-    Alert.alert('Thông báo', 'Không đủ hàng trong kho');
+  } else {
+    Alert.alert('Thông báo', 'Không đủ hàng trong kho hoặc chưa chọn size');
   }
 };
 
@@ -120,18 +191,33 @@ const decrementQuantity = () => {
 };
 
 
-  const handleAddToCart = () => {
-    if (quantity === 0) {
-      Alert.alert('Thông báo', 'Vui lòng chọn số lượng sản phẩm');
-      return;
-    }
-    
-    Alert.alert(
-      'Thêm vào giỏ hàng',
-      `Đã thêm ${quantity} ${product?.name} (size ${selectedSize || "M"}) vào giỏ hàng với tổng giá ${formatPrice(totalPrice)}đ`,
-      [{ text: 'OK' }]
-    );
-  };
+const handleAddToCart = () => {
+  if (quantity === 0) {
+    Alert.alert('Thông báo', 'Vui lòng chọn số lượng sản phẩm');
+    return;
+  }
+
+  // Tìm size đã chọn
+  const sizeData = sizes.find(s => {
+    const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+    return label === selectedSize;
+  });
+
+  // Log toàn bộ dữ liệu
+  console.log("=== DỮ LIỆU ĐÃ RENDER ===");
+  console.log("Product:", product);
+  console.log("Selected Size:", selectedSize);
+  console.log("Size Data:", sizeData);
+  console.log("Quantity:", quantity);
+  console.log("Total Price:", totalPrice);
+
+  Alert.alert(
+    'Thêm vào giỏ hàng',
+    `Đã thêm ${quantity} ${product?.name} (size ${selectedSize || "M"}) vào giỏ hàng với tổng giá ${formatPrice(totalPrice)}đ`,
+    [{ text: 'OK' }]
+  );
+};
+
 
   const toggleFavorite = () => {
     setIsFavorite((prev) => !prev);
@@ -216,44 +302,73 @@ const decrementQuantity = () => {
           <Text style={styles.fullDescription}>
             {product.description || 'Sản phẩm chất lượng cao, được làm từ những nguyên liệu tươi ngon nhất.'}
           </Text>
-          
+  <Text style={styles.sectionTitle}>
+  Nguyên Liệu: {product.ingredient_id.map(i => i.name).join(", ")}
+</Text>
+
+
           <Text style={styles.sectionTitle}>Kích Thước</Text>
-          <View style={styles.sizeContainer}>
-            {["13x6cm (mini)", "17x8cm (nhỏ)", "21x8cm (vừa)"].map((size) => (
-              <TouchableOpacity
-                key={size}
-                style={[
-                  styles.sizeButton,
-                  selectedSize === size ? styles.activeSize : null,
-                ]}
-                onPress={() => setSelectedSize(size)}
-              >
-                <Text style={[
-                  styles.sizeText,
-                  selectedSize === size ? styles.activeSizeText : null
-                ]}>{size}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          
-          <Text style={[
-              styles.detailValuequantity,
-              product.stock > 0 ? styles.inStock : styles.outOfStock
-            ]}>
-              {product.stock > 0 ? `Còn ${product.stock} sp` : 'Hết hàng'}
-          </Text>
+       <View style={styles.sizeContainer}>
+  {sizes.map(s => {
+    const label = sizeOptions.find(opt => opt.value === s.size)?.label || `Size ${s.size}`;
+    return (
+      <TouchableOpacity
+        key={s._id}
+        style={[
+          styles.sizeButton,
+          selectedSize === label ? styles.activeSize : null,
+        ]}
+        onPress={() => setSelectedSize(label)}
+      >
+        <Text style={[
+          styles.sizeText,
+          selectedSize === label ? styles.activeSizeText : null
+        ]}>
+          {label} 
+        </Text>
+      </TouchableOpacity>
+      
+    )
+  })}
+</View>    
+<Text style={[
+  styles.detailValuequantity,
+  (() => {
+    const sizeData = sizes.find(s => {
+      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+      return label === selectedSize;
+    });
+    return sizeData && sizeData.quantity > 0 ? styles.inStock : styles.outOfStock;
+  })()
+]}>
+  {(() => {
+    const sizeData = sizes.find(s => {
+      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+      return label === selectedSize;
+    });
+    if (!selectedSize) return 'Chưa chọn kích thước';
+    return sizeData
+      ? (sizeData.quantity > 0 ? `Còn ${sizeData.quantity} sp` : 'Hết hàng')
+      : 'Không tìm thấy size';
+  })()}
+</Text>
+
           <View style={styles.priceRow}>
             <Text style={styles.sectionTitle}>Giá: </Text>
             {(() => {
               let basePrice = product.discount_price || product.price;
               let adjustedPrice = basePrice;
 
-              if (selectedSize === "17x8cm (nhỏ)") {
-                adjustedPrice += 60000;
-              } else if (selectedSize === "21x8cm (vừa)") {
-                adjustedPrice += 90000;
-              }
 
+                const sizeData = sizes.find(s => {
+                  const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+                  return label === selectedSize;
+                });
+              
+              if (sizeData) {
+                adjustedPrice += sizeData.price_increase * 1000; // nếu đơn vị là ngàn
+                console.log("price_increase: ", sizeData.price_increase);
+              }
               return (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   {product.discount_price ? (
@@ -313,19 +428,42 @@ const decrementQuantity = () => {
             >
               <Text style={styles.secondaryButtonText}>Xem đánh giá</Text>
             </TouchableOpacity>
+<TouchableOpacity
+  style={[
+    styles.buyButton,
+    {
+      backgroundColor: (() => {
+        if (!selectedSize) return '#ccc';
+        const sizeData = sizes.find(s => {
+          const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+          return label === selectedSize;
+        });
+        return sizeData && sizeData.quantity > 0 ? '#6B4F35' : '#ccc';
+      })()
+    }
+  ]}
+  onPress={handleAddToCart}
+  disabled={(() => {
+    if (!selectedSize) return true;
+    const sizeData = sizes.find(s => {
+      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+      return label === selectedSize;
+    });
+    return !(sizeData && sizeData.quantity > 0);
+  })()}
+>
+  <Text style={styles.buyButtonText}>
+    {(() => {
+      if (!selectedSize) return 'CHỌN KÍCH THƯỚC';
+      const sizeData = sizes.find(s => {
+        const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+        return label === selectedSize;
+      });
+      return sizeData && sizeData.quantity > 0 ? 'CHỌN MUA' : 'HẾT HÀNG';
+    })()}
+  </Text>
+</TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.buyButton,
-                { backgroundColor: product.stock > 0 ? '#6B4F35' : '#ccc' },
-              ]}
-              onPress={handleAddToCart}
-              disabled={product.stock === 0}
-            >
-              <Text style={styles.buyButtonText}>
-                {product.stock > 0 ? 'CHỌN MUA' : 'HẾT HÀNG'}
-              </Text>
-            </TouchableOpacity>
           </View>
 
         </View>
@@ -368,7 +506,7 @@ const styles = StyleSheet.create({
   },
   topSection: {
     padding: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },

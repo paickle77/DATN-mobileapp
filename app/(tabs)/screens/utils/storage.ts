@@ -1,29 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const USER_DATA_KEY = 'userData';
-
 export interface UserData {
-  userId: string;
-//   token: string;
-//   name: string;
-//   email: string;
-//   image?: string; // optional
+  value: string;
+  key: string;
 }
 
 // Lưu thông tin người dùng
 export const saveUserData = async (data: UserData) => {
   try {
-    const jsonValue = JSON.stringify(data);
-    await AsyncStorage.setItem(USER_DATA_KEY, jsonValue);
+    const jsonValue = JSON.stringify(data.value);
+    await AsyncStorage.setItem(data.key, jsonValue);
   } catch (e) {
     console.error('Lỗi lưu user data:', e);
   }
 };
 
-// Lấy thông tin người dùng
-export const getUserData = async (): Promise<UserData | null> => {
+// Lấy thông tin người dùng theo key
+export const getUserData = async (key: string): Promise<string | null> => {
   try {
-    const jsonValue = await AsyncStorage.getItem(USER_DATA_KEY);
+    const jsonValue = await AsyncStorage.getItem(key);
     return jsonValue != null ? JSON.parse(jsonValue) : null;
   } catch (e) {
     console.error('Lỗi lấy user data:', e);
@@ -31,10 +26,10 @@ export const getUserData = async (): Promise<UserData | null> => {
   }
 };
 
-// Xóa thông tin người dùng (khi logout)
-export const clearUserData = async () => {
+// Xóa thông tin người dùng theo key
+export const clearUserData = async (key: string) => {
   try {
-    await AsyncStorage.removeItem(USER_DATA_KEY);
+    await AsyncStorage.removeItem(key);
   } catch (e) {
     console.error('Lỗi xóa user data:', e);
   }
