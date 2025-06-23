@@ -87,7 +87,6 @@ useEffect(() => {
   fetchData();
 }, []);
 
-
 const toggleFavorite = (itemId: string): void => {
   setFavorites(prev =>
     prev.includes(itemId)
@@ -95,9 +94,6 @@ const toggleFavorite = (itemId: string): void => {
       : [...prev, itemId]
   );
 };
-
-
-
 
 const filteredItems = selectedCategory === 'Tất cả'
   ? userProducts
