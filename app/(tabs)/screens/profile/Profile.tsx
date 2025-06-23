@@ -30,21 +30,31 @@ const ProfileScreen = () => {
 
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
+     useEffect(() => {
+        const fetchData = async () => {
+          const user = await getUserData('userData');
+          if (user) {
+            console.log('User ID:', user);
+          }
+        };
+        fetchData();
+      }, []);
+
     // Fetch user profile data
     useEffect(() => {
         const fetchUserProfile = async () => {
             setLoading(true);
             try {
-                const userData = await getUserData();
-                console.log('Current user data:', userData);
+                const user = await getUserData('userData');
+                      console.log('User ID Profile', user);
 
                 const result = await profileService.getAll();
                 console.log('✅ Dữ liệu trả về từ API:', JSON.stringify(result, null, 2));
 
                 // Check if data exists (the API response has 'data' and 'msg' properties)
-                if (result.data && result.data.length > 0 && userData && userData.userId) {
-                    // Find user by userId from storage
-                    const currentUser = result.data.find((item: any) => item._id === userData.userId);
+                 if (result.data && result.data.length > 0) {
+                    // So sánh userId với user_id trong data
+                    const currentUser = result.data.find((item: any) => String(item._id) === String(user));
                     console.log('Current user:', currentUser);
                     
                     if (currentUser) {
@@ -54,7 +64,7 @@ const ProfileScreen = () => {
                         console.log('⚠️ User not found in API data');
                         Alert.alert('Thông báo', 'Không tìm thấy thông tin người dùng');
                     }
-                } else if (!userData || !userData.userId) {
+                } else if (!user || !user) {
                     Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng trong bộ nhớ');
                     console.error('❌ Error: userData is null or missing userId');
                 } else {
