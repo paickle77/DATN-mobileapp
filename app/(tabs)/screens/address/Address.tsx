@@ -172,7 +172,7 @@ const AddressScreen = () => {
 
             console.log('🔼 Dữ liệu gửi lên API:', JSON.stringify(body, null, 2));
 
-            const response = await axios.post('http://192.168.0.116:3000/api/addresses', body);
+            const response = await axios.post('http://172.20.50.65:3000/api/addresses', body);
             console.log('✅ Phản hồi từ API:', response.data);
 
             navigation.navigate('TabNavigator');
