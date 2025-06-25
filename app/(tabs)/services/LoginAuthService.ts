@@ -3,13 +3,6 @@ import axios from 'axios';
 import { saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
-
-
-
-
-
-
-
 export interface User {
   _id: string;
   email: string;

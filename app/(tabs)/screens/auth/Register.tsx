@@ -1,11 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NavigationProp } from '@react-navigation/native';
+import axios from 'axios';
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateRegisterForm } from '../../utils/validation';
 
+//nao dung thật thì import
+// import * as Google from 'expo-auth-session/providers/google';
+// import * as Facebook from 'expo-auth-session/providers/facebook';
+import * as WebBrowser from 'expo-web-browser';
+WebBrowser.maybeCompleteAuthSession();
 type RootStackParamList = {
   CompleteProfile: {
     id: string;
@@ -80,6 +86,67 @@ export default function Register() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+// Xử lý đăng ký với Google
+  const handleGoogleRegister = async () => {
+    try {
+      const user = {
+        email: 'gguser@example.com',
+        name: 'Người dùng Google',
+        image: 'https://example.com/avatar.jpg',
+        provider: 'google' as 'google',
+        google_id: 'GG123456789',
+      };
+
+      const result: { success?: boolean; message?: string; data?: any } = await RegisterAuthService.registerWithSocial(user);
+      console.log('Đăng ký Google thành công:', result);
+      if (result) {
+        Alert.alert('Thành công', result.message || 'Đăng ký Google thành công');
+        console.log('cac truong:', result);
+         console.log('Đăng ký Google thành công. GG ID:', result.google_id);
+        navigation.navigate('CompleteProfile', { id: result._id });
+      } else {
+        Alert.alert('Lỗi', result.message || 'Đăng ký thất bại');
+      }
+    } catch (err) {
+  if (axios.isAxiosError(err)) {
+    console.error('Lỗi đăng ký Google - Axios Error:', {
+      message: err.message,
+      status: err.response?.status,
+      data: err.response?.data,
+    });
+  } else {
+    console.error('Lỗi đăng ký Google - Unknown Error:', err);
+  }
+  Alert.alert('Lỗi', 'Đăng ký Google thất bại');
+}
+  };
+
+  // Xử lý đăng ký với Facebook
+  const handleFacebookRegister = async () => {
+    try {
+      const user = {
+        email: 'fbuser@example.com',
+        name: 'Người dùng Facebook',
+        facebook_id: 'FB987654321',
+        provider: 'facebook' as 'facebook',
+        image: 'https://example.com/avatar.jpg',
+      };
+
+       const result: { success?: boolean; message?: string; data?: any } = await RegisterAuthService.registerWithSocial(user);
+
+      if (result) {
+        Alert.alert('Thành công', result.message || 'Đăng ký Facebook thành công');
+        console.log('Đăng ký Facebook thành công. FB ID:', result.facebook_id);
+        navigation.navigate('CompleteProfile', { id: result._id });
+      } else {
+        Alert.alert('Lỗi', result.message || 'Đăng ký thất bại');
+      }
+    } catch (err) {
+      console.error('Lỗi đăng ký Facebook:', err);
+      Alert.alert('Lỗi', 'Đăng ký Facebook thất bại');
     }
   };
 
@@ -206,7 +273,7 @@ export default function Register() {
       <View style={styles.socialContainer}>
         <TouchableOpacity 
           style={styles.socialButton} 
-          onPress={() => { /* TODO: Google login */ }}
+          onPress={handleGoogleRegister}
           disabled={isLoading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
@@ -214,7 +281,7 @@ export default function Register() {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.socialButton} 
-          onPress={() => { /* TODO: Facebook login */ }}
+          onPress={handleFacebookRegister}
           disabled={isLoading}
         >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />
