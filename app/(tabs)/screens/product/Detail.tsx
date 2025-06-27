@@ -69,6 +69,8 @@ const Detail: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  const baseUrl = 'http://172.20.50.65:3000/api/productsandcategoryid';
+
    const baseUrl = BASE_URL + '/productsandcategoryid';
   
 
@@ -107,6 +109,7 @@ const Detail: React.FC = () => {
     try{
       setLoading(true);
       setError(null);
+       const dateSize = await axios.get("http://172.20.50.65:3000/api/sizes");
        const dateSize = await axios.get(`${BASE_URL}/sizes`);
         console.log('API response dateSize:', dateSize.data);
       let size = [];
