@@ -1,198 +1,370 @@
-// screens/OtpVerification.tsx
-import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient'; // hoặc react-native-linear-gradient
+import { useNavigation } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons'; // hoặc thư viện icon khác
+import { BASE_URL } from '../../services/api';
 
-type RootStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  OtpVerification: { email: string };
-  NewPassword: { email: string };
-  CompleteProfile: { email: string };
-  Home: undefined;
-};
+const { width, height } = Dimensions.get('window');
 
-type OtpVerificationNavigationProp = NativeStackNavigationProp<RootStackParamList, 'OtpVerification'>;
-type OtpVerificationRouteProp = RouteProp<RootStackParamList, 'OtpVerification'>;
+const ForgotPasswordScreen = () => {
+  const [email, setEmail] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigator = useNavigation();
 
-export default function OtpVerification() {
-  const navigation = useNavigation<OtpVerificationNavigationProp>();
-  const route = useRoute<OtpVerificationRouteProp>();
-  
-  // Lấy email từ route params
-  const userEmail = route.params?.email || 'abc@gmail.com';
-
-  const [code, setCode] = useState(['', '', '', '']);
-
-  // refs để tự động focus giữa 4 ô nhập mã
-  const refs = [
-    useRef<TextInput>(null),
-    useRef<TextInput>(null),
-    useRef<TextInput>(null),
-    useRef<TextInput>(null),
-  ];
-
-  const handleChange = (text: string, index: number) => {
-    const newCode = [...code];
-    newCode[index] = text;
-    setCode(newCode);
-    // Nếu đã nhập ký tự ở ô này, focus sang ô tiếp theo
-    if (text && index < 3) {
-      refs[index + 1].current?.focus();
+  const sendOtp = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.post(BASE_URL+'/users/send-otp', { email });
+      Alert.alert('Thành công', 'OTP đã gửi về email');
+      setOtpSent(true);
+    } catch (err) {
+      Alert.alert('Lỗi', err.response?.data?.msg || 'Gửi OTP thất bại');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleKeyPress = (key: string, index: number) => {
-    // Nếu nhấn backspace và ô hiện tại rỗng, chuyển về ô trước
-    if (key === 'Backspace' && !code[index] && index > 0) {
-      refs[index - 1].current?.focus();
+  const resetPassword = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.post(BASE_URL+'/users/reset-password', {
+        otp,
+        newPassword,
+      });
+      Alert.alert('Thành công', 'Mật khẩu đã cập nhật');
+      navigator.navigate('Login'); // Chuyển hướng về
+    } catch (err) {
+      Alert.alert('Lỗi', err.response?.data?.msg || 'Không đặt lại được mật khẩu');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleVerify = () => {
-    const otp = code.join('');
-    
-    if (otp.length !== 4) {
-      alert('Vui lòng nhập đầy đủ 4 số mã OTP');
-      return;
-    }
-
-    console.log('Mã OTP nhập:', otp);
-    console.log('Email:', userEmail);
-    
-    // TODO: gọi API xác minh OTP tại đây
-    // Giả sử OTP đúng, chuyển sang màn NewPassword
-    navigation.navigate('NewPassword', { email: userEmail });
-  };
-
-  const handleResend = () => {
-    console.log('Gửi lại mã OTP đến:', userEmail);
-    // TODO: gọi API resend OTP tại đây
-    // Reset form
-    setCode(['', '', '', '']);
-    refs[0].current?.focus();
-    alert('Mã OTP mới đã được gửi đến email của bạn');
-  };
-
-  const handleGoBack = () => {
-    navigation.goBack();
   };
 
   return (
-    <View style={styles.container}>
-      {/* Nút quay lại */}
-      <TouchableOpacity onPress={handleGoBack} style={styles.backIcon}>
-        <Ionicons name="arrow-back-circle-outline" size={30} color="#000" />
-      </TouchableOpacity>
+    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.iconContainer}>
+              <Icon name="lock-outline" size={40} color="#fff" />
+            </View>
+            <Text style={styles.title}>
+              {otpSent ? 'Xác thực OTP' : 'Quên mật khẩu'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {otpSent 
+                ? 'Nhập mã OTP và mật khẩu mới'
+                : 'Nhập email để nhận mã xác thực'
+              }
+            </Text>
+          </View>
 
-      <Text style={styles.title}>Mã xác minh</Text>
-      <Text style={styles.subtitle}>
-        Vui lòng nhập mã chúng tôi vừa gửi đến email {userEmail}
-      </Text>
+          {/* Form Card */}
+          <View style={styles.formCard}>
+            {/* Back Button */}
+            {otpSent && (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => {
+                  setOtpSent(false);
+                  setOtp('');
+                  setNewPassword('');
+                }}
+              >
+                <Icon name="arrow-back" size={20} color="#666" />
+                <Text style={styles.backButtonText}>Quay lại</Text>
+              </TouchableOpacity>
+            )}
 
-      {/* 4 ô nhập OTP */}
-      <View style={styles.codeContainer}>
-        {code.map((digit, idx) => (
-          <TextInput
-            key={idx}
-            ref={refs[idx]}
-            style={[
-              styles.codeInput,
-              digit ? styles.codeInputFilled : null
-            ]}
-            keyboardType="numeric"
-            maxLength={1}
-            value={digit}
-            onChangeText={(text) => handleChange(text, idx)}
-            onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, idx)}
-          />
-        ))}
-      </View>
+            {!otpSent ? (
+              /* Email Input Phase */
+              <View style={styles.inputSection}>
+                <Text style={styles.label}>Email đăng ký</Text>
+                <View style={styles.inputContainer}>
+                  <Icon name="email" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    placeholder="Nhập email của bạn"
+                    placeholderTextColor="#999"
+                    value={email}
+                    onChangeText={setEmail}
+                    style={styles.textInput}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
 
-      {/* Resend code */}
-      <TouchableOpacity onPress={handleResend}>
-        <Text style={styles.resendText}>
-          Không nhận được OTP? <Text style={styles.resendLink}>Resend code</Text>
-        </Text>
-      </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={sendOtp}
+                  disabled={!email || loading}
+                  style={[
+                    styles.primaryButton,
+                    (!email || loading) && styles.disabledButton
+                  ]}
+                >
+                  <LinearGradient
+                    colors={(!email || loading) ? ['#ccc', '#999'] : ['#667eea', '#764ba2']}
+                    style={styles.buttonGradient}
+                  >
+                    {loading && <Icon name="refresh" size={20} color="#fff" style={styles.loadingIcon} />}
+                    <Text style={styles.buttonText}>
+                      {loading ? 'Đang gửi...' : 'Gửi mã OTP'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* OTP and Password Phase */
+              <View style={styles.inputSection}>
+                <Text style={styles.label}>Mã OTP</Text>
+                <View style={styles.inputContainer}>
+                  <Icon name="security" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    placeholder="Nhập mã OTP"
+                    placeholderTextColor="#999"
+                    value={otp}
+                    onChangeText={setOtp}
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    maxLength={6}
+                  />
+                </View>
+                <Text style={styles.helperText}>
+                  Mã OTP đã được gửi đến {email}
+                </Text>
 
-      {/* Nút Xác minh */}
-      <TouchableOpacity style={styles.button} onPress={handleVerify}>
-        <Text style={styles.buttonText}>Xác minh</Text>
-      </TouchableOpacity>
-    </View>
+                <Text style={styles.label}>Mật khẩu mới</Text>
+                <View style={styles.inputContainer}>
+                  <Icon name="lock" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    placeholder="Nhập mật khẩu mới"
+                    placeholderTextColor="#999"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    style={styles.textInput}
+                    secureTextEntry
+                  />
+                </View>
+                <Text style={styles.helperText}>
+                  Mật khẩu phải có ít nhất 8 ký tự
+                </Text>
+
+                <TouchableOpacity
+                  onPress={resetPassword}
+                  disabled={!otp || !newPassword || loading}
+                  style={[
+                    styles.primaryButton,
+                    (!otp || !newPassword || loading) && styles.disabledButton
+                  ]}
+                >
+                  <LinearGradient
+                    colors={(!otp || !newPassword || loading) ? ['#ccc', '#999'] : ['#4CAF50', '#45a049']}
+                    style={styles.buttonGradient}
+                  >
+                    {loading && <Icon name="refresh" size={20} color="#fff" style={styles.loadingIcon} />}
+                    <Text style={styles.buttonText}>
+                      {loading ? 'Đang xử lý...' : 'Đặt lại mật khẩu'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Nhớ mật khẩu? {' '}
+                <Text style={styles.linkText}>Đăng nhập ngay</Text>
+              </Text>
+            </View>
+          </View>
+
+          {/* Security Notice */}
+          <View style={styles.securityNotice}>
+            <Icon name="security" size={16} color="#fff" />
+            <Text style={styles.securityText}>
+              Thông tin của bạn được bảo mật và mã hóa
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 30,
-    backgroundColor: '#fff',
   },
-  backIcon: {
-    marginTop: 60,
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 20,
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 'bold',
-    alignSelf: 'center',
-    marginTop: 20,
-    color: '#333',
+    color: '#fff',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
-    textAlign: 'center',
-    color: '#555',
-    marginVertical: 30,
     fontSize: 16,
-    lineHeight: 24,
-  },
-  codeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal: 40,
-    marginBottom: 40,
-  },
-  codeInput: {
-    width: 60,
-    height: 60,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 30,
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-    fontSize: 20,
-    color: '#333',
-    backgroundColor: '#f9f9f9',
+    paddingHorizontal: 20,
   },
-  codeInputFilled: {
-    borderColor: '#6B4F35',
+  formCard: {
     backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 25,
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
   },
-  resendText: {
-    textAlign: 'center',
-    color: '#555',
-    marginVertical: 20,
-    fontSize: 14,
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  resendLink: {
-    color: '#6B4F35',
-    fontWeight: 'bold',
+  backButtonText: {
+    marginLeft: 8,
+    color: '#666',
+    fontSize: 16,
   },
-  button: {
-    backgroundColor: '#6B4F35',
-    height: 50,
-    borderRadius: 25,
+  inputSection: {
+    marginBottom: 10,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    backgroundColor: '#f8f9fa',
+    marginBottom: 8,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  textInput: {
+    flex: 1,
+    paddingVertical: 15,
+    fontSize: 16,
+    color: '#333',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 20,
+  },
+  primaryButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  buttonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 30,
-    marginTop: 20,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+  },
+  loadingIcon: {
+    marginRight: 8,
+    transform: [{ rotate: '360deg' }], // Animation sẽ cần thêm Animated API
+  },
+  footer: {
+    marginTop: 25,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  linkText: {
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  securityNotice: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  securityText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    marginLeft: 5,
   },
 });
+
+export default ForgotPasswordScreen;

@@ -71,6 +71,8 @@ export default function Login() {
       return;
     }
 
+
+
     // Validate email format
     const emailValidation = validateLoginForm(email, 'dummy').errors.email;
     if (emailValidation) {
@@ -80,21 +82,7 @@ export default function Login() {
 
     setLoading(true);
     
-    // TODO: Implement forgot password logic
-    // try {
-    //   const response = await forgotPasswordService.sendOTP(email);
-    //   if (response.success) {
-    //     Alert.alert('Thành công', response.message, [
-    //       { text: 'OK', onPress: () => navigation.navigate('OtpVerification', { email }) }
-    //     ]);
-    //   } else {
-    //     Alert.alert('Lỗi', response.message);
-    //   }
-    // } catch (error) {
-    //   Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-    // } finally {
-    //   setLoading(false);
-    // }
+    navigation.navigate('OtpVerification', { email });
     
     setLoading(false);
   };

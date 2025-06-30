@@ -1,5 +1,6 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -12,6 +13,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+
+const genAI = new GoogleGenerativeAI("AIzaSyAauakKip4CAEdknvzI6R2jZboBKMX_JUg");
 
 const genAI = new GoogleGenerativeAI("AIzaSyAauakKip4CAEdknvzI6R2jZboBKMX_JUg");
 
@@ -29,6 +32,7 @@ const ChatScreen = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
+      text: 'Chào bạn! Tôi là chatbot của CakeShop, tôi có thể giúp gì cho bạn',
       text: 'Chào bạn! Tôi là chatbot của CakeShop, tôi có thể giúp gì cho bạn',
       isUser: false,
       timestamp: new Date(),
@@ -192,7 +196,10 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('vi-VN', {
       hour: '2-digit',
+    return date.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
       minute: '2-digit',
+      hour12: false
       hour12: false
     });
   };
@@ -287,13 +294,38 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
           <Ionicons name="ellipsis-vertical" size={20} color="#333" />
         </TouchableOpacity>
       </View>
+  return (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <View style={styles.headerAvatar}>
+            <MaterialIcons name="cake" size={24} color="#FF6B6B" />
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>CakeShop Bot</Text>
+            <Text style={styles.headerSubtitle}>Trợ lý tìm bánh ngọt</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.moreButton}>
+          <Ionicons name="ellipsis-vertical" size={20} color="#333" />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView ref={scrollViewRef} style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
       </ScrollView>
+      <ScrollView ref={scrollViewRef} style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
+        {messages.map((message) => (
+          <MessageBubble key={message.id} message={message} />
+        ))}
+      </ScrollView>
 
+      <QuickActions />
       <QuickActions />
 
       <View style={styles.inputContainer}>
@@ -321,7 +353,35 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
       </View>
     </KeyboardAvoidingView>
   );
+      <View style={styles.inputContainer}>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.textInput}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Nhập tin nhắn..."
+            placeholderTextColor="#999"
+            multiline
+            maxLength={500}
+          />
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.sendButton,
+            inputText.trim() ? styles.sendButtonActive : styles.sendButtonInactive
+          ]}
+          onPress={sendMessage}
+          disabled={!inputText.trim()}
+        >
+          <Ionicons name="send" size={18} color={inputText.trim() ? "#fff" : "#999"} />
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
 };
+
+export default ChatScreen;
+
 
 export default ChatScreen;
 

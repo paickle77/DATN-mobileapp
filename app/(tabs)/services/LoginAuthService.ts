@@ -1,5 +1,6 @@
 // services/LoginAuthService.ts
 import axios from 'axios';
+import bcrypt from 'bcryptjs';
 import { saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
@@ -17,7 +18,7 @@ export interface LoginResponse {
 }
 
 class LoginAuthService {
-  private apiUrl = `${BASE_URL}/users`;
+  private apiUrl = `${BASE_URL}/login`;
 
   // Lấy danh sách users để login
   async getAllUsers(): Promise<User[]> {
@@ -36,41 +37,77 @@ class LoginAuthService {
     }
   }
 
-  // Xử lý login
-  async login(email: string, password: string): Promise<LoginResponse> {
+  // Kiểm tra mật khẩu với BCrypt
+  private async comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
     try {
-      // Lấy danh sách users
-      const users = await this.getAllUsers();
-      
-      // Tìm user khớp với email và password
-      const matchedUser = users.find((user: User) => {
-        return user.email === email && user.password === password;
-      });
-
-      if (matchedUser) {
-        console.log('Đăng nhập thành công:', matchedUser);
-        console.log('id người dùng: ',matchedUser._id);
-
-         await saveUserData({ value: matchedUser._id, key: 'userData' });
-
-
-        return {
-          success: true,
-          message: 'Đăng nhập thành công!',
-          user: matchedUser,
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Email hoặc mật khẩu không chính xác!',
-        };
-      }
+      const isMatch = await bcrypt.compare(plainPassword, hashedPassword);
+      return isMatch;
     } catch (error) {
-      console.error('Lỗi đăng nhập:', error);
+      console.error('Lỗi khi so sánh mật khẩu:', error);
+      return false;
+    }
+  }
+
+  // Mã hóa mật khẩu với BCrypt (tiện ích bổ sung)
+  async hashPassword(password: string): Promise<string> {
+    try {
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      return hashedPassword;
+    } catch (error) {
+      console.error('Lỗi khi mã hóa mật khẩu:', error);
+      throw error;
+    }
+  }
+
+  // Xử lý login với BCrypt
+  // services/LoginAuthService.ts
+async login(email: string, password: string): Promise<LoginResponse> {
+  try {
+    const response = await axios.post(`${BASE_URL}/login`, { email, password });
+    console.log('Response:', response.data);
+
+    if (response.data.success && response.data.data?.user) {
+      const { token, user } = response.data.data;
+
+      await saveUserData({ key: 'token', value: token });
+      await saveUserData({ key: 'userData', value: user._id });
+
+      return {
+        success: true,
+        message: 'Đăng nhập thành công!',
+        user
+      };
+    } else {
       return {
         success: false,
-        message: 'Có lỗi xảy ra khi đăng nhập. Vui lòng thử lại.',
+        message: response.data.message || 'Sai thông tin đăng nhập',
       };
+    }
+  } catch (error: any) {
+    console.error('Lỗi đăng nhập:', error);
+    return {
+      success: false,
+      message: 'Đăng nhập thất bại. Vui lòng kiểm tra tài khoản và mật khẩu.',
+    };
+  }
+}
+
+
+  // Phương thức kiểm tra mật khẩu mà không cần đăng nhập
+  async verifyPassword(email: string, password: string): Promise<boolean> {
+    try {
+      const users = await this.getAllUsers();
+      const user = users.find((u: User) => u.email === email);
+      
+      if (!user) {
+        return false;
+      }
+
+      return await this.comparePassword(password, user.password);
+    } catch (error) {
+      console.error('Lỗi khi xác thực mật khẩu:', error);
+      return false;
     }
   }
 }
