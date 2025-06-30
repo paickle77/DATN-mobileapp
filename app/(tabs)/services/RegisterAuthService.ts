@@ -84,7 +84,7 @@ static async registerUser(data: RegisterData): Promise<User> {
     const user = response.data.data;
 
     // ✅ Lưu user._id vào AsyncStorage
-    await saveUserData({ key: 'userId', value: user._id });
+    await saveUserData({ key: 'userData', value: user._id });
     console.log(`Đăng ký thành công với user ID: ${user._id}`);
 
     return user;

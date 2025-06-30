@@ -1,4 +1,5 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -12,6 +13,8 @@ import {
   View
 } from 'react-native';
 
+const genAI = new GoogleGenerativeAI("AIzaSyAauakKip4CAEdknvzI6R2jZboBKMX_JUg");
+
 interface Message {
   id: string;
   text: string;
@@ -22,10 +25,11 @@ interface Message {
 
 const ChatScreen = () => {
   const navigation = useNavigation();
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Chào bạn! Tôi có thể giúp bạn tìm các tiệm bánh ngọt ngon gần đây. Bạn đang tìm loại bánh gì?',
+      text: 'Chào bạn! Tôi là chatbot của CakeShop, tôi có thể giúp gì cho bạn',
       isUser: false,
       timestamp: new Date(),
       type: 'text',
@@ -33,91 +37,199 @@ const ChatScreen = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
+  const [loadingMessageId, setLoadingMessageId] = useState<string | null>(null);
+  const [loadingDots, setLoadingDots] = useState('');
 
-  const sendMessage = () => {
-    if (inputText.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: inputText,
-        isUser: true,
-        timestamp: new Date(),
-        type: 'text',
-      };
-
-      setMessages(prev => [...prev, newMessage]);
-      setInputText('');
-
-      // Mô phỏng phản hồi từ bot
-      setTimeout(() => {
-        const botResponse: Message = {
-          id: (Date.now() + 1).toString(),
-          text: 'Tôi đang tìm kiếm các tiệm bánh phù hợp với yêu cầu của bạn...',
-          isUser: false,
-          timestamp: new Date(),
-          type: 'text',
-        };
-        setMessages(prev => [...prev, botResponse]);
-      }, 1000);
+  useEffect(() => {
+    if (loadingMessageId) {
+      const interval = setInterval(() => {
+        setLoadingDots(prev => (prev === '...' ? '' : prev + '.'));
+      }, 500);
+      return () => clearInterval(interval);
+    } else {
+      setLoadingDots('');
     }
-  };
+  }, [loadingMessageId]);
 
-  const sendQuickMessage = (text: string) => {
-    const newMessage: Message = {
+  const sendMessage = async () => {
+    if (!inputText.trim()) return;
+
+    const userMsg: Message = {
       id: Date.now().toString(),
-      text,
+      text: inputText.trim(),
       isUser: true,
       timestamp: new Date(),
       type: 'text',
     };
-    setMessages(prev => [...prev, newMessage]);
+
+    setMessages(prev => [...prev, userMsg]);
+    setInputText('');
+
+    // Hiển thị tin nhắn loading
+    const loadingId = (Date.now() + 1).toString();
+    const loadingMsg: Message = {
+      id: loadingId,
+      text: 'Đang xử lý',
+      isUser: false,
+      timestamp: new Date(),
+      type: 'text',
+    };
+    setMessages(prev => [...prev, loadingMsg]);
+    setLoadingMessageId(loadingId);
+
+    try {
+       console.log("🚀 Bắt đầu gọi API Ollama...");
+      const response = await fetch('http://10.0.2.2:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama3',
+          prompt: `Bạn là chatbot của hệ thống APP CakeShop. 
+Trả lời ngắn gọn, thân thiện, chỉ gợi ý về vấn đề liên quan đến bánh , bánh ngọt và đặc biệt phải sử dụng tiếng Việt.
+Người dùng hỏi: "${userMsg.text}"`,
+          stream: false
+        })
+      });
+
+     console.log("📥 Đã nhận phản hồi HTTP, đang parse JSON...");
+    const data = await response.json();
+    console.log("✅ JSON trả về từ Ollama:", data);
+      const reply = data.response || 'Xin lỗi, tôi chưa hiểu ý bạn.';
+
+      setMessages(prev => prev.map(msg =>
+        msg.id === loadingId ? { ...msg, text: reply, timestamp: new Date() } : msg
+      ));
+      setLoadingMessageId(null);
+
+    } catch (err) {
+      console.error("❌ Lỗi gọi Ollama:", err);
+      setMessages(prev => prev.map(msg =>
+        msg.id === loadingId ? {
+          ...msg,
+          text: '❌ Xin lỗi, hệ thống gặp sự cố.',
+          timestamp: new Date()
+        } : msg
+      ));
+      setLoadingMessageId(null);
+    }
   };
 
+
+
+
+  const sendQuickMessage = (text: string) => {
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: text,
+      isUser: true,
+      timestamp: new Date(),
+      type: 'text',
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+
+    // Tùy theo text, trả về câu trả lời cứng
+    let botReply = '';
+    switch (text) {
+      case 'Hướng dẫn đặt bánh':
+        botReply = `Để đặt bánh:  
+ Bước 1: Bạn chọn vào màn hình home trên thanh Tabbar sẽ là icon đầu tiên
+ Bước 2: Tìm kiếm và chọn sản phẩm bạn muốn mua
+ Bước 3: Thêm sản phẩm đấy vào giỏ hàng
+ Bước 4: Ở thanh Tabbar chọn mục giỏ hàng, icon thứ 2
+ Bước 5: Ở trang giỏ hàng bạn nhấn thanh toán
+ Bước 6: Sau khi nhấn thanh toán sẽ chuyển qua màn thanh toán, việc của bạn là điền đủ thông tin rồi ấn thanh toán`;
+        break;
+      case 'Hướng dẫn thay đổi thông tin tài khoản':
+        botReply = `Hướng dẫn thay đổi thông tin tài khoản :
+Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
+Bước 2: Bạn chọn vào mục Hồ sơ của bạn
+Bước 3: Sửa đổi thông tin mà bạn muốn
+    `;
+        break;
+      case 'Hướng dẫn thay đổi địa chỉ giao hàng':
+        botReply = `Hướng dẫn thay đổi hoặc thêm địa chỉ giao hàng :
+Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
+Bước 2: Bạn chọn vào mục danh sách địa chỉ
+Bước 3: Ở đây sẽ hiện địa chỉ mà bạn đã sửa và xóa địa chỉ cũ, nếu muốn thêm địa chỉ ấn vào dấu + ở trên cùng bên tay phải
+
+      `;
+        break;
+      case 'Bảng xếp hạng các loại bánh bán chạy':
+        botReply = `Top Cake:
+1. Bánh kem socola, 
+2. Bánh tiramisu,
+3. Bánh cupcake.`;
+        break;
+      case 'Hướng dẫn theo dõi đơn hàng':
+        botReply = `Hướng dẫn theo dõi đơn hàng:
+Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
+Bước 2: Bạn chọn vào mục đơn hàng của bạn
+Bước 3: Ở màn hình này bạn có thể theo dõi đơn hàng của bạn rồi`;
+        break;
+      case 'Hướng dẫn thay đổi phương thức thanh toán':
+        botReply = `Hướng dẫn thay đổi phương thức thanh toán:
+Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
+Bước 2: Bạn chọn vào mục phương thức thanh toán
+Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh toán của mình rồi`;
+        break;
+      default:
+        botReply = 'Xin lỗi, tôi chưa hiểu yêu cầu của bạn.';
+    }
+
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      text: botReply,
+      isUser: false,
+      timestamp: new Date(),
+      type: 'text',
+    };
+
+    setMessages(prev => [...prev, botMsg]);
+  };
+
+
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('vi-VN', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
   };
 
   useEffect(() => {
-    // Tự động cuộn xuống tin nhắn mới nhất
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
   const QuickActions = () => (
     <View style={styles.quickActions}>
-      <TouchableOpacity 
-        style={styles.quickButton}
-        onPress={() => sendQuickMessage('Tìm tiệm bánh gần tôi')}
-      >
-        <Ionicons name="location" size={16} color="#FF6B6B" />
-        <Text style={styles.quickButtonText}>Gần tôi</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={styles.quickButton}
-        onPress={() => sendQuickMessage('Bánh sinh nhật')}
-      >
-        <Ionicons name="gift" size={16} color="#FF6B6B" />
-        <Text style={styles.quickButtonText}>Sinh nhật</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={styles.quickButton}
-        onPress={() => sendQuickMessage('Bánh cupcake')}
-      >
-        <MaterialIcons name="cake" size={16} color="#FF6B6B" />
-        <Text style={styles.quickButtonText}>Cupcake</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={styles.quickButton}
-        onPress={() => sendQuickMessage('Tiệm bánh đánh giá cao')}
-      >
-        <Ionicons name="star" size={16} color="#FF6B6B" />
-        <Text style={styles.quickButtonText}>Top rated</Text>
-      </TouchableOpacity>
+      <ScrollView
+        horizontal={true}>
+        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn đặt bánh')}>
+          <Ionicons name="cart" size={16} color="#FF6B6B" />
+          <Text style={styles.quickButtonText}>Hướng dẫn đặt bánh</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn thay đổi thông tin tài khoản')}>
+          <Ionicons name="person" size={16} color="#FF6B6B" />
+          <Text style={styles.quickButtonText}>Hướng dẫn thay đổi thông tin tài khoản</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn thay đổi hoặc thêm địa chỉ giao hàng')}>
+          <Ionicons name="location" size={16} color="#FF6B6B" />
+          <Text style={styles.quickButtonText}>Hướng dẫn thay đổi hoặc thêm địa chỉ giao hàng</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn theo dõi đơn hàng')}>
+          <Ionicons name="eye" size={16} color="#FF6B6B" />
+          <Text style={styles.quickButtonText}>Hướng dẫn theo dõi đơn hàng</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn thay đổi phương thức thanh toán')}>
+          <Ionicons name="card" size={16} color="#FF6B6B" />
+          <Text style={styles.quickButtonText}>Hướng dẫn thay đổi phương thức thanh toán</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Bảng xếp hạng các loại bánh bán chạy')}>
+          <Ionicons name="star" size={16} color="#FF6B6B" />
+          <Text style={styles.quickButtonText}>Top Cake</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 
@@ -131,7 +243,6 @@ const ChatScreen = () => {
           <MaterialIcons name="cake" size={20} color="#FF6B6B" />
         </View>
       )}
-      
       <View style={[
         styles.messageContent,
         message.isUser ? styles.userMessageContent : styles.botMessageContent
@@ -140,7 +251,12 @@ const ChatScreen = () => {
           styles.messageText,
           message.isUser ? styles.userMessageText : styles.botMessageText
         ]}>
-          {message.text}
+          <Text style={[
+            styles.messageText,
+            message.isUser ? styles.userMessageText : styles.botMessageText
+          ]}>
+            {message.id === loadingMessageId ? `${message.text}${loadingDots}` : message.text}
+          </Text>
         </Text>
         <Text style={[
           styles.timestamp,
@@ -152,93 +268,70 @@ const ChatScreen = () => {
     </View>
   );
 
- return (
-  <KeyboardAvoidingView 
-    style={styles.container}
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-  >
-    {/* Xử lý thông báo */}
-    <View style={styles.header}>
-      <TouchableOpacity 
-        style={styles.backButton}
-        onPress={() => navigation.navigate('Home')}
-      >
-        <Ionicons name="arrow-back" size={24} color="#333" />
-      </TouchableOpacity>
-      
-      <View style={styles.headerCenter}>
-        <View style={styles.headerAvatar}>
-          <MaterialIcons name="cake" size={24} color="#FF6B6B" />
+  return (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <View style={styles.headerAvatar}>
+            <MaterialIcons name="cake" size={24} color="#FF6B6B" />
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>CakeShop Bot</Text>
+            <Text style={styles.headerSubtitle}>Trợ lý tìm bánh ngọt</Text>
+          </View>
         </View>
-        <View>
-          <Text style={styles.headerTitle}>CakeShop Bot</Text>
-          <Text style={styles.headerSubtitle}>Trợ lý tìm bánh ngọt</Text>
-        </View>
-      </View>
-      
-      <TouchableOpacity style={styles.moreButton}>
-        <Ionicons name="ellipsis-vertical" size={20} color="#333" />
-      </TouchableOpacity>
-    </View>
-
-    {/* Danh sách tin nhắn */}
-    <ScrollView 
-      ref={scrollViewRef}
-      style={styles.messagesContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
-      ))}
-    </ScrollView>
-
-    {/* Các hành động nhanh */}
-    <QuickActions />
-
-    {/* Ô nhập tin nhắn */}
-    <View style={styles.inputContainer}>
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={styles.textInput}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Nhập tin nhắn..."
-          placeholderTextColor="#999"
-          multiline
-          maxLength={500}
-        />
-        
-        <TouchableOpacity style={styles.attachButton}>
-          <Ionicons name="camera" size={20} color="#666" />
+        <TouchableOpacity style={styles.moreButton}>
+          <Ionicons name="ellipsis-vertical" size={20} color="#333" />
         </TouchableOpacity>
       </View>
-      
-      <TouchableOpacity 
-        style={[
-          styles.sendButton,
-          inputText.trim() ? styles.sendButtonActive : styles.sendButtonInactive
-        ]}
-        onPress={sendMessage}
-        disabled={!inputText.trim()}
-      >
-        <Ionicons 
-          name="send" 
-          size={18} 
-          color={inputText.trim() ? "#fff" : "#999"} 
-        />
-      </TouchableOpacity>
-    </View>
-  </KeyboardAvoidingView>
-);
 
+      <ScrollView ref={scrollViewRef} style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
+        {messages.map((message) => (
+          <MessageBubble key={message.id} message={message} />
+        ))}
+      </ScrollView>
+
+      <QuickActions />
+
+      <View style={styles.inputContainer}>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.textInput}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Nhập tin nhắn..."
+            placeholderTextColor="#999"
+            multiline
+            maxLength={500}
+          />
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.sendButton,
+            inputText.trim() ? styles.sendButtonActive : styles.sendButtonInactive
+          ]}
+          onPress={sendMessage}
+          disabled={!inputText.trim()}
+        >
+          <Ionicons name="send" size={18} color={inputText.trim() ? "#fff" : "#999"} />
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
 };
+
+export default ChatScreen;
+
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  
+
   // Styles cho giao diện
   header: {
     flexDirection: 'row',
@@ -428,5 +521,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
 });
-
-export default ChatScreen;

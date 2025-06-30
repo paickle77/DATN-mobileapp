@@ -1,4 +1,4 @@
-import { Feather, FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -200,9 +200,7 @@ const ProfileScreen = () => {
                         source={require('../../../../assets/images/avatar-placeholder.png')}
                         style={styles.avatar}
                     />
-                    <TouchableOpacity style={styles.editIcon}>
-                        <MaterialIcons name="edit" size={18} color="#fff" />
-                    </TouchableOpacity>
+                   
                 </View>
                 <Text style={styles.name}>
                     {userProfile?.name || 'Người Dùng'}
