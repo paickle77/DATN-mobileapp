@@ -1,139 +1,63 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+// ResetPasswordScreen.tsx
+import axios from 'axios';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Button, Text, TextInput, View } from 'react-native';
+import { BASE_URL } from '../../services/api';
 
-export default function NewPassword() {
-  // Lấy email từ param
-  const { email } = useLocalSearchParams<{ email: string }>();
-  const userEmail = email ?? '';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [secureText, setSecureText] = useState(true);
-  const navigation = useNavigation();
-
- const handleSetNewPassword = () => {
-  if (password !== confirmPassword) {
-    alert('Mật khẩu không khớp!');
-    return;
-  }
-  console.log('Set new password for:', userEmail);
-  console.log('Password mới:', password);
-  // TODO: gọi API đặt mật khẩu mới
-  
-  alert('Đặt mật khẩu mới thành công!');
-  (navigation as any).navigate('Login');
+type AuthStackParamList = {
+  Login: undefined;
+  // add other screens if needed
 };
 
+type ResetPasswordScreenProps = {
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+};
+
+export default function ResetPasswordScreen({ navigation }: ResetPasswordScreenProps) {
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+  const handleResetPassword = async () => {
+    try {
+      const res = await axios.post( BASE_URL + '/users/reset-password', {
+        otp,
+        newPassword,
+      });
+
+      Alert.alert('Thành công', res.data.msg || 'Đặt lại mật khẩu thành công');
+      navigation.navigate('Login'); // hoặc màn hình khác
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        Alert.alert('Lỗi', err.response?.data?.msg || 'Có lỗi xảy ra');
+      } else {
+        Alert.alert('Lỗi', 'Có lỗi xảy ra');
+      }
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Nút quay lại */}
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
-        <Ionicons name="arrow-back-circle-outline" size={30} color="#000" />
-      </TouchableOpacity>
+    <View style={{ padding: 16 }}>
+      <Text>Nhập mã OTP</Text>
+      <TextInput
+        value={otp}
+        onChangeText={setOtp}
+        placeholder="OTP"
+        keyboardType="numeric"
+        style={{ borderWidth: 1, marginBottom: 12, padding: 8 }}
+      />
 
-      <Text style={styles.title}>Mật khẩu mới</Text>
-      <Text style={styles.subtitle}>
-        Mật khẩu mới của bạn phải khác với mật khẩu đã sử dụng trước đó
-      </Text>
+      <Text>Nhập mật khẩu mới</Text>
+      <TextInput
+        value={newPassword}
+        onChangeText={setNewPassword}
+        placeholder="Mật khẩu mới"
+        secureTextEntry
+        style={{ borderWidth: 1, marginBottom: 12, padding: 8 }}
+      />
 
-      {/* Input Mật khẩu mới */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Mật khẩu"
-          placeholderTextColor="#999"
-          secureTextEntry={secureText}
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity
-          style={styles.eyeIcon}
-          onPress={() => setSecureText(!secureText)}
-        >
-          <Ionicons name={secureText ? 'eye-off' : 'eye'} size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Input xác nhận mật khẩu */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Xác nhận mật khẩu"
-          placeholderTextColor="#999"
-          secureTextEntry={secureText}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
-        <TouchableOpacity
-          style={styles.eyeIcon}
-          onPress={() => setSecureText(!secureText)}
-        >
-          <Ionicons name={secureText ? 'eye-off' : 'eye'} size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Nút Tạo mật khẩu mới */}
-      <TouchableOpacity style={styles.button} onPress={handleSetNewPassword}>
-        <Text style={styles.buttonText}>Tạo mật khẩu mới</Text>
-      </TouchableOpacity>
+      <Button title="Đặt lại mật khẩu" onPress={handleResetPassword} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 30,
-    backgroundColor: '#fff',
-  },
-  backIcon: {
-    marginTop: 20,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    alignSelf: 'center',
-    marginTop: 20,
-    color: '#333',
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: '#555',
-    marginVertical: 20,
-    fontSize: 16,
-  },
-  inputContainer: {
-    position: 'relative',
-    marginBottom: 20,
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 25,
-    paddingHorizontal: 20,
-    paddingRight: 45,
-    color: '#333',
-    backgroundColor: '#f9f9f9',
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 15,
-    top: 13,
-  },
-  button: {
-    backgroundColor: '#6B4F35',
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 30,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
