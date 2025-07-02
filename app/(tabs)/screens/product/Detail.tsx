@@ -69,16 +69,16 @@ const Detail: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-   const baseUrl = BASE_URL + '/productsandcategoryid';
-  
+  const baseUrl = `${BASE_URL}/productsandcategoryid`;
+
 
   const sizeOptions = [
   { label: '13x6cm (mini)', value: 1 },
   { label: '17x8cm (nhỏ)', value: 2 },
   { label: '21x8cm (vừa)', value: 3 },
-  { label: '100 gram', value: 4 },
-  { label: '200 gram', value: 5 },
-  { label: '500 gram', value: 6 }
+   { label: '100g (nhỏ)', value: 4 },
+    { label: '200g (vừa)', value: 5 },
+     { label: '500g (lớn)', value: 6 },
 ];
 
   useEffect(() => {
