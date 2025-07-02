@@ -36,14 +36,14 @@ interface Product {
     name: string;
   };
 }
-
 interface Size {
-  _id:string;
-  Product_id:string;
-  quantity:number;
-  size:number;
-  price_increase:number;
+  _id: string;
+  Product_id: string;
+  quantity: number;
+  size: string; // 👉 đổi từ number → string
+  price_increase: number;
 }
+
 
 interface RouteParams {
   id: string;
@@ -72,31 +72,36 @@ const Detail: React.FC = () => {
   const baseUrl = `${BASE_URL}/productsandcategoryid`;
 
 
-  const sizeOptions = [
-  { label: '13x6cm (mini)', value: 1 },
-  { label: '17x8cm (nhỏ)', value: 2 },
-  { label: '21x8cm (vừa)', value: 3 },
-   { label: '100g (nhỏ)', value: 4 },
-    { label: '200g (vừa)', value: 5 },
-     { label: '500g (lớn)', value: 6 },
-];
+//   const sizeOptions = [
+//   { label: '13x6cm (mini)', value: 1 },
+//   { label: '17x8cm (nhỏ)', value: 2 },
+//   { label: '21x8cm (vừa)', value: 3 },
+//    { label: '100g (nhỏ)', value: 4 },
+//     { label: '200g (vừa)', value: 5 },
+//      { label: '500g (lớn)', value: 6 },
+// ];
 
 
   useEffect(() => {
+ fetchData()
     fetchProductDetails();
     fetchsize();
   }, []);
 
 
+     const fetchData = async () => {
+    const user = await getUserData('userData');
+    if (user) {
+      console.log('User ID-Details:', user);
+    }-+
+  };
   
  useEffect(() => {
   if (product) {
     let basePrice = product.discount_price || product.price;
 
-    const sizeData = sizes.find(s => {
-      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-      return label === selectedSize;
-    });
+  const sizeData = sizes.find(s => s.size === selectedSize);
+
 
     if (sizeData) {
       basePrice += sizeData.price_increase * 1000; // vì price_increase là đơn vị ngàn
@@ -178,7 +183,7 @@ const Detail: React.FC = () => {
 
 const incrementQuantity = () => {
   const sizeData = sizes.find(s => {
-    const label = sizeOptions.find(opt => opt.value === s.size)?.label;
+    const label = s.size || `Không xác định`;
     return label === selectedSize;
   });
   if (sizeData && quantity < sizeData.quantity) {
@@ -202,10 +207,7 @@ const handleAddToCart = () => {
   }
 
   // Tìm size đã chọn
-  const sizeData = sizes.find(s => {
-    const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-    return label === selectedSize;
-  });
+ const sizeData = sizes.find(s => s.size === selectedSize);
 
   // Log toàn bộ dữ liệu
   console.log("=== DỮ LIỆU ĐÃ RENDER ===");
@@ -312,44 +314,36 @@ const handleAddToCart = () => {
 
 
           <Text style={styles.sectionTitle}>Kích Thước</Text>
-       <View style={styles.sizeContainer}>
-  {sizes.map(s => {
-    const label = sizeOptions.find(opt => opt.value === s.size)?.label || `Size ${s.size}`;
-    return (
-      <TouchableOpacity
-        key={s._id}
-        style={[
-          styles.sizeButton,
-          selectedSize === label ? styles.activeSize : null,
-        ]}
-        onPress={() => setSelectedSize(label)}
-      >
-        <Text style={[
-          styles.sizeText,
-          selectedSize === label ? styles.activeSizeText : null
-        ]}>
-          {label} 
-        </Text>
-      </TouchableOpacity>
-      
-    )
-  })}
-</View>    
+ <View style={styles.sizeContainer}>
+  {sizes.map(s => (
+    <TouchableOpacity
+      key={s._id}
+      style={[
+        styles.sizeButton,
+        selectedSize === s.size ? styles.activeSize : null,
+      ]}
+      onPress={() => setSelectedSize(s.size)}
+    >
+      <Text style={[
+        styles.sizeText,
+        selectedSize === s.size ? styles.activeSizeText : null
+      ]}>
+        {s.size}
+      </Text>
+    </TouchableOpacity>
+  ))}
+</View>
+   
 <Text style={[
   styles.detailValuequantity,
   (() => {
-    const sizeData = sizes.find(s => {
-      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-      return label === selectedSize;
-    });
-    return sizeData && sizeData.quantity > 0 ? styles.inStock : styles.outOfStock;
+   const sizeData = sizes.find(s => s.size === selectedSize);
+ return sizeData && sizeData.quantity > 0 ? styles.inStock : styles.outOfStock;
   })()
 ]}>
   {(() => {
-    const sizeData = sizes.find(s => {
-      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-      return label === selectedSize;
-    });
+   const sizeData = sizes.find(s => s.size === selectedSize);
+
     if (!selectedSize) return 'Chưa chọn kích thước';
     return sizeData
       ? (sizeData.quantity > 0 ? `Còn ${sizeData.quantity} sp` : 'Hết hàng')
@@ -364,10 +358,8 @@ const handleAddToCart = () => {
               let adjustedPrice = basePrice;
 
 
-                const sizeData = sizes.find(s => {
-                  const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-                  return label === selectedSize;
-                });
+               const sizeData = sizes.find(s => s.size === selectedSize);
+
               
               if (sizeData) {
                 adjustedPrice += sizeData.price_increase * 1000; // nếu đơn vị là ngàn
@@ -438,31 +430,24 @@ const handleAddToCart = () => {
     {
       backgroundColor: (() => {
         if (!selectedSize) return '#ccc';
-        const sizeData = sizes.find(s => {
-          const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-          return label === selectedSize;
-        });
+       const sizeData = sizes.find(s => s.size === selectedSize);
+
         return sizeData && sizeData.quantity > 0 ? '#6B4F35' : '#ccc';
       })()
     }
   ]}
   onPress={handleAddToCart}
   disabled={(() => {
-    if (!selectedSize) return true;
-    const sizeData = sizes.find(s => {
-      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-      return label === selectedSize;
-    });
+const sizeData = sizes.find(s => s.size === selectedSize);
+
     return !(sizeData && sizeData.quantity > 0);
   })()}
 >
   <Text style={styles.buyButtonText}>
     {(() => {
       if (!selectedSize) return 'CHỌN KÍCH THƯỚC';
-      const sizeData = sizes.find(s => {
-        const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-        return label === selectedSize;
-      });
+const sizeData = sizes.find(s => s.size === selectedSize);
+
       return sizeData && sizeData.quantity > 0 ? 'CHỌN MUA' : 'HẾT HÀNG';
     })()}
   </Text>

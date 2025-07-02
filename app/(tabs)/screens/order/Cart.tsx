@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CartItem from '../../component/CartItem'; // Component con
 import { BASE_URL } from '../../services/api';
+import { getUserData } from '../utils/storage';
 
 const initialItems = [
   {
@@ -44,26 +45,35 @@ export default function CartScreen() {
 FetchData();
   },[]);
 
-  const FetchData = async ()=>{
-    try {
-      const data = await axios.get(`${BASE_URL}/GetAllCarts`);
-      const listCart=data.data.data;
-      console.log("dữ liệu listCart :",listCart[1].size_id);
-   const formattedData = listCart.map((item, index) => ({
-id: item._id,
-title:item.product_id.name,
-user_id: item.user_id,
-Size:item.size_id.size,
-price:item.product_id.price,
-image:item.product_id.image_url,
-quantity:item.quantity
-}));
-      setList(formattedData)
-      console.log("dữ liệu formattedData :",formattedData);
-    } catch (error) {
-      console.log("Lỗi API ",error)
-    }
+const FetchData = async () => {
+  const user = await getUserData('userData');
+  const userId = user
+  console.log("userID:", userId);
+
+  try {
+    const response = await axios.get(`${BASE_URL}/GetAllCarts`);
+    const listCart = response.data.data;
+
+    const formattedData = listCart.map((item) => ({
+      id: item._id,
+      title: item.product_id.name,
+      user_id: item.user_id,
+      Size: item.size_id.size,
+      price: item.product_id.price,
+      image: item.product_id.image_url,
+      quantity: item.quantity,
+    }));
+
+    // 🔍 Lọc ra những item có user_id khớp với user hiện tại
+    const userCartItems = formattedData.filter(item => item.user_id === userId);
+
+    setList(userCartItems); // 👉 chỉ render dữ liệu thuộc user này
+    console.log("Dữ liệu giỏ hàng theo user:", userCartItems);
+  } catch (error) {
+    console.log("Lỗi API:", error);
   }
+};
+
 
 
 
