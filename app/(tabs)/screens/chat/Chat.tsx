@@ -1,6 +1,5 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -13,8 +12,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-
-const genAI = new GoogleGenerativeAI("AIzaSyAauakKip4CAEdknvzI6R2jZboBKMX_JUg");
 
 const genAI = new GoogleGenerativeAI("AIzaSyAauakKip4CAEdknvzI6R2jZboBKMX_JUg");
 
@@ -32,7 +29,6 @@ const ChatScreen = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Chào bạn! Tôi là chatbot của CakeShop, tôi có thể giúp gì cho bạn',
       text: 'Chào bạn! Tôi là chatbot của CakeShop, tôi có thể giúp gì cho bạn',
       isUser: false,
       timestamp: new Date(),
@@ -194,13 +190,12 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
 
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('vi-VN', {
-      hour: '2-digit',
+  
     return date.toLocaleTimeString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
-      hour12: false
+     
     });
   };
 
@@ -379,9 +374,6 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
     </KeyboardAvoidingView>
   );
 };
-
-export default ChatScreen;
-
 
 export default ChatScreen;
 

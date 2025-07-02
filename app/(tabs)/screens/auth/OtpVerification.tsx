@@ -34,7 +34,11 @@ const ForgotPasswordScreen = () => {
       Alert.alert('Thành công', 'OTP đã gửi về email');
       setOtpSent(true);
     } catch (err) {
-      Alert.alert('Lỗi', err.response?.data?.msg || 'Gửi OTP thất bại');
+      let message = 'Gửi OTP thất bại';
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.msg || message;
+      }
+      Alert.alert('Lỗi', message);
     } finally {
       setLoading(false);
     }
@@ -50,7 +54,11 @@ const ForgotPasswordScreen = () => {
       Alert.alert('Thành công', 'Mật khẩu đã cập nhật');
       navigator.navigate('Login'); // Chuyển hướng về
     } catch (err) {
-      Alert.alert('Lỗi', err.response?.data?.msg || 'Không đặt lại được mật khẩu');
+      let message = 'Không đặt lại được mật khẩu';
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.msg || message;
+      }
+      Alert.alert('Lỗi', message);
     } finally {
       setLoading(false);
     }
@@ -193,8 +201,13 @@ const ForgotPasswordScreen = () => {
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>
-                Nhớ mật khẩu? {' '}
-                <Text style={styles.linkText}>Đăng nhập ngay</Text>
+              Nhớ mật khẩu?{' '}
+              <Text
+                style={styles.linkText}
+                onPress={() => navigator.navigate('Login')}
+              >
+                Đăng nhập ngay
+              </Text>
               </Text>
             </View>
           </View>
