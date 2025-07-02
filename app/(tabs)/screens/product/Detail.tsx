@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { BASE_URL } from "../../services/api";
 import { getUserData } from "../utils/storage";
 
 interface Product {
@@ -68,13 +69,16 @@ const Detail: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const baseUrl = 'http://172.20.50.65:3000/api/productsandcategoryid';
+  const baseUrl = `${BASE_URL}/productsandcategoryid`;
 
 
   const sizeOptions = [
   { label: '13x6cm (mini)', value: 1 },
   { label: '17x8cm (nhỏ)', value: 2 },
-  { label: '21x8cm (vừa)', value: 3 }
+  { label: '21x8cm (vừa)', value: 3 },
+   { label: '100g (nhỏ)', value: 4 },
+    { label: '200g (vừa)', value: 5 },
+     { label: '500g (lớn)', value: 6 },
 ];
 
 
@@ -109,7 +113,7 @@ const Detail: React.FC = () => {
     try{
       setLoading(true);
       setError(null);
-       const dateSize = await axios.get("http://172.20.50.65:3000/api/sizes");
+       const dateSize = await axios.get(`${BASE_URL}/sizes`);
         console.log('API response dateSize:', dateSize.data);
       let size = [];
       if (Array.isArray(dateSize.data)) {

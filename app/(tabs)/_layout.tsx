@@ -35,7 +35,7 @@ export default function TabLayout() {
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="NotificationScreen">
+    <Stack.Navigator initialRouteName="CartScreen">
       {/* Screens không có tab bar */}
        <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
