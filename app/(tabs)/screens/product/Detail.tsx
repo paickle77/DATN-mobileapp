@@ -93,7 +93,7 @@ const Detail: React.FC = () => {
     const user = await getUserData('userData');
     if (user) {
       console.log('User ID-Details:', user);
-    }-+
+    }
   };
   
  useEffect(() => {
