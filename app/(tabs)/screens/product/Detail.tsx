@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import axios from 'axios';
 import React, { useEffect, useState } from "react";
@@ -25,28 +25,23 @@ interface Product {
   discount_price: number;
   image_url: string;
   rating: number;
-  // stock: number;
   is_active: boolean;
   category_id: {
     _id: string;
     name: string;
   };
-   ingredient_id: {
+  ingredient_id: {
     _id: string;
     name: string;
   };
 }
+
 interface Size {
   _id: string;
   Product_id: string;
   quantity: number;
-  size: string; // 👉 đổi từ number → string
+  size: string;
   price_increase: number;
-}
-
-
-interface RouteParams {
-  id: string;
 }
 
 type RootStackParamList = {
@@ -56,12 +51,8 @@ type RootStackParamList = {
 
 const Detail: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute();
-  // const { id } = route.params as RouteParams;
-  
   const [product, setProduct] = useState<Product | null>(null);
   const [sizes, setSizes] = useState<Size[]>([]);
-
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -69,210 +60,121 @@ const Detail: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const baseUrl = `${BASE_URL}/productsandcategoryid`;
-
-
-//   const sizeOptions = [
-//   { label: '13x6cm (mini)', value: 1 },
-//   { label: '17x8cm (nhỏ)', value: 2 },
-//   { label: '21x8cm (vừa)', value: 3 },
-//    { label: '100g (nhỏ)', value: 4 },
-//     { label: '200g (vừa)', value: 5 },
-//      { label: '500g (lớn)', value: 6 },
-// ];
-
-
   useEffect(() => {
- fetchData()
     fetchProductDetails();
-    fetchsize();
+    fetchSizes();
+    checkFavoriteStatus();
   }, []);
 
-
-     const fetchData = async () => {
-    const user = await getUserData('userData');
-    if (user) {
-      console.log('User ID-Details:', user);
+  useEffect(() => {
+    if (product) {
+      let basePrice = product.discount_price || product.price;
+      const sizeData = sizes.find(s => s.size === selectedSize);
+      if (sizeData) basePrice += sizeData.price_increase * 1000;
+      setTotalPrice(quantity * basePrice);
     }
-  };
-  
- useEffect(() => {
-  if (product) {
-    let basePrice = product.discount_price || product.price;
-
-  const sizeData = sizes.find(s => s.size === selectedSize);
-
-
-    if (sizeData) {
-      basePrice += sizeData.price_increase * 1000; // vì price_increase là đơn vị ngàn
-    }
-
-    setTotalPrice(quantity * basePrice);
-  }
-}, [quantity, product, selectedSize, sizes]);
-
-
-
-
-  const fetchsize=async ()=>{
-    try{
-      setLoading(true);
-      setError(null);
-       const dateSize = await axios.get(`${BASE_URL}/sizes`);
-        console.log('API response dateSize:', dateSize.data);
-      let size = [];
-      if (Array.isArray(dateSize.data)) {
-        size = dateSize.data;
-      } else if (Array.isArray(dateSize.data.data)) {
-        size = dateSize.data.data;
-      } else {
-        throw new Error('Unexpected response format');
-      }
-       const id = await getUserData('productID');
-      console.log("productID lấy ra1:", id);
-     const foundSizes = size.filter((item: Size) => item.Product_id === id);
-      setSizes(foundSizes);
-
-           if (foundSizes) {
-        console.log("foundSize lấy ra ID:", foundSizes);
-        setProduct(foundSizes);
-      } else {
-        setError('Không tìm thấy sản phẩm');
-      }
-    }catch(err){
-      console.log(err)
-    }
-
-
-  }
-
+  }, [quantity, product, selectedSize, sizes]);
 
   const fetchProductDetails = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await axios.get(baseUrl);
-      console.log('API response orderDetails:', response.data);
-      
-      let products = [];
-      if (Array.isArray(response.data)) {
-        products = response.data;
-      } else if (Array.isArray(response.data.data)) {
-        products = response.data.data;
-      } else {
-        throw new Error('Unexpected response format');
-      }
-     const id = await getUserData('productID');
-      console.log("productID lấy ra:", id);
-      
-      const foundProduct = products.find((item: Product) => item._id === id,)
-      
-      if (foundProduct) {
-        console.log("Id lấy ra:", foundProduct._id);
-        setProduct(foundProduct);
-      } else {
-        setError('Không tìm thấy sản phẩm');
-      }
+      const res = await axios.get(`${BASE_URL}/productsandcategoryid`);
+      const id = await getUserData('productID');
+      const products = res.data.data || res.data;
+      const found = products.find((item: Product) => item._id === id);
+      if (found) setProduct(found);
+      else setError('Không tìm thấy sản phẩm');
     } catch (err) {
-      console.error('API error:', err);
       setError('Lỗi khi tải dữ liệu sản phẩm');
     } finally {
       setLoading(false);
     }
   };
 
-const incrementQuantity = () => {
-  const sizeData = sizes.find(s => {
-    const label = s.size || `Không xác định`;
-    return label === selectedSize;
-  });
-  if (sizeData && quantity < sizeData.quantity) {
-    setQuantity(prev => prev + 1);
-  } else {
-    Alert.alert('Thông báo', 'Không đủ hàng trong kho hoặc chưa chọn size');
-  }
-};
+  const fetchSizes = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/sizes`);
+      const id = await getUserData('productID');
+      const allSizes = res.data.data || res.data;
+      const foundSizes = allSizes.filter((s: Size) => s.Product_id === id);
+      setSizes(foundSizes);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-const decrementQuantity = () => {
-  if (quantity > 0) {
-    setQuantity(prev => prev - 1);
-  }
-};
+  const checkFavoriteStatus = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/favorites2`);
+      const format = res.data.data;
+      const userID = await getUserData('userData');
+      const productID = await getUserData('productID');
+      const found = format.find(item => item.user_id === userID && item.product_id?._id === productID);
+      setIsFavorite(!!found);
+    } catch (err) {
+      setIsFavorite(false);
+    }
+  };
 
+  const toggleFavorite = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/favorites2`);
+      const data = res.data.data;
+      const userID = await getUserData('userData');
+      const id = await getUserData('productID');
+      const found = data.find(item => item.user_id === userID && item.product_id?._id === id);
+      if (found) {
+        await axios.delete(`${BASE_URL}/favorites/${found._id}`);
+        setIsFavorite(false);
+        Alert.alert('Thông báo', 'Đã xóa khỏi danh sách yêu thích!');
+      } else {
+        await axios.post(`${BASE_URL}/favorites`, { user_id: userID, product_id: id });
+        setIsFavorite(true);
+        Alert.alert('Thành công', 'Đã thêm vào danh sách yêu thích!');
+      }
+    } catch (err) {
+      Alert.alert('Lỗi', 'Không thể cập nhật danh sách yêu thích.');
+    }
+  };
 
-const handleAddToCart = () => {
-  if (quantity === 0) {
-    Alert.alert('Thông báo', 'Vui lòng chọn số lượng sản phẩm');
-    return;
-  }
+  const incrementQuantity = () => {
+    const sizeData = sizes.find(s => s.size === selectedSize);
+    if (sizeData && quantity < sizeData.quantity) setQuantity(q => q + 1);
+    else Alert.alert('Thông báo', 'Không đủ hàng trong kho hoặc chưa chọn size');
+  };
 
-  // Tìm size đã chọn
- const sizeData = sizes.find(s => s.size === selectedSize);
+  const decrementQuantity = () => {
+    if (quantity > 0) setQuantity(q => q - 1);
+  };
 
-  // Log toàn bộ dữ liệu
-  console.log("=== DỮ LIỆU ĐÃ RENDER ===");
-  console.log("Product:", product);
-  console.log("Selected Size:", selectedSize);
-  console.log("Size Data:", sizeData);
-  console.log("Quantity:", quantity);
-  console.log("Total Price:", totalPrice);
+  const handleAddToCart = () => {
+    if (quantity === 0) return Alert.alert('Thông báo', 'Vui lòng chọn số lượng sản phẩm');
+    const sizeData = sizes.find(s => s.size === selectedSize);
+    Alert.alert('Thêm vào giỏ hàng', `Đã thêm ${quantity} ${product?.name} (size ${selectedSize || "M"}) với tổng giá ${formatPrice(totalPrice)}đ`);
+  };
 
-  Alert.alert(
-    'Thêm vào giỏ hàng',
-    `Đã thêm ${quantity} ${product?.name} (size ${selectedSize || "M"}) vào giỏ hàng với tổng giá ${formatPrice(totalPrice)}đ`,
-    [{ text: 'OK' }]
+  const formatPrice = (val: number) => val.toLocaleString("vi-VN");
+
+  if (loading) return (
+    <SafeAreaView style={styles.SafeAreaView}>
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#6B4F35" />
+        <Text style={{ marginTop: 10 }}>Đang tải...</Text>
+      </View>
+    </SafeAreaView>
   );
-};
 
+  if (error || !product) return (
+    <SafeAreaView style={styles.SafeAreaView}>
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error || 'Không có dữ liệu sản phẩm'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchProductDetails}>
+          <Text style={styles.retryButtonText}>Thử lại</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
 
-  const toggleFavorite = () => {
-    setIsFavorite((prev) => !prev);
-    Alert.alert(
-      'Thông báo',
-      isFavorite ? "Đã xóa khỏi yêu thích!" : "Đã thêm vào danh sách yêu thích!"
-    );
-  };
-
-  const formatPrice = (value: number): string => {
-    return value.toLocaleString("vi-VN");
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.SafeAreaView}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#6B4F35" />
-          <Text style={{marginTop: 10}}>Đang tải...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={styles.SafeAreaView}>
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton} 
-            onPress={fetchProductDetails}
-          >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!product) {
-    return (
-      <SafeAreaView style={styles.SafeAreaView}>
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>Không có dữ liệu sản phẩm</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <ScrollView>
