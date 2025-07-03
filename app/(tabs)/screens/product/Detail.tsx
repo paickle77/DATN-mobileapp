@@ -147,11 +147,63 @@ const Detail: React.FC = () => {
     if (quantity > 0) setQuantity(q => q - 1);
   };
 
-  const handleAddToCart = () => {
-    if (quantity === 0) return Alert.alert('Thông báo', 'Vui lòng chọn số lượng sản phẩm');
+const handleAddToCart = async () => {
+  if (quantity === 0) {
+    return Alert.alert('Thông báo', 'Vui lòng chọn số lượng sản phẩm');
+  }
+
+  try {
+    const userID = await getUserData('userData');
     const sizeData = sizes.find(s => s.size === selectedSize);
-    Alert.alert('Thêm vào giỏ hàng', `Đã thêm ${quantity} ${product?.name} (size ${selectedSize || "M"}) với tổng giá ${formatPrice(totalPrice)}đ`);
-  };
+    if (!sizeData) return Alert.alert('Lỗi', 'Vui lòng chọn size hợp lệ');
+
+    const productID = product?._id;
+    const sizeID = sizeData._id;
+
+    // 1. Lấy toàn bộ giỏ hàng
+    const response = await axios.get(`${BASE_URL}/GetAllCarts`);
+    const cartItems = response.data.data;
+    console.log("response: ", cartItems);
+
+    // 2. Kiểm tra trùng user_id + product_id + size_id
+    const existingCartItem = cartItems.find((item: any) =>
+      item.user_id === userID &&
+      item.product_id?._id === productID &&
+      item.size_id?._id === sizeID
+    );
+
+    if (existingCartItem) {
+      // 3. Nếu đã có → Gọi PUT để tăng số lượng
+      const updatedQuantity = existingCartItem.quantity + quantity;
+      await axios.put(`${BASE_URL}/carts/${existingCartItem._id}`, {
+        quantity: updatedQuantity
+      });
+
+      Alert.alert(
+        'Đã cập nhật giỏ hàng',
+        `Số lượng mới: ${updatedQuantity} sản phẩm ${product?.name} (size ${selectedSize})`
+      );
+    } else {
+      // 4. Nếu chưa có → Gọi POST để thêm mới
+      await axios.post(`${BASE_URL}/addtocarts`, {
+        user_id: userID,
+        product_id: productID,
+        size_id: sizeID,
+        quantity: quantity
+      });
+
+      Alert.alert(
+        'Đã thêm vào giỏ hàng',
+        `${quantity} ${product?.name} (size ${selectedSize}) với tổng giá ${formatPrice(totalPrice)}đ`
+      );
+    }
+
+  } catch (error) {
+    console.error('❌ Lỗi khi xử lý giỏ hàng:', error);
+    Alert.alert('Lỗi', 'Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+  }
+};
+
 
   const formatPrice = (val: number) => val.toLocaleString("vi-VN");
 

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CartItem from '../../component/CartItem'; // Component con
 import { BASE_URL } from '../../services/api';
@@ -41,9 +41,11 @@ export default function CartScreen() {
    const [itemToRemove, setItemToRemove] = useState(null);
   const [list,setList]=useState([]);
 
-  useEffect(()=>{
-FetchData();
-  },[]);
+useFocusEffect(
+  useCallback(() => {
+    FetchData();
+  }, [])
+);
 
 const FetchData = async () => {
   const user = await getUserData('userData');
@@ -131,27 +133,28 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
       </View>
 
 
-      <FlatList
-        data={list}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        renderItem={({ item, index }) => (
-         <CartItem
-  name={item.title}
-  price={item.price}
-  image={item.image}
-  Size={item.Size}
-  quantily={item.quantity}
-  Uptoquantily={(newQ) => updateQuantity(item, newQ)}
-  Dowtoquantily={(newQ) => updateQuantity(item, newQ)}
-  onRemove={() => {
-    setItemToRemoveIndex(item.id);
-    setShowConfirm(true);
-  }}
+<FlatList
+  data={list}
+  keyExtractor={(item) => item.id}
+  contentContainerStyle={{ paddingBottom: 120 }}
+  renderItem={({ item, index }) => (
+    <CartItem
+      name={item.title}
+      price={item.price}
+      image={item.image}
+      Size={item.Size}
+      quantily={item.quantity}
+      Uptoquantily={(newQ) => updateQuantity(item, newQ)}
+      Dowtoquantily={(newQ) => updateQuantity(item, newQ)}
+      onRemove={() => {
+        setItemToRemoveIndex(item.id);
+        setShowConfirm(true);
+      }}
+    />
+  )}
+  showsVerticalScrollIndicator={false}
 />
 
-        )}
-      />
 
       {showConfirm && (
         <View style={styles.modalOverlay}>
@@ -204,7 +207,7 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
         </View>
         <View style={styles.paymentInfoRow}>
           <Text style={styles.paymentLabel}>Giảm giá</Text>
-          <Text style={[styles.paymentValue, { color: '#000', fontWeight: 'bold' }]}>-135.000 vnd</Text>
+          <Text style={[styles.paymentValue, { color: '#000', fontWeight: 'bold' }]}>0000 vnd</Text>
         </View>
 
         {/* Tổng chi phí */}
