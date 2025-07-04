@@ -21,6 +21,7 @@ import CheckoutCard from './screens/order/CheckoutCardScreen';
 import CheckoutSuccess from './screens/order/CheckoutSuccessScreen';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
+import CommentScreen from './screens/product/Comment';
 import Detail from './screens/product/Detail';
 import Home from './screens/product/Home';
 import ReviewScreen from './screens/product/ReviewScreen';
@@ -30,6 +31,7 @@ import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings';
 import UserProfile from './screens/profile/UserProfile';
 
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
@@ -37,7 +39,10 @@ export default function TabLayout() {
   return (
     <Stack.Navigator initialRouteName="Login">
       {/* Screens không có tab bar */}
+      <Stack.Screen name="comment" component={CommentScreen} options={{ headerShown: false }} />      
+      
        <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
+ 
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />

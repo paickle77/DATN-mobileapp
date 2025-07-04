@@ -1,118 +1,226 @@
-import { Feather } from '@expo/vector-icons';
+import axios from 'axios';
 import { useNavigation } from 'expo-router';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import OrderCard from '../../component/OrderCard';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { BASE_URL } from '../../services/api';
+import { getUserData } from '../utils/storage';
 
-const OrderHistoryScreen = () => {
+const ReviewScreen = () => {
   const navigation = useNavigation();
-  const orders = [
-    {
-      id: 1,
-      orderDate: '01/09/2021',
-      status: 'Đặt hàng thành công',
-      imageUrl: 'https://i.imgur.com/ndRMwPL.jpg',
-      productName: 'Spider Plant | Bánh sinh nhật',
-      quantity: 3,
-      price: '515.000',
-      deliveryStatus: 'Đã nhận hàng',
-    },
-    {
-      id: 2,
-      orderDate: '15/10/2021',
-      status: 'Đặt hàng thành công',
-      imageUrl: 'https://i.imgur.com/3QdM8Ye.jpg',
-      productName: 'Bánh kem chocolate',
-      quantity: 2,
-      price: '430.000',
-      deliveryStatus: 'Đang giao hàng',
-    },
-    {
-      id: 3,
-      orderDate: '20/12/2021',
-      status: 'Đặt hàng thành công',
-      imageUrl: 'https://i.imgur.com/9u1t1Xv.jpg',
-      productName: 'Bánh sinh nhật dâu tây',
-      quantity: 1,
-      price: '610.000',
-      deliveryStatus: 'Chưa xử lý',
-    }
-  ];
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+const fetchOrders = async () => {
+  try {
+    const response = await axios.get(`${BASE_URL}/GetAllOrders`);
+    const userData = await getUserData('userData'); // giả sử userData là object chứa _id
+    // const userID = userData?._id;
+
+    const allOrders = response.data.data;
+
+    // ✅ Lọc đơn hàng theo user_id trùng với người dùng hiện tại
+    const filteredOrders = allOrders.filter(order => {
+      const orderUserId = typeof order.user_id === 'object' ? order.user_id._id : order.user_id;
+      return orderUserId === userData;
+    });
+
+    console.log('Đơn hàng của người dùng:', filteredOrders);
+    setOrders(filteredOrders);
+  } catch (error) {
+    console.error('Lỗi khi gọi API đơn hàng:', error.message);
+    Alert.alert('Lỗi khi tải đơn hàng');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const handleReviewPress = (orderId) => {
+    console.log('Đi tới đánh giá đơn:', orderId);
+    navigation.push('/ReviewForm', { orderId });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#8B4513" />
+        <Text style={{ marginTop: 10 }}>Đang tải đơn hàng...</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#222" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Phương thức thanh toán</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <ScrollView style={styles.container}>
+      <Text style={styles.screenTitle}>Lịch sử đơn hàng</Text>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {orders.map(order => (
-          <OrderCard
-            key={order.id}
-            orderDate={order.orderDate}
-            status={order.status}
-            imageUrl={order.imageUrl}
-            productName={order.productName}
-            quantity={order.quantity}
-            price={order.price}
-            deliveryStatus={order.deliveryStatus}
-          />
-        ))}
-      </ScrollView>
-    </View>
+      {orders.map((order) => (
+        <View key={order._id} style={styles.orderCard}>
+          {/* 🧍‍♂️ Người dùng */}
+          <View style={styles.userRow}>
+            <Image
+              source={{ uri: order.user_id?.image || 'https://via.placeholder.com/50' }}
+              style={styles.userImage}
+            />
+            <View>
+              <Text style={styles.userName}>{order.user_id?.name}</Text>
+              <Text style={styles.userEmail}>{order.user_id?.email}</Text>
+            </View>
+          </View>
+
+          {/* 🏠 Địa chỉ */}
+          <Text style={styles.sectionTitle}>Địa chỉ nhận hàng</Text>
+          <Text style={styles.addressText}>
+            {order.address_id?.detail_address}, {order.address_id?.ward},{' '}
+            {order.address_id?.district}, {order.address_id?.city}
+          </Text>
+
+          {/* 🎫 Mã giảm giá */}
+          {order.voucher_id && (
+            <>
+              <Text style={styles.sectionTitle}>Mã khuyến mãi</Text>
+              <Text style={styles.voucherText}>
+                {order.voucher_id.code} - Giảm {order.voucher_id.discount_percent}%
+              </Text>
+            </>
+          )}
+
+          {/* 💰 Tổng tiền và trạng thái */}
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Tổng tiền:</Text>
+            <Text style={styles.value}>
+              {Number(order.total_price).toLocaleString('vi-VN')}đ
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Trạng thái:</Text>
+            <Text style={styles.value}>{order.status}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Ngày đặt:</Text>
+            <Text style={styles.value}>
+              {new Date(order.created_at).toLocaleDateString('vi-VN')}
+            </Text>
+          </View>
+
+          {/* ✅ Nút đánh giá nếu đã giao hàng */}
+            <TouchableOpacity
+              style={styles.reviewButton}
+              onPress={() => handleReviewPress(order._id)}
+            >
+              <Text style={styles.reviewButtonText}>Xem chi tiết đơn hàng</Text>
+            </TouchableOpacity>
+         
+        </View>
+      ))}
+    </ScrollView>
   );
 };
 
-export default OrderHistoryScreen;
+export default ReviewScreen;
 
 const styles = StyleSheet.create({
-   backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  backIcon: {
-    width: 24,
-    height: 24,
-    tintColor: '#333',
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  headerSpacer: {
-    width: 40, // Để cân bằng với nút back
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 10, 
-    paddingBottom: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F0F0F0',
-    // paddingHorizontal: 8,
+    backgroundColor: '#FFF',
+    padding: 16,
   },
-  headerContainer: {
+  screenTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#4B2E2E',
+  },
+  orderCard: {
+    backgroundColor: '#FDF7EE',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  title: {
-    fontSize: 22,
+  userImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+    backgroundColor: '#eee',
+  },
+  userName: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+  },
+  userEmail: {
+    fontSize: 14,
+    color: '#777',
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 10,
+    color: '#4B2E2E',
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#444',
+    marginTop: 4,
+  },
+  voucherText: {
+    fontSize: 14,
+    color: '#0A7',
+    marginTop: 4,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  label: {
+    fontSize: 14,
+    color: '#666',
+  },
+  value: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#222',
+  },
+  reviewButton: {
+    marginTop: 14,
+    backgroundColor: '#8B4513',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  reviewButtonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

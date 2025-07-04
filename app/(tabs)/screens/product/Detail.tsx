@@ -374,7 +374,7 @@ const handleAddToCart = async () => {
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.secondaryButton]}
-              onPress={() => navigation.navigate('Review', { productId: product._id })}
+              onPress={() => navigation.navigate('comment', { productId: product._id })}
             >
               <Text style={styles.secondaryButtonText}>Xem đánh giá</Text>
             </TouchableOpacity>
