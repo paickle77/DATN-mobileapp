@@ -26,19 +26,38 @@ const ForgotPasswordScreen = () => {
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigator = useNavigation();
+  const [countdown, setCountdown] = useState(0);
+
 
   const sendOtp = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(BASE_URL+'/users/send-otp', { email });
+      const res = await axios.post(BASE_URL + '/users/send-otp', { email });
       Alert.alert('Thành công', 'OTP đã gửi về email');
       setOtpSent(true);
+      setCountdown(60); // Bắt đầu đếm ngược 60 giây
     } catch (err) {
       Alert.alert('Lỗi', err.response?.data?.msg || 'Gửi OTP thất bại');
     } finally {
       setLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (countdown === 0) return;
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [countdown]);
 
   const resetPassword = async () => {
     setLoading(true);
@@ -116,39 +135,63 @@ const ForgotPasswordScreen = () => {
 
                 <TouchableOpacity
                   onPress={sendOtp}
-                  disabled={!email || loading}
+                  disabled={!email || loading || countdown > 0}
                   style={[
                     styles.primaryButton,
-                    (!email || loading) && styles.disabledButton
+                    (!email || loading || countdown > 0) && styles.disabledButton
                   ]}
                 >
                   <LinearGradient
-                    colors={(!email || loading) ? ['#ccc', '#999'] : ['#667eea', '#764ba2']}
+                    colors={
+                      (!email || loading || countdown > 0)
+                        ? ['#ccc', '#999']
+                        : ['#667eea', '#764ba2']
+                    }
                     style={styles.buttonGradient}
                   >
                     {loading && <Icon name="refresh" size={20} color="#fff" style={styles.loadingIcon} />}
                     <Text style={styles.buttonText}>
-                      {loading ? 'Đang gửi...' : 'Gửi mã OTP'}
+                      {loading
+                        ? 'Đang gửi...'
+                        : countdown > 0
+                        ? `Gửi lại sau ${countdown}s`
+                        : 'Gửi mã OTP'}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
+
               </View>
             ) : (
               /* OTP and Password Phase */
               <View style={styles.inputSection}>
                 <Text style={styles.label}>Mã OTP</Text>
-                <View style={styles.inputContainer}>
-                  <Icon name="security" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    placeholder="Nhập mã OTP"
-                    placeholderTextColor="#999"
-                    value={otp}
-                    onChangeText={setOtp}
-                    style={styles.textInput}
-                    keyboardType="numeric"
-                    maxLength={6}
-                  />
+                <View style={[styles.inputContainer, { justifyContent: 'space-between' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Icon name="security" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      placeholder="Nhập mã OTP"
+                      placeholderTextColor="#999"
+                      value={otp}
+                      onChangeText={setOtp}
+                      style={[styles.textInput, { paddingRight: 10 }]}
+                      keyboardType="numeric"
+                      maxLength={6}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={sendOtp}
+                    disabled={countdown > 0 || loading}
+                  >
+                    <Text style={[
+                      styles.resendText,
+                      (countdown > 0 || loading) && { color: '#aaa' }
+                    ]}>
+                      {countdown > 0 ? `${countdown}s` : 'Gửi lại'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+
                 <Text style={styles.helperText}>
                   Mã OTP đã được gửi đến {email}
                 </Text>
@@ -302,6 +345,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  resendText: {
+    color: '#667eea',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
   helperText: {
     fontSize: 12,
     color: '#666',
