@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import axios from 'axios';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
@@ -12,30 +13,126 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BASE_URL } from '../../services/api';
+import { getUserData } from '../utils/storage';
+
+export interface Address {
+  _id: string;
+  user_id: {
+    _id: string;
+    name: string;
+    email: string;
+    phone: string;
+  } | null;
+  ward: string;
+  district: string;
+  city: string;
+  detail_address: string;
+  isDefault: boolean | string;
+  latitude: string;
+  longitude: string;
+}
+type RootStackParamList = {
+  AddAddress: undefined;
+  EditAddress: { address: Address };
+};
 
 const Checkout = ({ navigation, route }) => {
   const [note, setNote] = useState('');
   const [selectedShippingMethod, setSelectedShippingMethod] = useState('standard');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [selectedPaymentName, setSelectedPaymentName] = useState('');
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [listCart,setListCart]=useState([]);
+  const [fullPaymentObject, setFullPaymentObject] = useState<any>(null);
+
+
+
+
+useFocusEffect(
+  useCallback(() => {
+    fetchAddresses();
+    FetchData();
+  }, [])
+);
+
+
+const FetchData = async () => {
+  const user = await getUserData('userData');
+  const userId = user
+  console.log("userID:", userId);
+
+  try {
+    const response = await axios.get(`${BASE_URL}/GetAllCarts`);
+    const APIlistCart = response.data.data;
+    console.log("listCart from API: ⭐️⭐️⭐️", APIlistCart);
+
+    const formattedData = APIlistCart.map((item) => ({
+      id: item._id,
+      title: item.product_id.name,
+      user_id: item.user_id,
+      Size: item.size_id.size,
+      price: item.product_id.price,
+      image: item.product_id.image_url,
+      quantity: item.quantity,
+    }));
+
+    // 🔍 Lọc ra những item có user_id khớp với user hiện tại
+    const userCartItems = formattedData.filter(item => item.user_id === userId);
+
+    setListCart(userCartItems); // 👉 chỉ lưu trữ dữ liệu thuộc user này
+      (userCartItems); // 👉 chỉ render dữ liệu thuộc user này
+    console.log("👉👉👉 Dữ liệu giỏ hàng theo user:", userCartItems);
+  } catch (error) {
+    console.log("Lỗi API:", error);
+  }
+};
+
+
+const fetchAddresses = async () => {
+  try {
+    const userData = await getUserData('userData');
+    const userID = typeof userData === 'string' ? userData : userData._id;
+
+    const response = await axios.get(`${BASE_URL}/GetAllAddress`);
+    const allData = response.data?.data ?? [];
+
+    const filtered = allData.filter((item: Address) =>
+      item.user_id?._id === userID && (item.isDefault === true || item.isDefault === 'true')
+    );
+
+    setAddresses(filtered);
+    console.log('⭐️⭐️⭐️ Địa chỉ mặc định của user:', filtered);
+  } catch (error) {
+    console.error('❌ Lỗi lấy địa chỉ:', error);
+    Alert.alert('Lỗi', 'Không thể tải địa chỉ. Vui lòng thử lại sau.');
+  }
+};
+
+
+  // const defaultAddress = addresses.find(addr => addr.isDefault === true || addr.isDefault === 'true') || addresses[0];
+
+
 
   useFocusEffect(
     useCallback(() => {
       const selectedPayment = route.params?.selectedPaymentMethod;
+      console.log('Selected Payment Method:', selectedPayment);
       if (selectedPayment) {
         setSelectedPaymentMethod(selectedPayment.id);
         setSelectedPaymentName(selectedPayment.name);
         // Clear the params to prevent re-setting on subsequent visits
+         setFullPaymentObject(selectedPayment); // <- thêm dòng này nếu muốn
         navigation.setParams({ selectedPaymentMethod: null });
       }
     }, [route])
   );
 
-  const userAddress = {
-    name: 'Nguyễn Văn An',
-    phone: '0987654321',
-    address: 'Số 123, Đường ABC, Phường XYZ, Quận 1, TP.HCM',
-  };
+  // const userAddress = {
+  //   name: 'Nguyễn Văn An',
+  //   phone: '0987654321',
+  //   address: 'Số 123, Đường ABC, Phường XYZ, Quận 1, TP.HCM',
+  // };
 
   const cartItems = [
     {
@@ -100,7 +197,7 @@ const Checkout = ({ navigation, route }) => {
     },
   ];
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = listCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingFee = shippingMethods.find(method => method.id === selectedShippingMethod)?.price || 0;
   const total = subtotal + shippingFee;
 
@@ -116,17 +213,38 @@ const Checkout = ({ navigation, route }) => {
     navigation.navigate('PaymentMethods');
   };
 
+
+  const handleCheckOut=async ()=>{
+ if(fullPaymentObject.name==="VNPAY"){
+      navigation.navigate('payment', { total })
+     }
+  if(fullPaymentObject.name==="Thanh toán khi nhận hàng"){
+    const userData = await getUserData('userData');
+    console.log('🧾🧾🧾 userData:', userData);
+      await axios.delete(`${BASE_URL}/carts/user/${userData}`);
+      Alert.alert('Thông báo', 'Đặt hàng thành công, vui lòng chờ nhân viên giao hàng liên hệ với bạn để xác nhận đơn hàng.');
+      navigation.navigate('TabNavigator')
+     }
+     else{
+      Alert.alert('Thông báo', 'Đặt hàng không thành công, phương thức thanh toán này đã được phát triển, vui lòng chọn phương thức khác');
+      // navigation.navigate('TabNavigator')
+     }   
+  }
+
   const handlePlaceOrder = () => {
     if (!selectedPaymentMethod) {
       Alert.alert('Thông báo', 'Vui lòng chọn phương thức thanh toán');
       return;
     }
+     console.log('🧾🧾🧾 Chi tiết phương thức thanh toán đã chọn:', fullPaymentObject.name);
+    
+      // console.log('🧾🧾🧾 Chi tiết phương thức thanh toán đã chọn:', selectedPaymentMethod);
     Alert.alert(
       'Xác nhận đặt hàng',
       `Tổng tiền: ${formatPrice(total)}\nPhương thức thanh toán: ${selectedPaymentName}`,
       [
         { text: 'Hủy', style: 'cancel' },
-        { text: 'Đặt hàng', onPress: () => console.log('Đặt hàng thành công') },
+        { text: 'Đặt hàng', onPress: () => handleCheckOut() },
       ]
     );
   };
@@ -172,11 +290,21 @@ const Checkout = ({ navigation, route }) => {
             <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
           </View>
           <TouchableOpacity style={styles.addressCard} onPress={handleAddressPress}>
-            <View style={styles.addressInfo}>
-              <Text style={styles.addressName}>{userAddress.name}</Text>
-              <Text style={styles.addressPhone}>{userAddress.phone}</Text>
-              <Text style={styles.addressText}>{userAddress.address}</Text>
-            </View>
+       <View style={styles.addressInfo}>
+  {addresses.length > 0 ? (
+    addresses.map((addr) => (
+      <View key={addr._id} style={{ marginBottom: 12 }}>
+        <Text style={styles.addressName}>{addr.user_id?.name}</Text>
+        <Text style={styles.addressPhone}>{addr.user_id?.phone}</Text>
+        <Text style={styles.addressText}>
+          {`${addr.detail_address}, ${addr.ward}, ${addr.district}, ${addr.city}`}
+        </Text>
+      </View>
+    ))
+  ) : (
+    <Text style={styles.paymentPlaceholder}>Không có địa chỉ nào</Text>
+  )}
+</View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
         </View>
@@ -185,14 +313,14 @@ const Checkout = ({ navigation, route }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="bag-outline" size={20} color="#007AFF" />
-            <Text style={styles.sectionTitle}>Sản phẩm ({cartItems.length})</Text>
+            <Text style={styles.sectionTitle}>Sản phẩm ({listCart.length})</Text>
           </View>
-          {cartItems.map((item) => (
+          {listCart.map((item) => (
             <View key={item.id} style={styles.productCard}>
               <Image source={{ uri: item.image }} style={styles.productImage} />
               <View style={styles.productInfo}>
-                <Text style={styles.productName}>{item.name}</Text>
-                <Text style={styles.productVariant}>{item.variant}</Text>
+                <Text style={styles.productName}>{item.title}</Text>
+                <Text style={styles.productVariant}>{item.Size}</Text>
                 <View style={styles.productBottom}>
                   <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
                   <Text style={styles.productQuantity}>x{item.quantity}</Text>

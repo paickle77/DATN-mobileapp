@@ -27,10 +27,10 @@ import Home from './screens/product/Home';
 import ReviewScreen from './screens/product/ReviewScreen';
 import AddressList from './screens/profile/AddressList';
 import CompleteProfile from './screens/profile/CompleteProfile';
+import PaymentScreen from './screens/profile/Payement';
 import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings';
 import UserProfile from './screens/profile/UserProfile';
-
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -39,6 +39,7 @@ export default function TabLayout() {
   return (
     <Stack.Navigator initialRouteName="Login">
       {/* Screens không có tab bar */}
+      <Stack.Screen name="payment" component={PaymentScreen} options={{ headerShown: false }} />
       <Stack.Screen name="comment" component={CommentScreen} options={{ headerShown: false }} />      
       
        <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
