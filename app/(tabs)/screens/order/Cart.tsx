@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CartItem from '../../component/CartItem'; // Component con
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BASE_URL } from '../../services/api';
 
 const initialItems = [
   {
@@ -34,26 +36,75 @@ export default function CartScreen() {
  
   const [items, setItems] = useState(initialItems);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [itemToRemoveIndex, setItemToRemoveIndex] = useState<number | null>(null);
+  const [itemToRemoveIndex, setItemToRemoveIndex] = useState<string | null>(null);
    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+   const [itemToRemove, setItemToRemove] = useState(null);
+  const [list,setList]=useState([]);
+
+  useEffect(()=>{
+FetchData();
+  },[]);
+
+  const FetchData = async ()=>{
+    try {
+      const data = await axios.get(`${BASE_URL}/GetAllCarts`);
+      const listCart=data.data.data;
+      console.log("dữ liệu listCart :",listCart[1].size_id);
+   const formattedData = listCart.map((item, index) => ({
+id: item._id,
+title:item.product_id.name,
+user_id: item.user_id,
+Size:item.size_id.size,
+price:item.product_id.price,
+image:item.product_id.image_url,
+quantity:item.quantity
+}));
+      setList(formattedData)
+      console.log("dữ liệu formattedData :",formattedData);
+    } catch (error) {
+      console.log("Lỗi API ",error)
+    }
+  }
+
+
 
   // Cập nhật số lượng
-  const updateQuantity = (index: number, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    const updatedItems = [...items];
-    updatedItems[index].quantity = newQuantity;
-    setItems(updatedItems);
-  };
+const updateQuantity = async (item: any, newQuantity: number) => {
+  if (newQuantity < 1) return;
+
+  try {
+    const payload = {
+      quantity: newQuantity,
+      product_id: item.product_id,
+      size_id: item.size_id,
+      user_id: item.user_id,
+    };
+
+    const res = await axios.put(`${BASE_URL}/carts/${item.id}`, payload);
+    console.log("✅ Đã cập nhật số lượng:", res.data);
+
+    await FetchData(); // làm mới danh sách
+  } catch (error) {
+    console.log("❌ Lỗi khi cập nhật số lượng:", error);
+  }
+};
+
 
   // Xoá sản phẩm
-  const removeItem = (index: number) => {
-    const updatedItems = [...items];
-    updatedItems.splice(index, 1);
-    setItems(updatedItems);
+  const removeItem = async (id: string) => {
+    console.log("id được xóa :",id)
+ try {
+      const data = await axios.delete(`${BASE_URL}/carts/${id}`);
+      console.log("xóa thành công với id: ",id)
+     
+      await FetchData();
+    } catch (error) {
+      console.log("Lỗi API ",error)
+    }
   };
 
   // Tổng tiền
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total2 = total + 35;
 
   return (
@@ -72,23 +123,24 @@ export default function CartScreen() {
 
 
       <FlatList
-        data={items}
+        data={list}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item, index }) => (
-          <CartItem
-            name={item.title}
-            price={item.price}
-            image={item.image}
-            Size={item.Size}
-            quantily={item.quantity}
-            Uptoquantily={(newQ) => updateQuantity(index, newQ)}
-            Dowtoquantily={(newQ) => updateQuantity(index, newQ)}
-            onRemove={() => {
-              setItemToRemoveIndex(index);
-              setShowConfirm(true);
-            }}
-          />
+         <CartItem
+  name={item.title}
+  price={item.price}
+  image={item.image}
+  Size={item.Size}
+  quantily={item.quantity}
+  Uptoquantily={(newQ) => updateQuantity(item, newQ)}
+  Dowtoquantily={(newQ) => updateQuantity(item, newQ)}
+  onRemove={() => {
+    setItemToRemoveIndex(item.id);
+    setShowConfirm(true);
+  }}
+/>
+
         )}
       />
 

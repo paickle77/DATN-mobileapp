@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-const NotificationCard = ({ title, status, orderCode, time }) => {
+const NotificationCard = ({ title, content, createdAt }) => {
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
@@ -10,9 +10,16 @@ const NotificationCard = ({ title, status, orderCode, time }) => {
 
       <View style={styles.textContainer}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.status}>{status}</Text>
-        <Text style={styles.orderCode}>Đơn hàng: {orderCode}</Text>
-        <Text style={styles.time}>{time}</Text>
+        <Text style={styles.status}>{content}</Text>
+        <Text style={styles.time}>
+          {new Date(createdAt).toLocaleString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })}
+        </Text>
       </View>
     </View>
   );
@@ -55,10 +62,6 @@ const styles = StyleSheet.create({
   status: {
     fontSize: 14,
     color: '#333',
-  },
-  orderCode: {
-    fontSize: 13,
-    color: '#555',
   },
   time: {
     fontSize: 13,

@@ -1,48 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
 import { useNavigation } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import NotificationCard from '../../component/NotificationCard';
+import { BASE_URL } from '../../services/api';
 
 const NotificationScreen = () => {
   const navigation = useNavigation();
-  const notifications = [
-    {
-      id: 1,
-      title: 'Ứng dụng',
-      status: 'Đặt hàng thành công',
-      orderCode: 'xbg13572',
-      time: '24/05/2025 - 07:21',
-    },
-    {
-      id: 2,
-      title: 'Ứng dụng',
-      status: 'Thanh toán thành công',
-      orderCode: 'abc99872',
-      time: '22/05/2025 - 10:15',
-    },
-    {
-      id: 3,
-      title: 'Ứng dụng',
-      status: 'Đơn hàng đã vận chuyển',
-      orderCode: 'hjk55422',
-      time: '20/05/2025 - 15:45',
-    },
-    {
-      id: 4,
-      title: 'Ứng dụng',
-      status: 'Đơn hàng bị hủy',
-      orderCode: 'xyz11123',
-      time: '18/05/2025 - 09:30',
-    },
-    {
-      id: 5,
-      title: 'Ứng dụng',
-      status: 'Đặt hàng thành công',
-      orderCode: 'opq78965',
-      time: '15/05/2025 - 11:05',
-    },
-  ];
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/notifications`);
+      const allNotifications = response.data?.data || [];
+      const readNotifications = allNotifications.filter(noti => noti.is_read === true);
+      setNotifications(readNotifications);
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu thông báo:', error);
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -55,11 +36,10 @@ const NotificationScreen = () => {
 
       {notifications.map((item) => (
         <NotificationCard
-          key={item.id}
+          key={item._id}
           title={item.title}
-          status={item.status}
-          orderCode={item.orderCode}
-          time={item.time}
+          content={item.content}
+          createdAt={item.created_at}
         />
       ))}
     </ScrollView>
@@ -78,11 +58,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 12,
-    justifyContent: 'center', // căn giữa nội dung
+    justifyContent: 'center',
   },
   backIcon: {
     position: 'absolute',
-    left: 0,  // đẩy icon sang sát bên trái
+    left: 0,
     marginLeft: 8,
   },
   header: {
