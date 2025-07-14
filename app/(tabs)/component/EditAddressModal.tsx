@@ -1,13 +1,13 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Address } from '../screens/profile/AddressList'; // hoặc điều chỉnh đúng path
 import { BASE_URL } from '../services/api';
@@ -29,18 +29,21 @@ const EditAddressModal: React.FC<EditAddressModalProps> = ({
   const [ward, setWard] = useState('');
   const [district, setDistrict] = useState('');
   const [city, setCity] = useState('');
-
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   useEffect(() => {
     if (address) {
       setDetailAddress(address.detail_address || '');
       setWard(address.ward || '');
       setDistrict(address.district || '');
       setCity(address.city || '');
+      setName(address.name || '');
+      setPhone(address.phone?.toString() || '');
     }
   }, [address]);
 
   const handleSave = async () => {
-    if (!detailAddress || !ward || !district || !city) {
+    if (!detailAddress || !ward || !district || !city || !name || !phone) {
       Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin.');
       return;
     }
@@ -51,6 +54,8 @@ const EditAddressModal: React.FC<EditAddressModalProps> = ({
         ward,
         district,
         city,
+        name,
+        phone,
       };
 
       await axios.put(`${BASE_URL}/addresses/${address?._id}`, payload);
@@ -68,7 +73,17 @@ const EditAddressModal: React.FC<EditAddressModalProps> = ({
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
           <Text style={styles.title}>Sửa địa chỉ</Text>
-
+          <TextInput
+            style={styles.input}
+            placeholder="Tên người nhận"
+            value={name}
+            onChangeText={setName}/>
+            <TextInput
+            style={styles.input}
+            placeholder="Số điện thoại"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="numeric"/>
           <TextInput
             style={styles.input}
             placeholder="Địa chỉ chi tiết"

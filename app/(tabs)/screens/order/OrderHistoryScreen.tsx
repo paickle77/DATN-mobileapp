@@ -19,24 +19,42 @@ const ReviewScreen = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+type OrderType = {
+  _id: string;
+  user_id?: { _id?: string; name?: string; email?: string; image?: string } | string | null;
+  address_id?: { detail_address?: string; ward?: string; district?: string; city?: string };
+  voucher_id?: { code?: string; discount_percent?: number };
+  total_price?: number;
+  status?: string;
+  created_at?: string;
+};
+
 const fetchOrders = async () => {
   try {
     const response = await axios.get(`${BASE_URL}/GetAllOrders`);
     const userData = await getUserData('userData'); // giả sử userData là object chứa _id
-    // const userID = userData?._id;
 
-    const allOrders = response.data.data;
+    const allOrders: OrderType[] = response.data.data;
 
     // ✅ Lọc đơn hàng theo user_id trùng với người dùng hiện tại
-    const filteredOrders = allOrders.filter(order => {
-      const orderUserId = typeof order.user_id === 'object' ? order.user_id._id : order.user_id;
-      return orderUserId === userData;
+    const filteredOrders = allOrders.filter((order: OrderType) => {
+      let orderUserId: string | undefined;
+      if (order.user_id && typeof order.user_id === 'object') {
+        orderUserId = order.user_id._id ?? undefined;
+      } else if (typeof order.user_id === 'string') {
+        orderUserId = order.user_id;
+      }
+      return orderUserId === (userData?._id ?? userData);
     });
 
     console.log('Đơn hàng của người dùng:', filteredOrders);
     setOrders(filteredOrders);
   } catch (error) {
-    console.error('Lỗi khi gọi API đơn hàng:', error.message);
+    let errorMessage = 'Unknown error';
+    if (typeof error === 'object' && error !== null && 'message' in error) {
+      errorMessage = (error as { message: string }).message;
+    }
+    console.error('Lỗi khi gọi API đơn hàng:', errorMessage);
     Alert.alert('Lỗi khi tải đơn hàng');
   } finally {
     setLoading(false);
@@ -50,7 +68,7 @@ const fetchOrders = async () => {
 
   const handleReviewPress = (orderId) => {
     console.log('Đi tới đánh giá đơn:', orderId);
-    navigation.push('/ReviewForm', { orderId });
+    navigation.navigate('/ReviewForm', { orderId });
   };
 
   if (loading) {

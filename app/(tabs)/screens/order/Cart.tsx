@@ -120,6 +120,7 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
     <View style={styles.container}>
+      
       {/* Header với nút Back */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -155,6 +156,14 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
   showsVerticalScrollIndicator={false}
 />
 
+{list.length === 0 && (
+  <View style={styles.emptyContainer}>
+    <Text style={styles.emptyText}>Giỏ hàng của bạn đang trống</Text>
+    <Ionicons name="cart-outline" size={80} color="#ccc" style={{ marginTop: 10 }} />
+  </View>
+)}
+
+
 
       {showConfirm && (
         <View style={styles.modalOverlay}>
@@ -183,46 +192,48 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
       )}
 
       {/* Footer tổng tiền */}
-      <View style={styles.footer}>
-        {/* Nhập mã giảm giá */}
-        <View style={styles.discountContainer}>
-          <TextInput
-            style={styles.discountInput}
-            placeholder="Nhập mã giảm giá"
-            placeholderTextColor="#888"
-          />
-          <TouchableOpacity style={styles.applyButton}>
-            <Text style={styles.applyButtonText}>Áp dụng</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Chi tiết thanh toán */}
-        <View style={styles.paymentInfoRow}>
-          <Text style={styles.paymentLabel}>Tổng phụ</Text>
-          <Text style={styles.paymentValue}>{total.toFixed(2)}</Text>
-        </View>
-        <View style={styles.paymentInfoRow}>
-          <Text style={styles.paymentLabel}>Phí giao hàng</Text>
-          <Text style={styles.paymentValue}>35.000 vnd</Text>
-        </View>
-        <View style={styles.paymentInfoRow}>
-          <Text style={styles.paymentLabel}>Giảm giá</Text>
-          <Text style={[styles.paymentValue, { color: '#000', fontWeight: 'bold' }]}>0000 vnd</Text>
-        </View>
-
-        {/* Tổng chi phí */}
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Tổng chi phí</Text>
-          <Text style={styles.totalPrice}>{total2.toFixed(2)}</Text>
-        </View>
-
-  <TouchableOpacity
-        style={styles.checkoutButton}
-        onPress={() => navigation.navigate('Checkout')}
-      >
-        <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
+     {list.length > 0 && (
+  <View style={styles.footer}>
+    {/* Nhập mã giảm giá */}
+    <View style={styles.discountContainer}>
+      <TextInput
+        style={styles.discountInput}
+        placeholder="Nhập mã giảm giá"
+        placeholderTextColor="#888"
+      />
+      <TouchableOpacity style={styles.applyButton}>
+        <Text style={styles.applyButtonText}>Áp dụng</Text>
       </TouchableOpacity>
-</View>
+    </View>
+
+    {/* Chi tiết thanh toán */}
+    <View style={styles.paymentInfoRow}>
+      <Text style={styles.paymentLabel}>Tổng phụ</Text>
+      <Text style={styles.paymentValue}>{total.toFixed(2)}</Text>
+    </View>
+    <View style={styles.paymentInfoRow}>
+      <Text style={styles.paymentLabel}>Phí giao hàng</Text>
+      <Text style={styles.paymentValue}>35.000 vnd</Text>
+    </View>
+    <View style={styles.paymentInfoRow}>
+      <Text style={styles.paymentLabel}>Giảm giá</Text>
+      <Text style={[styles.paymentValue, { color: '#000', fontWeight: 'bold' }]}>0000 vnd</Text>
+    </View>
+
+    {/* Tổng chi phí */}
+    <View style={styles.totalContainer}>
+      <Text style={styles.totalLabel}>Tổng chi phí</Text>
+      <Text style={styles.totalPrice}>{total2.toFixed(2)}</Text>
+    </View>
+
+    <TouchableOpacity
+      style={styles.checkoutButton}
+      onPress={() => navigation.navigate('Checkout')}
+    >
+      <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
+    </TouchableOpacity>
+  </View>
+)}
 
 
       {/* <TabLayout /> */}
@@ -235,6 +246,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fdfdfd',
   },
+emptyContainer: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingBottom: 250,
+},
+emptyText: {
+  fontSize: 16,
+  color: '#666',
+  marginTop: 10,
+},
 
   // Header styles
   header: {

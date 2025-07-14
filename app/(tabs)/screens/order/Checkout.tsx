@@ -46,6 +46,79 @@ const Checkout = ({ navigation, route }) => {
   const [listCart,setListCart]=useState([]);
   const [fullPaymentObject, setFullPaymentObject] = useState<any>(null);
 
+const buildBillPayload = async () => {
+  const userData = await getUserData('userData');
+  const userID = typeof userData === 'string' ? userData : userData._id;
+  const defaultAddress = addresses[0];
+
+  const billDetailsData = listCart.map((item) => ({
+    product_id: item.product_id._id,     // ✅ Chỉ cần ID
+    size: item.size || item.Size || '-', // fallback nếu field tên khác
+    quantity: item.quantity,
+    price: item.price,
+    total: item.price * item.quantity,
+  }));
+
+  const payload = {
+    user_id: userID,
+    address_id: defaultAddress?._id ?? null,
+    note: note || '',
+    shipping_method: selectedShippingMethod,
+    payment_method: selectedPaymentName,
+    total: total,
+    items: billDetailsData,
+  };
+
+  console.log("🚀 Payload gửi lên server:", payload);
+  return payload;
+};
+
+const sendBillDetails = async (billId, items) => {
+  try {
+    for (const item of items) {
+      const payload = {
+        bill_id: billId,
+        product_id: item.product_id._id || item.product_id,
+        size: item.size || item.Size || '-',
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total || item.price * item.quantity,
+      };
+
+      console.log('📤 Gửi 1 billDetail:', payload);
+      const response = await axios.post(`${BASE_URL}/billdetails`, payload);
+      console.log('✅ Gửi billDetail thành công:', response.data);
+    }
+  } catch (error) {
+    console.error('❌ Lỗi khi gửi billDetails:', error.response?.data || error.message);
+  }
+};
+
+
+
+const logCheckoutData = () => {
+  const defaultAddress = addresses[0]; // Chỉ lấy 1 địa chỉ mặc định đầu tiên nếu có
+
+  console.log("========== DỮ LIỆU CHECKOUT ==========");
+  console.log("📦 Address._id:", defaultAddress?._id ?? 'Không có địa chỉ');
+  console.log("🛒 listCart.id:", listCart.map(item => item.id));
+  console.log("💬 Ghi chú:", note || 'Không có');
+  console.log("🚚 Phương thức vận chuyển:", selectedShippingMethod);
+  console.log("💳 Phương thức thanh toán:", selectedPaymentName || 'Chưa chọn');
+  console.log("💰 Tổng thanh toán:", formatPrice(total));
+  console.log("======================================");
+    const billDetailsData = listCart.map((item) => ({
+    product_id: item.product_id,
+    size: item.Size,
+    quantity: item.quantity,
+    price: item.price,
+    total: item.price * item.quantity,
+  }));
+
+  console.log("🧾 Chi tiết hóa đơn (billDetails):", billDetailsData);
+  console.log("======================================");
+};
+
 
 
 
@@ -70,6 +143,7 @@ const FetchData = async () => {
     const formattedData = APIlistCart.map((item) => ({
       id: item._id,
       title: item.product_id.name,
+      product_id: item.product_id,
       user_id: item.user_id,
       Size: item.size_id.size,
       price: item.product_id.price,
@@ -87,6 +161,7 @@ const FetchData = async () => {
     console.log("Lỗi API:", error);
   }
 };
+
 
 
 const fetchAddresses = async () => {
@@ -127,31 +202,6 @@ const fetchAddresses = async () => {
       }
     }, [route])
   );
-
-  // const userAddress = {
-  //   name: 'Nguyễn Văn An',
-  //   phone: '0987654321',
-  //   address: 'Số 123, Đường ABC, Phường XYZ, Quận 1, TP.HCM',
-  // };
-
-  const cartItems = [
-    {
-      id: 1,
-      name: 'iPhone 15 Pro Max',
-      price: 29990000,
-      quantity: 1,
-      image: 'https://via.placeholder.com/80',
-      variant: '256GB - Xanh Titan',
-    },
-    {
-      id: 2,
-      name: 'AirPods Pro 2',
-      price: 6990000,
-      quantity: 2,
-      image: 'https://via.placeholder.com/80',
-      variant: 'Trắng',
-    },
-  ];
 
   const shippingMethods = [
     {
@@ -214,40 +264,79 @@ const fetchAddresses = async () => {
   };
 
 
-  const handleCheckOut=async ()=>{
- if(fullPaymentObject.name==="VNPAY"){
-      navigation.navigate('payment', { total })
-     }
-  if(fullPaymentObject.name==="Thanh toán khi nhận hàng"){
+const handleCheckOut = async () => {
+  try {
     const userData = await getUserData('userData');
-    console.log('🧾🧾🧾 userData:', userData);
-      await axios.delete(`${BASE_URL}/carts/user/${userData}`);
-      Alert.alert('Thông báo', 'Đặt hàng thành công, vui lòng chờ nhân viên giao hàng liên hệ với bạn để xác nhận đơn hàng.');
-      navigation.navigate('TabNavigator')
-     }
-     else{
-      Alert.alert('Thông báo', 'Đặt hàng không thành công, phương thức thanh toán này đã được phát triển, vui lòng chọn phương thức khác');
-      // navigation.navigate('TabNavigator')
-     }   
-  }
+    const paymentName = fullPaymentObject?.name;
 
-  const handlePlaceOrder = () => {
-    if (!selectedPaymentMethod) {
-      Alert.alert('Thông báo', 'Vui lòng chọn phương thức thanh toán');
+    if (!paymentName) {
+      Alert.alert('Thông báo', 'Phương thức thanh toán không hợp lệ');
       return;
     }
-     console.log('🧾🧾🧾 Chi tiết phương thức thanh toán đã chọn:', fullPaymentObject.name);
-    
-      // console.log('🧾🧾🧾 Chi tiết phương thức thanh toán đã chọn:', selectedPaymentMethod);
-    Alert.alert(
-      'Xác nhận đặt hàng',
-      `Tổng tiền: ${formatPrice(total)}\nPhương thức thanh toán: ${selectedPaymentName}`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Đặt hàng', onPress: () => handleCheckOut() },
-      ]
-    );
-  };
+
+    // 🎯 Gửi đơn hàng lên server
+    const payload = await buildBillPayload();
+    const response = await axios.post(`${BASE_URL}/bills`, payload);
+console.log('✅ Đặt hàng thành công:', response);
+    if (response.status === 200 && response.data.data._id) {
+
+        const billDetailsData = listCart.map((item) => ({
+    product_id: item.product_id._id,     // ✅ Chỉ cần ID
+    size: item.size || item.Size || '-', // fallback nếu field tên khác
+    quantity: item.quantity,
+    price: item.price,
+    total: item.price * item.quantity,
+  }));
+  console.log('🧾 Chi tiết hóa đơn:', billDetailsData);
+      const billId = response.data.data._id;
+      
+      console.log('✅ Đặt hàng thành công, mã đơn:', billId);
+
+      // 📦 Gửi danh sách chi tiết sản phẩm vào bảng BillDetail
+      await sendBillDetails(billId, billDetailsData); // 👈 GỌI Ở ĐÂY
+
+      // 🧹 Xóa giỏ hàng
+      await axios.delete(`${BASE_URL}/carts/user/${userData}`);
+
+      // 🎯 Điều hướng theo phương thức thanh toán
+      if (paymentName === 'VNPAY') {
+        navigation.navigate('payment', { total });
+      } else {
+        Alert.alert('Thông báo', 'Đặt hàng thành công, nhân viên sẽ liên hệ để xác nhận đơn hàng.');
+        navigation.navigate('TabNavigator');
+      }
+    } else {
+      console.error('❌ Lỗi khi đặt hàng:', response.data);
+      Alert.alert('Lỗi', response.data.message || 'Không thể tạo đơn hàng');
+      
+    }
+  } catch (error) {
+    console.error('❌ Lỗi khi đặt hàng:', error);
+    Alert.alert('Lỗi', 'Không thể kết nối đến server, vui lòng thử lại sau.');
+  }
+};
+
+
+
+const handlePlaceOrder = () => {
+  if (!selectedPaymentMethod) {
+    Alert.alert('Thông báo', 'Vui lòng chọn phương thức thanh toán');
+    return;
+  }
+
+  logCheckoutData();
+  console.log('🧾 Chi tiết phương thức thanh toán đã chọn:', fullPaymentObject.name);
+
+  Alert.alert(
+    'Xác nhận đặt hàng',
+    `Tổng tiền: ${formatPrice(total)}\nPhương thức thanh toán: ${selectedPaymentName}`,
+    [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Đặt hàng', onPress: () => handleCheckOut() },
+    ]
+  );
+};
+
 
   // Function to get payment icon based on payment method
   const getPaymentIcon = () => {
@@ -502,18 +591,22 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
   },
-  productCard: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
-  },
+productCard: {
+  flexDirection: 'row',
+  paddingVertical: 12,
+  borderBottomWidth: 1,
+  borderBottomColor: '#eee',
+  paddingHorizontal: 4,
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  marginBottom: 8,
+},
+productImage: {
+  width: 70,
+  height: 70,
+  borderRadius: 10,
+  marginRight: 12,
+},
   productInfo: {
     flex: 1,
   },
@@ -542,29 +635,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  noteInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  shippingOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  selectedOption: {
-    backgroundColor: '#f0f8ff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginHorizontal: -12,
-  },
+noteInput: {
+  borderWidth: 1,
+  borderColor: '#ddd',
+  borderRadius: 10,
+  padding: 12,
+  fontSize: 14,
+  minHeight: 80,
+  textAlignVertical: 'top',
+  backgroundColor: '#fff',
+},
+shippingOption: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingVertical: 14,
+  borderBottomWidth: 1,
+  borderBottomColor: '#f0f0f0',
+},
+selectedOption: {
+  backgroundColor: '#fdf6f0', // nền dịu mắt
+  borderRadius: 12,
+  paddingHorizontal: 14,
+  marginHorizontal: -12,
+},
   shippingInfo: {
     flex: 1,
   },
@@ -603,16 +697,22 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#007AFF',
   },
-  paymentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-  },
+paymentCard: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingVertical: 14,
+  paddingHorizontal: 14,
+  borderWidth: 1,
+  borderColor: '#ddd',
+  borderRadius: 12,
+  backgroundColor: '#fff',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.05,
+  shadowRadius: 2,
+  elevation: 1,
+},
   paymentInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -674,18 +774,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
   },
-  orderButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginLeft: 16,
-  },
-  orderButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
+orderButton: {
+  backgroundColor: '#5C4033',
+  paddingHorizontal: 24,
+  paddingVertical: 12,
+  borderRadius: 12, // Bo tròn mềm mại hơn
+  marginLeft: 16,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 3,
+  elevation: 3, // Android shadow
+},
+orderButtonText: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#fff',
+},
 });
 
 export default Checkout;

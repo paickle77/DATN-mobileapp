@@ -1,13 +1,13 @@
 import axios from 'axios';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { getUserData } from '../screens/utils/storage';
 import { BASE_URL } from '../services/api';
@@ -27,9 +27,10 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   const [ward, setWard] = useState('');
   const [district, setDistrict] = useState('');
   const [city, setCity] = useState('');
-
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
   const handleAdd = async () => {
-    if (!detailAddress || !ward || !district || !city) {
+    if (!detailAddress || !ward || !district || !city || !name || !phone) {
       Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin.');
       return;
     }
@@ -45,6 +46,8 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         latitude: '0', // có thể thay thế bằng real-time location
         longitude: '0',
         user_id: userId,
+        name,
+        phone,
       };
 
       await axios.post(`${BASE_URL}/addresses`, payload);
@@ -57,6 +60,8 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       setWard('');
       setDistrict('');
       setCity('');
+      setName('');
+      setPhone('');
     } catch (err) {
       console.error('❌ Lỗi khi thêm địa chỉ:', err);
       Alert.alert('Lỗi', 'Không thể thêm địa chỉ.');
@@ -68,7 +73,17 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
           <Text style={styles.title}>Thêm địa chỉ mới</Text>
-
+          <TextInput
+            style={styles.input}
+            placeholder="Tên người nhận"
+            value={name}
+            onChangeText={setName}/>
+              <TextInput
+                        style={styles.input}
+                        placeholder="Số điện thoại"
+                        value={phone}
+                        onChangeText={setPhone}
+                        keyboardType="numeric"  />
           <TextInput
             style={styles.input}
             placeholder="Địa chỉ chi tiết"

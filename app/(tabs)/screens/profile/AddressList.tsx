@@ -4,13 +4,13 @@ import axios from 'axios';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import AddAddressModal from '../../component/AddAddressModal';
 import EditAddressModal from '../../component/EditAddressModal';
@@ -25,6 +25,8 @@ export interface Address {
     email: string;
     phone: string;
   } | null;
+  name: string;
+  phone: number;
   ward: string;
   district: string;
   city: string;
@@ -67,25 +69,10 @@ const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
 const handleSetDefault = async (id: string) => {
   try {
-    const userID = await getUserData('userData');
+    await axios.put(`${BASE_URL}/set-default/${id}`);
 
-    // Bước 1: Lặp qua danh sách địa chỉ để xác định các địa chỉ của user
-    const updates = addresses.map(addr => {
-      const shouldBeDefault = addr._id === id;
-      return axios.put(`${BASE_URL}/set-default/${addr._id}`, {
-        isDefault: shouldBeDefault
-      });
-    });
-
-    await Promise.all(updates); // Gửi đồng thời các request PUT
-
-    // Bước 2: Cập nhật lại state local để đồng bộ UI
-    setAddresses(prev =>
-      prev.map(addr => ({
-        ...addr,
-        isDefault: addr._id === id
-      }))
-    );
+    // Gọi lại danh sách địa chỉ để cập nhật UI
+    fetchAddresses();
 
     Alert.alert('Thành công', 'Đã đặt địa chỉ mặc định');
   } catch (error) {
@@ -93,6 +80,7 @@ const handleSetDefault = async (id: string) => {
     Alert.alert('Lỗi', 'Không thể cập nhật địa chỉ mặc định');
   }
 };
+
 
 
   const handleDeleteAddress = (id: string) => {
@@ -122,8 +110,8 @@ const handleSetDefault = async (id: string) => {
       <View style={styles.addressItem}>
         <View style={styles.addressHeader}>
           <View style={styles.namePhoneContainer}>
-            <Text style={styles.addressName}>{item.user_id?.name}</Text>
-            <Text style={styles.addressPhone}>{item.user_id?.phone}</Text>
+            <Text style={styles.addressName}>{item.name}</Text>
+            <Text style={styles.addressPhone}>{item.phone}</Text>
           </View>
           {isDefault && (
             <View style={styles.defaultBadge}>

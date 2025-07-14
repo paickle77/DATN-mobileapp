@@ -13,7 +13,7 @@ const amount = total || 500000; // fallback nếu không có total
 
 const bankCode = 'NCB';
 
-const paymentUrl = `http://10.56.182.85:8888/order/create_payment_url?amount=${amount}`;
+const paymentUrl = `http://172.20.30.55:8888/order/create_payment_url?amount=${amount}`;
   const navigation = useNavigation();
   const hasHandled = useRef(false);
   const [loading, setLoading] = useState(true);
