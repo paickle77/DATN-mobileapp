@@ -12,6 +12,7 @@ import OtpVerification from './screens/auth/OtpVerification';
 import Register from './screens/auth/Register';
 import Splash from './screens/auth/Splash';
 import Welcom from './screens/auth/Welcom';
+import ChatScreen from './screens/chat/Chat';
 import TabNavigator from './screens/navigation/TabNavigator';
 import NotificationScreen from './screens/notification/NotificationScreen';
 import CartScreen from './screens/order/Cart';
@@ -20,6 +21,7 @@ import CheckoutCard from './screens/order/CheckoutCardScreen';
 import CheckoutSuccess from './screens/order/CheckoutSuccessScreen';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
+import CategoryScreen from './screens/product/CategoryScreen';
 import Detail from './screens/product/Detail';
 import Home from './screens/product/Home';
 import ReviewScreen from './screens/product/ReviewScreen';
@@ -29,7 +31,6 @@ import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings';
 import UserProfile from './screens/profile/UserProfile';
 
-
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
@@ -37,6 +38,7 @@ export default function TabLayout() {
   return (
     <Stack.Navigator initialRouteName="Welcom">
       {/* Screens không có tab bar */}
+       <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
@@ -65,6 +67,7 @@ export default function TabLayout() {
       {/* Screens có thể được navigate từ tab navigator */}
       <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
+      <Stack.Screen name="Category" component={CategoryScreen} options={{ headerShown: false }} />
 
       {/* Settings Screen - được navigate từ Profile */}
       <Stack.Screen name="Settings" component={Settings} options={{ headerShown: false }} />

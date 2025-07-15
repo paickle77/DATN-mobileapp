@@ -285,7 +285,11 @@ const filteredCakes = useMemo(() => {
         </View>
         <View style={styles.categoryRow}>
           {cakeCategories.map((cat) => (
-            <TouchableOpacity key={cat.key} style={styles.categoryItem}>
+            <TouchableOpacity key={cat.key} style={styles.categoryItem} 
+            onPress={async () => {
+              await saveUserData({ value: cat.label, key: 'categoryID' });
+              navigation.navigate('Category');
+           }}>   
               <View style={styles.categoryIcon}>
                 <Image source={cat.icon} style={styles.categoryImage} />
               </View>
