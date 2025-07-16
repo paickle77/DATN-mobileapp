@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const genAI = new GoogleGenerativeAI("AIzaSyAauakKip4CAEdknvzI6R2jZboBKMX_JUg");
 
@@ -25,7 +26,6 @@ interface Message {
 
 const ChatScreen = () => {
   const navigation = useNavigation();
-
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -40,16 +40,21 @@ const ChatScreen = () => {
   const [loadingMessageId, setLoadingMessageId] = useState<string | null>(null);
   const [loadingDots, setLoadingDots] = useState('');
 
+
   useEffect(() => {
     if (loadingMessageId) {
       const interval = setInterval(() => {
-        setLoadingDots(prev => (prev === '...' ? '' : prev + '.'));
+        setLoadingDots(prev => {
+          if (prev === '...') return '';
+          return prev + '.';
+        });
       }, 500);
       return () => clearInterval(interval);
     } else {
       setLoadingDots('');
     }
   }, [loadingMessageId]);
+
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
@@ -65,11 +70,11 @@ const ChatScreen = () => {
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
 
-    // Hiển thị tin nhắn loading
+    // Gửi tin nhắn "chờ giây lát..."
     const loadingId = (Date.now() + 1).toString();
     const loadingMsg: Message = {
       id: loadingId,
-      text: 'Đang xử lý',
+      text: 'Đang xử lý', // chỉ là nhãn, dấu chấm sẽ thêm trong UI
       isUser: false,
       timestamp: new Date(),
       type: 'text',
@@ -78,7 +83,6 @@ const ChatScreen = () => {
     setLoadingMessageId(loadingId);
 
     try {
-       console.log("🚀 Bắt đầu gọi API Ollama...");
       const response = await fetch('http://10.0.2.2:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,25 +95,31 @@ Người dùng hỏi: "${userMsg.text}"`,
         })
       });
 
-     console.log("📥 Đã nhận phản hồi HTTP, đang parse JSON...");
-    const data = await response.json();
-    console.log("✅ JSON trả về từ Ollama:", data);
+      const data = await response.json();
       const reply = data.response || 'Xin lỗi, tôi chưa hiểu ý bạn.';
 
-      setMessages(prev => prev.map(msg =>
-        msg.id === loadingId ? { ...msg, text: reply, timestamp: new Date() } : msg
-      ));
+      // Cập nhật lại tin nhắn loading thành câu trả lời
+      setMessages(prev => prev.map(msg => {
+        if (msg.id === loadingId) {
+          return { ...msg, text: reply, timestamp: new Date() };
+        }
+        return msg;
+      }));
       setLoadingMessageId(null);
 
     } catch (err) {
       console.error("❌ Lỗi gọi Ollama:", err);
-      setMessages(prev => prev.map(msg =>
-        msg.id === loadingId ? {
-          ...msg,
-          text: '❌ Xin lỗi, hệ thống gặp sự cố.',
-          timestamp: new Date()
-        } : msg
-      ));
+      // Cập nhật lại loading thành lỗi
+      setMessages(prev => prev.map(msg => {
+        if (msg.id === loadingId) {
+          return {
+            ...msg,
+            text: '❌ Xin lỗi, hệ thống gặp sự cố.',
+            timestamp: new Date()
+          };
+        }
+        return msg;
+      }));
       setLoadingMessageId(null);
     }
   };
@@ -145,14 +155,13 @@ Người dùng hỏi: "${userMsg.text}"`,
 Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
 Bước 2: Bạn chọn vào mục Hồ sơ của bạn
 Bước 3: Sửa đổi thông tin mà bạn muốn
-    `;
+      `;
         break;
       case 'Hướng dẫn thay đổi địa chỉ giao hàng':
         botReply = `Hướng dẫn thay đổi hoặc thêm địa chỉ giao hàng :
 Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
 Bước 2: Bạn chọn vào mục danh sách địa chỉ
 Bước 3: Ở đây sẽ hiện địa chỉ mà bạn đã sửa và xóa địa chỉ cũ, nếu muốn thêm địa chỉ ấn vào dấu + ở trên cùng bên tay phải
-
       `;
         break;
       case 'Bảng xếp hạng các loại bánh bán chạy':
@@ -165,16 +174,16 @@ Bước 3: Ở đây sẽ hiện địa chỉ mà bạn đã sửa và xóa đ�
         botReply = `Hướng dẫn theo dõi đơn hàng:
 Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
 Bước 2: Bạn chọn vào mục đơn hàng của bạn
-Bước 3: Ở màn hình này bạn có thể theo dõi đơn hàng của bạn rồi`;
-        break;
-      case 'Hướng dẫn thay đổi phương thức thanh toán':
-        botReply = `Hướng dẫn thay đổi phương thức thanh toán:
+Bước 3: Ở màn hình này bạn có thể theo dõi đơn hàng của bạn rồi;
+      break;
+               case 'Hướng dẫn thay đổi phương thức thanh toán':
+      botReply = Hướng dẫn thay đổi phương thức thanh toán:
 Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
 Bước 2: Bạn chọn vào mục phương thức thanh toán
-Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh toán của mình rồi`;
-        break;
-      default:
-        botReply = 'Xin lỗi, tôi chưa hiểu yêu cầu của bạn.';
+Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh toán của mình rồi;
+      break;
+    default:
+      botReply = 'Xin lỗi, tôi chưa hiểu yêu cầu của bạn.`;
     }
 
     const botMsg: Message = {
@@ -190,12 +199,10 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
 
 
   const formatTime = (date: Date) => {
-  
     return date.toLocaleTimeString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
-     
     });
   };
 
@@ -271,26 +278,13 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
   );
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <View style={styles.headerAvatar}>
-            <MaterialIcons name="cake" size={24} color="#FF6B6B" />
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>CakeShop Bot</Text>
-            <Text style={styles.headerSubtitle}>Trợ lý tìm bánh ngọt</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-vertical" size={20} color="#333" />
-        </TouchableOpacity>
-      </View>
-  return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+  <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 60}
+
+    >
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -309,18 +303,18 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
         </TouchableOpacity>
       </View>
 
-      <ScrollView ref={scrollViewRef} style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-      </ScrollView>
-      <ScrollView ref={scrollViewRef} style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.messagesContainer}
+        contentContainerStyle={{ paddingBottom: 12 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
       </ScrollView>
 
-      <QuickActions />
       <QuickActions />
 
       <View style={styles.inputContainer}>
@@ -347,32 +341,9 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
-  );
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.textInput}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Nhập tin nhắn..."
-            placeholderTextColor="#999"
-            multiline
-            maxLength={500}
-          />
-        </View>
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            inputText.trim() ? styles.sendButtonActive : styles.sendButtonInactive
-          ]}
-          onPress={sendMessage}
-          disabled={!inputText.trim()}
-        >
-          <Ionicons name="send" size={18} color={inputText.trim() ? "#fff" : "#999"} />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  );
+  </SafeAreaView>
+);
+
 };
 
 export default ChatScreen;

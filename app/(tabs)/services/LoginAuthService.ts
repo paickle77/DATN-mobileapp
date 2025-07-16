@@ -9,6 +9,7 @@ export interface User {
   email: string;
   password: string;
   name?: string;
+  phone: string;
 }
 
 export interface LoginResponse {
@@ -71,8 +72,9 @@ async login(email: string, password: string): Promise<LoginResponse> {
       const { token, user } = response.data.data;
 
       await saveUserData({ key: 'token', value: token });
-      await saveUserData({ key: 'userData', value: user._id });
-
+      await saveUserData({ key: 'userData', value: user});
+      console.log('Lưu token và user thành công:', user);
+      
       return {
         success: true,
         message: 'Đăng nhập thành công!',

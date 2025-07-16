@@ -41,13 +41,15 @@ interface CompleteProfileData {
   avatar?: string;
 }
 
+
+
 export class RegisterAuthService {
-  private static readonly USERS_ENDPOINT = `${BASE_URL}/users`;
+  
   private static readonly DEFAULT_AVATAR = 'avatarmacdinh.png';
 
   static async getAllUsers(): Promise<User[]> {
     try {
-      const response = await axios.get<ApiResponse<User[]>>(this.USERS_ENDPOINT);
+      const response = await axios.get<ApiResponse<User[]>>(`${BASE_URL}/users`);
       return response.data.data || [];
     } catch (error) {
       console.error('Lỗi khi lấy danh sách users:', error);
@@ -75,7 +77,8 @@ static async registerUser(data: RegisterData): Promise<User> {
       throw new Error('Email đã tồn tại. Vui lòng dùng tài khoản khác hoặc đăng nhập.');
     }
 
-    const response = await axios.post<ApiResponse<User>>(this.USERS_ENDPOINT, data);
+    // ✅ Gọi đúng route để đăng ký (đã mã hóa mật khẩu)
+    const response = await axios.post<ApiResponse<User>>(`${BASE_URL}/register`, data);
 
     if (!response.data.data) {
       throw new Error('Không nhận được thông tin user sau khi đăng ký');
@@ -97,39 +100,40 @@ static async registerUser(data: RegisterData): Promise<User> {
   }
 }
 
-  static async registerWithSocial(data: {
-  email: string;
-  name?: string;
-  image?: string;
-  provider: 'google' | 'facebook';
-  google_id?: string;
-  facebook_id?: string;
-}): Promise<User> {
-  try {
-    const response = await axios.post<ApiResponse<User>>(`${this.USERS_ENDPOINT}`, data);
 
-    if (!response.data.data) {
-      throw new Error('Không nhận được thông tin user sau khi đăng ký mạng xã hội');
-    }
+//   static async registerWithSocial(data: {
+//   email: string;
+//   name?: string;
+//   image?: string;
+//   provider: 'google' | 'facebook';
+//   google_id?: string;
+//   facebook_id?: string;
+// }): Promise<User> {
+//   try {
+//     const response = await axios.post<ApiResponse<User>>(`${BASE_URL}/users/social`, data);
 
-    const user = response.data.data;
+//     if (!response.data.data) {
+//       throw new Error('Không nhận được thông tin user sau khi đăng ký mạng xã hội');
+//     }
 
-    // ✅ Lưu user._id vào AsyncStorage
-    await saveUserData({ key: 'userId', value: user._id });
+//     const user = response.data.data;
 
-    return user;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Lỗi API khi đăng ký mạng xã hội:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Không thể đăng ký bằng mạng xã hội. Vui lòng thử lại sau.');
-    }
-    throw error;
-  }
-}
+//     // ✅ Lưu user._id vào AsyncStorage
+//     await saveUserData({ key: 'userId', value: user._id });
+
+//     return user;
+//   } catch (error) {
+//     if (axios.isAxiosError(error)) {
+//       console.error('Lỗi API khi đăng ký mạng xã hội:', error.response?.data || error.message);
+//       throw new Error(error.response?.data?.message || 'Không thể đăng ký bằng mạng xã hội. Vui lòng thử lại sau.');
+//     }
+//     throw error;
+//   }
+// }
 
   static async getUserById(id: string): Promise<User> {
     try {
-      const response = await axios.get<ApiResponse<User>>(`${this.USERS_ENDPOINT}/${id}`);
+      const response = await axios.get<ApiResponse<User>>(`${BASE_URL}/users/${id}`);
       if (!response.data.data) {
         throw new Error('Không tìm thấy thông tin người dùng');
       }
@@ -147,7 +151,7 @@ static async registerUser(data: RegisterData): Promise<User> {
         avatar: profileData.avatar || this.DEFAULT_AVATAR
       };
 
-      const response = await axios.put<ApiResponse<User>>(`${this.USERS_ENDPOINT}/${id}`, finalData);
+      const response = await axios.put<ApiResponse<User>>(`${BASE_URL}/users/${id}`, finalData);
       if (!response.data.data) {
         throw new Error('Không nhận được thông tin user sau khi cập nhật');
       }

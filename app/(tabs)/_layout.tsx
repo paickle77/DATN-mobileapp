@@ -27,7 +27,7 @@ import ReviewScreen from './screens/product/ReviewScreen';
 import AddressList from './screens/profile/AddressList';
 import CompleteProfile from './screens/profile/CompleteProfile';
 import ProfileScreen from './screens/profile/Profile';
-import Settings from './screens/profile/Settings';
+import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
 
 export default function TabLayout() {
@@ -35,7 +35,7 @@ export default function TabLayout() {
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="Welcom">
+    <Stack.Navigator initialRouteName="Login">
       {/* Screens không có tab bar */}
        <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />

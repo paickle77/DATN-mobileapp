@@ -1,4 +1,6 @@
+// services/ProfileService.ts
 import axios from 'axios';
+import { getUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
 export interface Users {
@@ -7,8 +9,8 @@ export interface Users {
   is_lock: boolean;
   password: string;
   isDefault: boolean;
-  created_at: string; // ISO date string
-  updated_at: string; // ISO date string
+  created_at: string;
+  updated_at: string;
   __v: number;
   name: string;
   phone: string;
@@ -17,25 +19,46 @@ export interface Users {
 export interface GetAllResponse {
   success: boolean;
   message: string;
-  msg: string; 
-  data: Users[]; 
+  msg: string;
+  data: Users[];
 }
 
 class ProfileService {
   private apiUrl = `${BASE_URL}/users`;
 
-  // Lấy danh sách users để login
+  // Lấy toàn bộ danh sách user (nếu cần)
   async getAll(): Promise<GetAllResponse> {
     try {
       const response = await axios.get(this.apiUrl);
-      return response.data; // response.data phải có success, message, data
+      return response.data;
     } catch (error) {
-      console.error('Lỗi khi lấy dữ liệu:', error);
+      console.error('❌ Lỗi khi lấy danh sách người dùng:', error);
       throw error;
+    }
+  }
+
+  // ✅ Lấy thông tin người dùng hiện tại từ AsyncStorage và API
+  async getCurrentUserProfile(): Promise<Users | null> {
+    try {
+      const user = await getUserData('userData');
+      if (!user || !user._id) {
+        console.warn('⚠️ Không tìm thấy user từ AsyncStorage');
+        return null;
+      }
+
+      const result = await this.getAll();
+      if (result.success && result.data.length > 0) {
+        const found = result.data.find((u) => String(u._id) === String(user._id));
+        return found || null;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ Lỗi khi lấy user hiện tại:', error);
+      return null;
     }
   }
 }
 
-// Export instance
 export const profileService = new ProfileService();
 export default profileService;

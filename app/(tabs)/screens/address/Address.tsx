@@ -2,6 +2,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BASE_URL } from '../../services/api';
 
 type RootStackParamList = {
   CompleteProfile: {
@@ -32,7 +33,6 @@ type RootStackParamList = {
 const AddressScreen = () => {
   const navigation = useNavigation() as any;
   const route = useRoute<RouteProp<RootStackParamList, 'Address'>>();
-  const [userId, setUserId] = useState<string | null>(null);
 
   const [locationData, setLocationData] = useState({
     latitude: '',
@@ -62,20 +62,17 @@ const AddressScreen = () => {
       });
 
       console.log('ID nhận được từ CompleteProfile:', route.params?.id);
-      console.log('ID nhận được từ MapAddress:', id);
+      console.log('ID nhận được từ MapAddress:',id);
       console.log('Vĩ độ (latitude):', latitude);
       console.log('Kinh độ (longitude):', longitude);
-    }
-    if (route.params?.id) {
-      setUserId(route.params.id); // chỉ set 1 lần khi có id
     }
   }, [route.params?.id]);
 
   const displayAddress = locationData.address
     ? locationData.address
     : locationData.latitude && locationData.longitude
-      ? `Lat: ${locationData.latitude}, Lng: ${locationData.longitude}`
-      : 'Chưa có địa chỉ được chọn';
+    ? `Lat: ${locationData.latitude}, Lng: ${locationData.longitude}`
+    : 'Chưa có địa chỉ được chọn';
 
   const parts = displayAddress.split(',').map(part => part.trim());
   let detail_address = '';
@@ -109,25 +106,25 @@ const AddressScreen = () => {
       </View>
 
       <View style={styles.bottomButtonContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => {
-            // debug log trước khi navigate
-            console.log('[AddressScreen] navigating to SelectLocation with id =', route.params?.id);
+       <TouchableOpacity
+  style={styles.button}
+  onPress={() => {
+    // debug log trước khi navigate
+    console.log('[AddressScreen] navigating to SelectLocation with id =', route.params?.id);
 
-            navigation.navigate('SelectLocation', {
-              id: route.params?.id,                // nhớ thêm id
-              email: route.params?.email,
-              password: route.params?.password,
-              fullName: route.params?.fullName,
-              phone: route.params?.phone,
-              gender: route.params?.gender,
-              avatar: route.params?.avatar,
-            });
-          }}
-        >
-          <Text>Chọn vị trí trên bản đồ</Text>
-        </TouchableOpacity>
+    navigation.navigate('SelectLocation', {
+      id: route.params?.id,                // nhớ thêm id
+      email: route.params?.email,
+      password: route.params?.password,
+      fullName: route.params?.fullName,
+      phone: route.params?.phone,
+      gender: route.params?.gender,
+      avatar: route.params?.avatar,
+    });
+  }}
+>
+  <Text>Chọn vị trí trên bản đồ</Text>
+</TouchableOpacity>
 
         <TouchableOpacity
           style={styles.button1}
@@ -156,12 +153,7 @@ const AddressScreen = () => {
 
             const parts = address.split(',').map(part => part.trim());
 
-            if (!userId) {
-              alert('Không tìm thấy ID người dùng!');
-              return;
-            }
-
-            let body: any = { user_id: userId };
+            let body: any = { user_id: route.params?.id };
 
             if (parts.length >= 4) {
               body = {
@@ -181,8 +173,7 @@ const AddressScreen = () => {
 
             console.log('🔼 Dữ liệu gửi lên API:', JSON.stringify(body, null, 2));
 
-            const response = await axios.post('http://192.168.0.116:3000/api/addresses', body);
-
+            const response = await axios.post(`${BASE_URL}/addresses/first`, body);
             console.log('✅ Phản hồi từ API:', response.data);
 
             navigation.navigate('TabNavigator');
