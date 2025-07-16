@@ -67,6 +67,7 @@ const buildBillPayload = async () => {
     payment_method: selectedPaymentName,
     total: total,
     items: billDetailsData,
+    status:"doing",
   };
 
   console.log("🚀 Payload gửi lên server:", payload);

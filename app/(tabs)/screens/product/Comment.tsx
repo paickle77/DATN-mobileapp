@@ -89,13 +89,19 @@ const CommentScreen = () => {
       {reviews.map((item) => (
         <View key={item._id} style={styles.reviewContainer}>
           {/* Left: Image */}
-          {item.image ? (
-            <Image source={{ uri: item.image }} style={styles.reviewImage} />
-          ) : (
-            <View style={[styles.reviewImage, styles.noImage]}>
-              <FontAwesome name="image" size={30} color="#ccc" />
-            </View>
-          )}
+      {item.image ? (
+        <Image
+          source={{
+            uri: `data:image/jpeg;base64,${item.image}`,
+          }}
+          style={styles.reviewImage}
+        />
+      ) : (
+  <View style={[styles.reviewImage, styles.noImage]}>
+    <FontAwesome name="image" size={30} color="#ccc" />
+  </View>
+)}
+
 
           {/* Right: Content */}
           <View style={styles.reviewContent}>
