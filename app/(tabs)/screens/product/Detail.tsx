@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import axios from 'axios';
 import React, { useEffect, useState } from "react";
@@ -33,22 +33,18 @@ interface Product {
     _id: string;
     name: string;
   };
-   ingredient_id: {
+  ingredient_id: {
     _id: string;
     name: string;
   };
 }
 
 interface Size {
-  _id:string;
-  Product_id:string;
-  quantity:number;
-  size:number;
-  price_increase:number;
-}
-
-interface RouteParams {
-  id: string;
+  _id: string;
+  Product_id: string;
+  quantity: number;
+  size: string;
+  price_increase: number;
 }
 
 type RootStackParamList = {
@@ -58,8 +54,6 @@ type RootStackParamList = {
 
 const Detail: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute();
-  
   const [product, setProduct] = useState<Product | null>(null);
   const [sizes, setSizes] = useState<Size[]>([]);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
@@ -69,200 +63,173 @@ const Detail: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const baseUrl = `${BASE_URL}/productsandcategoryid`;
-
-
-  const sizeOptions = [
-  { label: '13x6cm (mini)', value: 1 },
-  { label: '17x8cm (nhỏ)', value: 2 },
-  { label: '21x8cm (vừa)', value: 3 },
-   { label: '100g (nhỏ)', value: 4 },
-    { label: '200g (vừa)', value: 5 },
-     { label: '500g (lớn)', value: 6 },
-];
-
   useEffect(() => {
     fetchProductDetails();
-    fetchsize();
+    fetchSizes();
+    checkFavoriteStatus();
   }, []);
 
   useEffect(() => {
-  if (product) {
-    let basePrice = product.discount_price || product.price;
-
-    const sizeData = sizes.find(s => {
-      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-      return label === selectedSize;
-    });
-
-    if (sizeData) {
-      basePrice += sizeData.price_increase * 1000;
+    if (product) {
+      let basePrice = product.discount_price || product.price;
+      const sizeData = sizes.find(s => s.size === selectedSize);
+      if (sizeData) basePrice += sizeData.price_increase * 1000;
+      setTotalPrice(quantity * basePrice);
     }
-
-    setTotalPrice(quantity * basePrice);
-  }
-}, [quantity, product, selectedSize, sizes]);
-
-  const fetchsize=async ()=>{
-    try{
-      setLoading(true);
-      setError(null);
-       const dateSize = await axios.get(`${BASE_URL}/sizes`);
-        console.log('API response dateSize:', dateSize.data);
-      let size = [];
-      if (Array.isArray(dateSize.data)) {
-        size = dateSize.data;
-      } else if (Array.isArray(dateSize.data.data)) {
-        size = dateSize.data.data;
-      } else {
-        throw new Error('Unexpected response format');
-      }
-       const id = await getUserData('productID');
-      console.log("productID lấy ra1:", id);
-     const foundSizes = size.filter((item: Size) => item.Product_id === id);
-      setSizes(foundSizes);
-
-           if (foundSizes) {
-        console.log("foundSize lấy ra ID:", foundSizes);
-        setProduct(foundSizes);
-      } else {
-        setError('Không tìm thấy sản phẩm');
-      }
-    }catch(err){
-      console.log(err)
-    }
-  }
+  }, [quantity, product, selectedSize, sizes]);
 
   const fetchProductDetails = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await axios.get(baseUrl);
-      console.log('API response orderDetails:', response.data);
-      
-      let products = [];
-      if (Array.isArray(response.data)) {
-        products = response.data;
-      } else if (Array.isArray(response.data.data)) {
-        products = response.data.data;
-      } else {
-        throw new Error('Unexpected response format');
-      }
-     const id = await getUserData('productID');
-      console.log("productID lấy ra:", id);
-      
-      const foundProduct = products.find((item: Product) => item._id === id,)
-      
-      if (foundProduct) {
-        console.log("Id lấy ra:", foundProduct._id);
-        setProduct(foundProduct);
-      } else {
-        setError('Không tìm thấy sản phẩm');
-      }
+      const res = await axios.get(`${BASE_URL}/productsandcategoryid`);
+      const id = await getUserData('productID');
+      const products = res.data.data || res.data;
+      const found = products.find((item: Product) => item._id === id);
+      if (found) setProduct(found);
+      else setError('Không tìm thấy sản phẩm');
     } catch (err) {
-      console.error('API error:', err);
       setError('Lỗi khi tải dữ liệu sản phẩm');
     } finally {
       setLoading(false);
     }
   };
 
-const incrementQuantity = () => {
-  const sizeData = sizes.find(s => {
-    const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-    return label === selectedSize;
-  });
-  if (sizeData && quantity < sizeData.quantity) {
-    setQuantity(prev => prev + 1);
-  } else {
-    Alert.alert('Thông báo', 'Không đủ hàng trong kho hoặc chưa chọn size');
-  }
-};
+  const fetchSizes = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/sizes`);
+      const id = await getUserData('productID');
+      const allSizes = res.data.data || res.data;
+      const foundSizes = allSizes.filter((s: Size) => s.Product_id === id);
+      setSizes(foundSizes);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-const decrementQuantity = () => {
-  if (quantity > 0) {
-    setQuantity(prev => prev - 1);
-  }
-};
+  const checkFavoriteStatus = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/favorites2`);
+      const format = res.data.data;
+      const userID = await getUserData('userData');
+      const productID = await getUserData('productID');
+      const found = format.find(item => item.user_id === userID && item.product_id?._id === productID);
+      setIsFavorite(!!found);
+    } catch (err) {
+      setIsFavorite(false);
+    }
+  };
 
-const handleAddToCart = () => {
+  const toggleFavorite = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/favorites2`);
+      const data = res.data.data;
+      const userID = await getUserData('userData');
+      const id = await getUserData('productID');
+      const found = data.find(item => item.user_id === userID && item.product_id?._id === id);
+      if (found) {
+        await axios.delete(`${BASE_URL}/favorites/${found._id}`);
+        setIsFavorite(false);
+        Alert.alert('Thông báo', 'Đã xóa khỏi danh sách yêu thích!');
+      } else {
+        await axios.post(`${BASE_URL}/favorites`, { user_id: userID, product_id: id });
+        setIsFavorite(true);
+        Alert.alert('Thành công', 'Đã thêm vào danh sách yêu thích!');
+      }
+    } catch (err) {
+      Alert.alert('Lỗi', 'Không thể cập nhật danh sách yêu thích.');
+    }
+  };
+
+  const incrementQuantity = () => {
+    const sizeData = sizes.find(s => s.size === selectedSize);
+    if (sizeData && quantity < sizeData.quantity) setQuantity(q => q + 1);
+    else Alert.alert('Thông báo', 'Không đủ hàng trong kho hoặc chưa chọn size');
+  };
+
+  const decrementQuantity = () => {
+    if (quantity > 0) setQuantity(q => q - 1);
+  };
+
+const handleAddToCart = async () => {
   if (quantity === 0) {
-    Alert.alert('Thông báo', 'Vui lòng chọn số lượng sản phẩm');
-    return;
+    return Alert.alert('Thông báo', 'Vui lòng chọn số lượng sản phẩm');
   }
 
-  const sizeData = sizes.find(s => {
-    const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-    return label === selectedSize;
-  });
+  try {
+    const userID = await getUserData('userData');
+    const sizeData = sizes.find(s => s.size === selectedSize);
+    if (!sizeData) return Alert.alert('Lỗi', 'Vui lòng chọn size hợp lệ');
 
-  console.log("=== DỮ LIỆU ĐÃ RENDER ===");
-  console.log("Product:", product);
-  console.log("Selected Size:", selectedSize);
-  console.log("Size Data:", sizeData);
-  console.log("Quantity:", quantity);
-  console.log("Total Price:", totalPrice);
+    const productID = product?._id;
+    const sizeID = sizeData._id;
 
-  Alert.alert(
-    'Thêm vào giỏ hàng',
-    `Đã thêm ${quantity} ${product?.name} (size ${selectedSize || "M"}) vào giỏ hàng với tổng giá ${formatPrice(totalPrice)}đ`,
-    [{ text: 'OK' }]
-  );
+    // 1. Lấy toàn bộ giỏ hàng
+    const response = await axios.get(`${BASE_URL}/GetAllCarts`);
+    const cartItems = response.data.data;
+    console.log("response: ", cartItems);
+
+    // 2. Kiểm tra trùng user_id + product_id + size_id
+    const existingCartItem = cartItems.find((item: any) =>
+      item.user_id === userID &&
+      item.product_id?._id === productID &&
+      item.size_id?._id === sizeID
+    );
+
+    if (existingCartItem) {
+      // 3. Nếu đã có → Gọi PUT để tăng số lượng
+      const updatedQuantity = existingCartItem.quantity + quantity;
+      await axios.put(`${BASE_URL}/carts/${existingCartItem._id}`, {
+        quantity: updatedQuantity
+      });
+
+      Alert.alert(
+        'Đã cập nhật giỏ hàng',
+        `Số lượng mới: ${updatedQuantity} sản phẩm ${product?.name} (size ${selectedSize})`
+      );
+    } else {
+      // 4. Nếu chưa có → Gọi POST để thêm mới
+      await axios.post(`${BASE_URL}/addtocarts`, {
+        user_id: userID,
+        product_id: productID,
+        size_id: sizeID,
+        quantity: quantity
+      });
+
+      Alert.alert(
+        'Đã thêm vào giỏ hàng',
+        `${quantity} ${product?.name} (size ${selectedSize}) với tổng giá ${formatPrice(totalPrice)}đ`
+      );
+    }
+
+  } catch (error) {
+    console.error('❌ Lỗi khi xử lý giỏ hàng:', error);
+    Alert.alert('Lỗi', 'Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+  }
 };
 
-  const toggleFavorite = () => {
-    setIsFavorite((prev) => !prev);
-    Alert.alert(
-      'Thông báo',
-      isFavorite ? "Đã xóa khỏi yêu thích!" : "Đã thêm vào danh sách yêu thích!"
-    );
-  };
 
-  const formatPrice = (value: number): string => {
-    return value.toLocaleString("vi-VN");
-  };
+  const formatPrice = (val: number) => val.toLocaleString("vi-VN");
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.SafeAreaView}>
-        <View style={styles.centerContainer}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#D4A574" />
-            <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (loading) return (
+    <SafeAreaView style={styles.SafeAreaView}>
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#6B4F35" />
+        <Text style={{ marginTop: 10 }}>Đang tải...</Text>
+      </View>
+    </SafeAreaView>
+  );
 
-  if (error) {
-    return (
-      <SafeAreaView style={styles.SafeAreaView}>
-        <View style={styles.centerContainer}>
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={64} color="#E74C3C" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
-              style={styles.retryButton} 
-              onPress={fetchProductDetails}
-            >
-              <Text style={styles.retryButtonText}>Thử lại</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (error || !product) return (
+    <SafeAreaView style={styles.SafeAreaView}>
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error || 'Không có dữ liệu sản phẩm'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchProductDetails}>
+          <Text style={styles.retryButtonText}>Thử lại</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
 
-  if (!product) {
-    return (
-      <SafeAreaView style={styles.SafeAreaView}>
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>Không có dữ liệu sản phẩm</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -296,90 +263,63 @@ const handleAddToCart = () => {
           </View>
         </ImageBackground>
 
-        <View style={styles.contentContainer}>
-          {/* Description Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Mô tả sản phẩm</Text>
-            <Text style={styles.description}>
-              {product.description || 'Sản phẩm chất lượng cao, được làm từ những nguyên liệu tươi ngon nhất.'}
-            </Text>
-          </View>
+        <View style={styles.bottomSection}>
+          <Text style={styles.sectionTitle}>Mô tả</Text>
+          <Text style={styles.fullDescription}>
+            {product.description || 'Sản phẩm chất lượng cao, được làm từ những nguyên liệu tươi ngon nhất.'}
+          </Text>
+  <Text style={styles.sectionTitle}>
+  Nguyên Liệu: {product.ingredient_id.map(i => i.name).join(", ")}
+</Text>
 
-          {/* Ingredients Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Nguyên liệu</Text>
-            <View style={styles.ingredientContainer}>
-              {product.ingredient_id.map((ingredient: { _id: string; name: string }, index: number) => (
-                <View key={ingredient._id} style={styles.ingredientChip}>
-                  <Text style={styles.ingredientText}>{ingredient.name}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
 
-          {/* Size Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Chọn kích thước</Text>
-            <View style={styles.sizeContainer}>
-              {sizes.map(s => {
-                const label = sizeOptions.find(opt => opt.value === s.size)?.label || `Size ${s.size}`;
-                const isSelected = selectedSize === label;
-                return (
-                  <TouchableOpacity
-                    key={s._id}
-                    style={[
-                      styles.sizeButton,
-                      isSelected && styles.activeSizeButton,
-                    ]}
-                    onPress={() => setSelectedSize(label)}
-                  >
-                    <Text style={[
-                      styles.sizeText,
-                      isSelected && styles.activeSizeText
-                    ]}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            
-            {/* Stock Status */}
-            <Text style={[
-              styles.stockText,
-              (() => {
-                const sizeData = sizes.find(s => {
-                  const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-                  return label === selectedSize;
-                });
-                return sizeData && sizeData.quantity > 0 ? styles.inStock : styles.outOfStock;
-              })()
-            ]}>
-              {(() => {
-                const sizeData = sizes.find(s => {
-                  const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-                  return label === selectedSize;
-                });
-                if (!selectedSize) return 'Vui lòng chọn kích thước';
-                return sizeData
-                  ? (sizeData.quantity > 0 ? `Còn lại ${sizeData.quantity} sản phẩm` : 'Hết hàng')
-                  : 'Không tìm thấy size';
-              })()}
-            </Text>
-          </View>
+          <Text style={styles.sectionTitle}>Kích Thước</Text>
+ <View style={styles.sizeContainer}>
+  {sizes.map(s => (
+    <TouchableOpacity
+      key={s._id}
+      style={[
+        styles.sizeButton,
+        selectedSize === s.size ? styles.activeSize : null,
+      ]}
+      onPress={() => setSelectedSize(s.size)}
+    >
+      <Text style={[
+        styles.sizeText,
+        selectedSize === s.size ? styles.activeSizeText : null
+      ]}>
+        {s.size}
+      </Text>
+    </TouchableOpacity>
+  ))}
+</View>
+   
+<Text style={[
+  styles.detailValuequantity,
+  (() => {
+   const sizeData = sizes.find(s => s.size === selectedSize);
+ return sizeData && sizeData.quantity > 0 ? styles.inStock : styles.outOfStock;
+  })()
+]}>
+  {(() => {
+   const sizeData = sizes.find(s => s.size === selectedSize);
 
-          {/* Price Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Giá bán</Text>
-            <View style={styles.priceContainer}>
-              {(() => {
-                let basePrice = product.discount_price || product.price;
-                let adjustedPrice = basePrice;
+    if (!selectedSize) return 'Chưa chọn kích thước';
+    return sizeData
+      ? (sizeData.quantity > 0 ? `Còn ${sizeData.quantity} sp` : 'Hết hàng')
+      : 'Không tìm thấy size';
+  })()}
+</Text>
 
-                const sizeData = sizes.find(s => {
-                  const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-                  return label === selectedSize;
-                });
+          <View style={styles.priceRow}>
+            <Text style={styles.sectionTitle}>Giá: </Text>
+            {(() => {
+              let basePrice = product.discount_price || product.price;
+              let adjustedPrice = basePrice;
+
+
+               const sizeData = sizes.find(s => s.size === selectedSize);
+
               
                 if (sizeData) {
                   adjustedPrice += sizeData.price_increase * 1000;
@@ -449,59 +389,40 @@ const handleAddToCart = () => {
           {/* Action Buttons */}
           <View style={styles.actionContainer}>
             <TouchableOpacity
-              style={styles.reviewButton}
-              onPress={() => navigation.navigate('Review', { productId: product._id })}
+              style={[styles.secondaryButton]}
+              onPress={() => navigation.navigate('comment', { productId: product._id })}
             >
               <Text style={styles.reviewButtonText}>Xem đánh giá</Text>
             </TouchableOpacity>
+<TouchableOpacity
+  style={[
+    styles.buyButton,
+    {
+      backgroundColor: (() => {
+        if (!selectedSize) return '#ccc';
+       const sizeData = sizes.find(s => s.size === selectedSize);
 
-            <TouchableOpacity
-              style={[
-                styles.addToCartButton,
-                {
-                  backgroundColor: (() => {
-                    if (!selectedSize) return '#BDC3C7';
-                    const sizeData = sizes.find(s => {
-                      const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-                      return label === selectedSize;
-                    });
-                    return sizeData && sizeData.quantity > 0 ? '#27AE60' : '#BDC3C7';
-                  })()
-                }
-              ]}
-              onPress={handleAddToCart}
-              disabled={(() => {
-                if (!selectedSize) return true;
-                const sizeData = sizes.find(s => {
-                  const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-                  return label === selectedSize;
-                });
-                return !(sizeData && sizeData.quantity > 0);
-              })()}
-            >
-              <Ionicons 
-                name={(() => {
-                  if (!selectedSize) return 'resize-outline';
-                  const sizeData = sizes.find(s => {
-                    const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-                    return label === selectedSize;
-                  });
-                  return sizeData && sizeData.quantity > 0 ? 'bag-add-outline' : 'close-circle-outline';
-                })()} 
-                size={20} 
-                color="#fff" 
-              />
-              <Text style={styles.addToCartButtonText}>
-                {(() => {
-                  if (!selectedSize) return 'CHỌN KÍCH THƯỚC';
-                  const sizeData = sizes.find(s => {
-                    const label = sizeOptions.find(opt => opt.value === s.size)?.label;
-                    return label === selectedSize;
-                  });
-                  return sizeData && sizeData.quantity > 0 ? 'THÊM VÀO GIỎ' : 'HẾT HÀNG';
-                })()}
-              </Text>
-            </TouchableOpacity>
+        return sizeData && sizeData.quantity > 0 ? '#6B4F35' : '#ccc';
+      })()
+    }
+  ]}
+  onPress={handleAddToCart}
+  disabled={(() => {
+const sizeData = sizes.find(s => s.size === selectedSize);
+
+    return !(sizeData && sizeData.quantity > 0);
+  })()}
+>
+  <Text style={styles.buyButtonText}>
+    {(() => {
+      if (!selectedSize) return 'CHỌN KÍCH THƯỚC';
+const sizeData = sizes.find(s => s.size === selectedSize);
+
+      return sizeData && sizeData.quantity > 0 ? 'CHỌN MUA' : 'HẾT HÀNG';
+    })()}
+  </Text>
+</TouchableOpacity>
+
           </View>
         </View>
       </SafeAreaView>

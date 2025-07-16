@@ -295,7 +295,7 @@ const filteredCakes = useMemo(() => {
         </View>
 
         {/* ===== Filter Horizontal ===== */}
-        <View style={styles.filterRow}>
+        <ScrollView horizontal={true} style={styles.filterRow}>
           {cakeFilters.map((filter) => (
             <TouchableOpacity
               key={filter}
@@ -315,7 +315,7 @@ const filteredCakes = useMemo(() => {
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {/* ===== Grid Sản Phẩm ===== */}
     <FlatList

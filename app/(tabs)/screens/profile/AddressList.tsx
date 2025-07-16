@@ -1,9 +1,18 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { NavigationProp } from '@react-navigation/native';
 import axios from 'axios';
+import axios from 'axios';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
   Alert,
   FlatList,
   SafeAreaView,
@@ -21,9 +30,29 @@ export interface Address {
   _id: string;
   user_id: {
     _id: string;
+import AddAddressModal from '../../component/AddAddressModal';
+import EditAddressModal from '../../component/EditAddressModal';
+import { BASE_URL } from '../../services/api';
+import { getUserData } from '../utils/storage';
+
+export interface Address {
+  _id: string;
+  user_id: {
+    _id: string;
     name: string;
     email: string;
+    email: string;
     phone: string;
+  } | null;
+  name: string;
+  phone: number;
+  ward: string;
+  district: string;
+  city: string;
+  detail_address: string;
+  isDefault: boolean | string;
+  latitude: string;
+  longitude: string;
   } | null;
   name: string;
   phone: number;
@@ -37,6 +66,8 @@ export interface Address {
 }
 
 type RootStackParamList = {
+  AddAddress: undefined;
+  EditAddress: { address: Address };
   AddAddress: undefined;
   EditAddress: { address: Address };
 };
@@ -168,6 +199,7 @@ const AddressListScreen = () => {
       </View>
     );
   };
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -188,6 +220,13 @@ const AddressListScreen = () => {
         </TouchableOpacity>
       </View>
 
+      <FlatList
+        data={addresses}
+        renderItem={renderAddressItem}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
       <FlatList
         data={addresses}
         renderItem={renderAddressItem}
@@ -223,6 +262,105 @@ const AddressListScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: { padding: 8 },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: '#222' },
+  addButton: { padding: 8 },
+  listContainer: { padding: 16, paddingBottom: 100 },
+  addressItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  namePhoneContainer: { flex: 1 },
+  addressName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#222',
+    marginBottom: 4,
+  },
+  addressPhone: { fontSize: 14, color: '#666' },
+  defaultBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  defaultText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  addressActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  actionText: {
+    fontSize: 14,
+    color: '#795548',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  addAddressButton: {
+    position: 'absolute',
+    bottom: 30,
+    left: 16,
+    right: 16,
+    backgroundColor: '#795548',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  addAddressText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: {
     flexDirection: 'row',

@@ -1,5 +1,4 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -21,7 +20,6 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
-  type?: 'text' | 'location' | 'recommendation';
 }
 
 const ChatScreen = () => {
@@ -32,10 +30,10 @@ const ChatScreen = () => {
       text: 'Chào bạn! Tôi là chatbot của CakeShop, tôi có thể giúp gì cho bạn',
       isUser: false,
       timestamp: new Date(),
-      type: 'text',
     },
   ]);
   const [inputText, setInputText] = useState('');
+  const [isTyping, setIsTyping] = useState(false); // ✅ Trạng thái bot đang trả lời
   const scrollViewRef = useRef<ScrollView>(null);
   const [loadingMessageId, setLoadingMessageId] = useState<string | null>(null);
   const [loadingDots, setLoadingDots] = useState('');
@@ -56,6 +54,8 @@ const ChatScreen = () => {
   }, [loadingMessageId]);
 
 
+  const sendMessage = async () => {
+    if (!inputText.trim()) return;
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
@@ -198,6 +198,14 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
   };
 
 
+
+
+
+
+  useEffect(() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, [messages, isTyping]);
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('vi-VN', {
       hour: '2-digit',
@@ -276,6 +284,26 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
       </View>
     </View>
   );
+  const QuickActions = () => (
+  <View style={styles.quickActions}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      {[
+        'Hướng dẫn đặt bánh',
+        'Hướng dẫn thay đổi thông tin tài khoản',
+        'Hướng dẫn thay đổi địa chỉ giao hàng',
+        'Hướng dẫn theo dõi đơn hàng',
+        'Hướng dẫn thay đổi phương thức thanh toán',
+        'Bảng xếp hạng các loại bánh bán chạy'
+      ].map((text, idx) => (
+        <TouchableOpacity key={idx} style={styles.quickButton} onPress={() => sendQuickMessage(text)}>
+          <Ionicons name="help-circle-outline" size={16} color="#FF6B6B" />
+          <Text style={styles.quickButtonText}>{text}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
+);
+
 
   return (
   <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
@@ -298,9 +326,6 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
             <Text style={styles.headerSubtitle}>Trợ lý tìm bánh ngọt</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-vertical" size={20} color="#333" />
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -313,10 +338,16 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
+        
+        {isTyping && (
+          <View style={styles.typingIndicator}>
+            <MaterialIcons name="cake" size={18} color="#FF6B6B" />
+            <Text style={styles.typingText}>Đang trả lời...</Text>
+          </View>
+        )}
       </ScrollView>
-
-      <QuickActions />
-
+        <QuickActions />
+      {/* Input */}
       <View style={styles.inputContainer}>
         <View style={styles.inputWrapper}>
           <TextInput

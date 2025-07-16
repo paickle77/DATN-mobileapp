@@ -3,6 +3,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BASE_URL } from '../../services/api';
+import { BASE_URL } from '../../services/api';
 
 type RootStackParamList = {
   CompleteProfile: {

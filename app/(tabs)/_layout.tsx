@@ -2,6 +2,7 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryItem from '../(tabs)/component/category';
+import Odercomponent from './component/Odercomponent';
 import AddressScreen from './screens/address/Address';
 import ManualAddress from './screens/address/manual-address';
 import MapAddress from './screens/address/MapAddress';
@@ -19,13 +20,16 @@ import CartScreen from './screens/order/Cart';
 import Checkout from './screens/order/Checkout';
 import CheckoutCard from './screens/order/CheckoutCardScreen';
 import CheckoutSuccess from './screens/order/CheckoutSuccessScreen';
+import OderDetails from './screens/order/OrderDetails';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
+import CommentScreen from './screens/product/Comment';
 import Detail from './screens/product/Detail';
 import Home from './screens/product/Home';
 import ReviewScreen from './screens/product/ReviewScreen';
 import AddressList from './screens/profile/AddressList';
 import CompleteProfile from './screens/profile/CompleteProfile';
+import PaymentScreen from './screens/profile/Payement';
 import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
@@ -37,7 +41,11 @@ export default function TabLayout() {
   return (
     <Stack.Navigator initialRouteName="Login">
       {/* Screens không có tab bar */}
+      <Stack.Screen name="payment" component={PaymentScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="comment" component={CommentScreen} options={{ headerShown: false }} />      
+        <Stack.Screen name="OderDetails" component={OderDetails} options={{ headerShown: false }} />
        <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
+       <Stack.Screen name="Odercomponent" component={Odercomponent} options={{ headerShown: false }} />
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />

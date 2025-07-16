@@ -1,14 +1,14 @@
 import axios from 'axios';
 import React, { useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import data from '../../(tabs)/screens/address/vietnamAddress.json';
 import { getUserData } from '../screens/utils/storage';

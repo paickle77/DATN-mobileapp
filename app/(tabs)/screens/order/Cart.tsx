@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CartItem from '../../component/CartItem'; // Component con
 import { BASE_URL } from '../../services/api';
+import { getUserData } from '../utils/storage';
 
 const initialItems = [
   {
@@ -41,30 +42,41 @@ export default function CartScreen() {
    const [itemToRemove, setItemToRemove] = useState(null);
   const [list,setList]=useState([]);
 
-  useEffect(()=>{
-FetchData();
-  },[]);
+useFocusEffect(
+  useCallback(() => {
+    FetchData();
+  }, [])
+);
 
-  const FetchData = async ()=>{
-    try {
-      const data = await axios.get(`${BASE_URL}/GetAllCarts`);
-      const listCart=data.data.data;
-      console.log("dữ liệu listCart :",listCart[1].size_id);
-   const formattedData = listCart.map((item, index) => ({
-id: item._id,
-title:item.product_id.name,
-user_id: item.user_id,
-Size:item.size_id.size,
-price:item.product_id.price,
-image:item.product_id.image_url,
-quantity:item.quantity
-}));
-      setList(formattedData)
-      console.log("dữ liệu formattedData :",formattedData);
-    } catch (error) {
-      console.log("Lỗi API ",error)
-    }
+const FetchData = async () => {
+  const user = await getUserData('userData');
+  const userId = user
+  console.log("userID:", userId);
+
+  try {
+    const response = await axios.get(`${BASE_URL}/GetAllCarts`);
+    const listCart = response.data.data;
+
+    const formattedData = listCart.map((item) => ({
+      id: item._id,
+      title: item.product_id.name,
+      user_id: item.user_id,
+      Size: item.size_id.size,
+      price: item.product_id.price,
+      image: item.product_id.image_url,
+      quantity: item.quantity,
+    }));
+
+    // 🔍 Lọc ra những item có user_id khớp với user hiện tại
+    const userCartItems = formattedData.filter(item => item.user_id === userId);
+
+    setList(userCartItems); // 👉 chỉ render dữ liệu thuộc user này
+    console.log("Dữ liệu giỏ hàng theo user:", userCartItems);
+  } catch (error) {
+    console.log("Lỗi API:", error);
   }
+};
+
 
 
 
@@ -109,6 +121,7 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
     <View style={styles.container}>
+      
       {/* Header với nút Back */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -122,27 +135,36 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
       </View>
 
 
-      <FlatList
-        data={list}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        renderItem={({ item, index }) => (
-         <CartItem
-  name={item.title}
-  price={item.price}
-  image={item.image}
-  Size={item.Size}
-  quantily={item.quantity}
-  Uptoquantily={(newQ) => updateQuantity(item, newQ)}
-  Dowtoquantily={(newQ) => updateQuantity(item, newQ)}
-  onRemove={() => {
-    setItemToRemoveIndex(item.id);
-    setShowConfirm(true);
-  }}
+<FlatList
+  data={list}
+  keyExtractor={(item) => item.id}
+  contentContainerStyle={{ paddingBottom: 120 }}
+  renderItem={({ item, index }) => (
+    <CartItem
+      name={item.title}
+      price={item.price}
+      image={item.image}
+      Size={item.Size}
+      quantily={item.quantity}
+      Uptoquantily={(newQ) => updateQuantity(item, newQ)}
+      Dowtoquantily={(newQ) => updateQuantity(item, newQ)}
+      onRemove={() => {
+        setItemToRemoveIndex(item.id);
+        setShowConfirm(true);
+      }}
+    />
+  )}
+  showsVerticalScrollIndicator={false}
 />
 
-        )}
-      />
+{list.length === 0 && (
+  <View style={styles.emptyContainer}>
+    <Text style={styles.emptyText}>Giỏ hàng của bạn đang trống</Text>
+    <Ionicons name="cart-outline" size={80} color="#ccc" style={{ marginTop: 10 }} />
+  </View>
+)}
+
+
 
       {showConfirm && (
         <View style={styles.modalOverlay}>
@@ -171,46 +193,48 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
       )}
 
       {/* Footer tổng tiền */}
-      <View style={styles.footer}>
-        {/* Nhập mã giảm giá */}
-        <View style={styles.discountContainer}>
-          <TextInput
-            style={styles.discountInput}
-            placeholder="Nhập mã giảm giá"
-            placeholderTextColor="#888"
-          />
-          <TouchableOpacity style={styles.applyButton}>
-            <Text style={styles.applyButtonText}>Áp dụng</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Chi tiết thanh toán */}
-        <View style={styles.paymentInfoRow}>
-          <Text style={styles.paymentLabel}>Tổng phụ</Text>
-          <Text style={styles.paymentValue}>{total.toFixed(2)}</Text>
-        </View>
-        <View style={styles.paymentInfoRow}>
-          <Text style={styles.paymentLabel}>Phí giao hàng</Text>
-          <Text style={styles.paymentValue}>35.000 vnd</Text>
-        </View>
-        <View style={styles.paymentInfoRow}>
-          <Text style={styles.paymentLabel}>Giảm giá</Text>
-          <Text style={[styles.paymentValue, { color: '#000', fontWeight: 'bold' }]}>-135.000 vnd</Text>
-        </View>
-
-        {/* Tổng chi phí */}
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Tổng chi phí</Text>
-          <Text style={styles.totalPrice}>{total2.toFixed(2)}</Text>
-        </View>
-
-  <TouchableOpacity
-        style={styles.checkoutButton}
-        onPress={() => navigation.navigate('Checkout')}
-      >
-        <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
+     {list.length > 0 && (
+  <View style={styles.footer}>
+    {/* Nhập mã giảm giá */}
+    <View style={styles.discountContainer}>
+      <TextInput
+        style={styles.discountInput}
+        placeholder="Nhập mã giảm giá"
+        placeholderTextColor="#888"
+      />
+      <TouchableOpacity style={styles.applyButton}>
+        <Text style={styles.applyButtonText}>Áp dụng</Text>
       </TouchableOpacity>
-</View>
+    </View>
+
+    {/* Chi tiết thanh toán */}
+    <View style={styles.paymentInfoRow}>
+      <Text style={styles.paymentLabel}>Tổng phụ</Text>
+      <Text style={styles.paymentValue}>{total.toFixed(2)}</Text>
+    </View>
+    <View style={styles.paymentInfoRow}>
+      <Text style={styles.paymentLabel}>Phí giao hàng</Text>
+      <Text style={styles.paymentValue}>35.000 vnd</Text>
+    </View>
+    <View style={styles.paymentInfoRow}>
+      <Text style={styles.paymentLabel}>Giảm giá</Text>
+      <Text style={[styles.paymentValue, { color: '#000', fontWeight: 'bold' }]}>0000 vnd</Text>
+    </View>
+
+    {/* Tổng chi phí */}
+    <View style={styles.totalContainer}>
+      <Text style={styles.totalLabel}>Tổng chi phí</Text>
+      <Text style={styles.totalPrice}>{total2.toFixed(2)}</Text>
+    </View>
+
+    <TouchableOpacity
+      style={styles.checkoutButton}
+      onPress={() => navigation.navigate('Checkout')}
+    >
+      <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
+    </TouchableOpacity>
+  </View>
+)}
 
 
       {/* <TabLayout /> */}
@@ -223,6 +247,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fdfdfd',
   },
+emptyContainer: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingBottom: 250,
+},
+emptyText: {
+  fontSize: 16,
+  color: '#666',
+  marginTop: 10,
+},
 
   // Header styles
   header: {

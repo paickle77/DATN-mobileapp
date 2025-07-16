@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { favoriteAuthService } from '../../services/FavoritesService';
 import { getUserData } from '../utils/storage';
+
 // Types
 interface FavoriteItem {
   id: string;
@@ -33,6 +35,7 @@ const FavoritesScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category>('Tất cả');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [userProducts, setUserProducts] = useState<any[]>([]);
+  const navigation = useNavigation();
 
 
 
@@ -48,52 +51,76 @@ const FavoritesScreen: React.FC = () => {
   }, []);
 
 
-useEffect(() => {
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const user = await getUserData('userData');
-      console.log('User ID yêu thích:', user);
 
-      const result = await favoriteAuthService.getAll();
-      console.log('✅ Dữ liệu trả về từ API:', JSON.stringify(result, null, 2));
+useFocusEffect(
+  useCallback(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const user = await getUserData('userData');
+        console.log('User ID yêu thích:', user);
 
-      if (result.data && result.data.length > 0) {
-        // So sánh userId với user_id trong data
-        const matched = result.data.filter((item: any) => item.user_id === user);
-        
-        console.log('🟢 Matched data:', JSON.stringify(matched, null, 2));
+        const result = await favoriteAuthService.getAll();
+        console.log('✅ Dữ liệu trả về từ API:', JSON.stringify(result, null, 2));
 
-        // Lấy tất cả sản phẩm từ các matched item
-        const products = matched.flatMap((item: any) => item.product_id);
+        if (result.data && result.data.length > 0) {
+          const matched = result.data.filter((item: any) => item.user_id === user);
+          const products = matched.flatMap((item: any) => item.product_id);
+          setUserProducts(products);
+        } else {
+          setUserProducts([]); // clear danh sách nếu không có
+        }
 
-        console.log('🟣 Sản phẩm cần render:', JSON.stringify(products, null, 2));
-
-        setUserProducts(products);
-
-        Alert.alert('Thành công', `Đã tìm thấy ${products.length} sản phẩm yêu thích`);
-      } else {
-        Alert.alert('Thông báo', 'Không tìm thấy dữ liệu yêu thích');
+      } catch (error) {
+        console.error('❌ Lỗi khi gọi API:', error);
+        Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+      } finally {
+        setLoading(false);
       }
+    };
 
-    } catch (error) {
-      console.error('❌ Lỗi khi gọi API:', error);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
+    fetchData();
+  }, []) // dependency rỗng để chạy mỗi lần screen được focus
+);
+
+
+
+const toggleFavorite = async (productId: string): Promise<void> => {
+  try {
+    const userId = await getUserData('userData');
+    if (!userId) {
+      Alert.alert('Lỗi', 'Không xác định được người dùng');
+      return;
     }
-  };
 
-  fetchData();
-}, []);
+    const result = await favoriteAuthService.getAll();
+    const data = result?.data ?? [];
 
-const toggleFavorite = (itemId: string): void => {
-  setFavorites(prev =>
-    prev.includes(itemId)
-      ? prev.filter(id => id !== itemId)
-      : [...prev, itemId]
-  );
+    // Tìm đúng bản ghi yêu thích có cùng user và product
+    const matched = data.find(
+      (item: any) => item.user_id === userId && item.product_id?._id === productId
+    );
+
+    if (matched && matched._id) {
+      // Xoá bản ghi yêu thích
+      await favoriteAuthService.delete(matched._id);
+
+      // Cập nhật danh sách hiển thị (nếu cần thiết)
+      setUserProducts(prev => prev.filter(p => p._id !== productId));
+
+      Alert.alert('Thông báo', 'Đã xóa khỏi danh sách yêu thích!');
+    } else {
+      Alert.alert('Thông báo', 'Sản phẩm không tồn tại trong danh sách yêu thích.');
+    }
+  } catch (err) {
+    console.error('❌ Lỗi xoá sản phẩm yêu thích:', err);
+    Alert.alert('Lỗi', 'Không thể xóa sản phẩm khỏi yêu thích.');
+  }
 };
+
+
+
+
 
 const filteredItems = selectedCategory === 'Tất cả'
   ? userProducts
@@ -135,36 +162,37 @@ const filteredItems = selectedCategory === 'Tất cả'
   );
 
 const renderFavoriteItem = ({ item }: { item: any }) => (
-  <View style={styles.itemContainer}>
-    <View style={styles.imageContainer}>
-      <Image source={{ uri: item.image_url }} style={styles.itemImage} />
-      <TouchableOpacity
-        style={styles.favoriteButton}
-        onPress={() => toggleFavorite(item._id)}
-      >
-        <Ionicons
-          name={favorites.includes(item._id) ? 'heart' : 'heart-outline'}
-          size={20}
-          color={favorites.includes(item._id) ? '#FF6B6B' : '#666'}
-        />
-      </TouchableOpacity>
-    </View>
-
-    <View style={styles.itemInfo}>
-      <Text style={styles.itemName} numberOfLines={2}>
-        {item.name}
-      </Text>
-
-      <View style={styles.ratingContainer}>
-        <Ionicons name="star" size={12} color="#FFD700" />
-        <Text style={styles.ratingText}>{item.rating}</Text>
+  <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item._id })}>
+    <View style={styles.itemContainer}>
+      <View style={styles.imageContainer}>
+        <Image source={{ uri: item.image_url }} style={styles.itemImage} />
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={(e) => {
+            e.stopPropagation(); // tránh trigger điều hướng khi xoá
+            toggleFavorite(item._id);
+          }}
+        >
+          <Ionicons name="trash" size={20} color="#FF6B6B" />
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.priceText}>
-        {formatPrice(item.discount_price || item.price)}
-      </Text>
+      <View style={styles.itemInfo}>
+        <Text style={styles.itemName} numberOfLines={2}>
+          {item.name}
+        </Text>
+
+        <View style={styles.ratingContainer}>
+          <Ionicons name="star" size={12} color="#FFD700" />
+          <Text style={styles.ratingText}>{item.rating}</Text>
+        </View>
+
+        <Text style={styles.priceText}>
+          {formatPrice(item.discount_price || item.price)}
+        </Text>
+      </View>
     </View>
-  </View>
+  </TouchableOpacity>
 );
 
 
