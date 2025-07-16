@@ -2,6 +2,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BASE_URL } from '../../services/api';
 
 type RootStackParamList = {
   CompleteProfile: {
@@ -172,7 +173,7 @@ const AddressScreen = () => {
 
             console.log('🔼 Dữ liệu gửi lên API:', JSON.stringify(body, null, 2));
 
-            const response = await axios.post('http://172.20.50.65:3000/api/addresses', body);
+            const response = await axios.post(`${BASE_URL}/addresses`, body);
             console.log('✅ Phản hồi từ API:', response.data);
 
             navigation.navigate('TabNavigator');

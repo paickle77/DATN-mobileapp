@@ -7,7 +7,7 @@ import AddPaymentModal from '../../component/AddPaymentModal';
 
 type PaymentMethod = {
   id: string;
-  type: 'momo' | 'zalopay' | 'vnpay' | 'card';
+  type: 'momo' | 'VNPAY' | 'ZaloPay' | 'card';
   name: string;
   accountNumber?: string;
   cardNumber?: string;
@@ -39,8 +39,8 @@ const PaymentMethodsScreen = () => {
     },
     {
       id: '2',
-      type: 'zalopay',
-      name: 'ZaloPay',
+      type: 'VNPAY',
+      name: 'VNPAY',
       accountNumber: '0123456789',
       isDefault: false,
     },
@@ -49,7 +49,7 @@ const PaymentMethodsScreen = () => {
   const [selectedPaymentId, setSelectedPaymentId] = useState<string>('cod');
   
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedType, setSelectedType] = useState<'momo' | 'zalopay' | 'vnpay' | 'card'>('momo');
+  const [selectedType, setSelectedType] = useState<'momo' | 'VNPAY' | 'ZaloPay' | 'card'>('momo');
   const [accountNumber, setAccountNumber] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -61,11 +61,11 @@ const PaymentMethodsScreen = () => {
         return <View style={[styles.paymentIcon, { backgroundColor: '#D82D8B' }]}>
           <Text style={styles.iconText}>M</Text>
         </View>;
-      case 'zalopay':
+      case 'VNPAY':
         return <View style={[styles.paymentIcon, { backgroundColor: '#0068FF' }]}>
           <Text style={styles.iconText}>Z</Text>
         </View>;
-      case 'vnpay':
+      case 'ZaloPay':
         return <View style={[styles.paymentIcon, { backgroundColor: '#1BA8FF' }]}>
           <Text style={styles.iconText}>V</Text>
         </View>;
@@ -81,8 +81,8 @@ const PaymentMethodsScreen = () => {
   const getPaymentName = (type: string) => {
     switch (type) {
       case 'momo': return 'Ví MoMo';
-      case 'zalopay': return 'ZaloPay';
-      case 'vnpay': return 'VNPay';
+      case 'VNPAY': return 'VNPAY';
+      case 'ZaloPay': return 'ZaloPay';
       case 'card': return 'Thẻ tín dụng/ghi nợ';
       default: return '';
     }

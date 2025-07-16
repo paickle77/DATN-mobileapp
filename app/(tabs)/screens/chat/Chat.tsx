@@ -1,5 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -13,14 +12,11 @@ import {
   View
 } from 'react-native';
 
-const genAI = new GoogleGenerativeAI("AIzaSyAauakKip4CAEdknvzI6R2jZboBKMX_JUg");
-
 interface Message {
   id: string;
   text: string;
   isUser: boolean;
   timestamp: Date;
-  type?: 'text' | 'location' | 'recommendation';
 }
 
 const ChatScreen = () => {
@@ -32,10 +28,10 @@ const ChatScreen = () => {
       text: 'Chào bạn! Tôi là chatbot của PlantShop, tôi có thể giúp gì cho bạn về cây cối và cây trồng',
       isUser: false,
       timestamp: new Date(),
-      type: 'text',
     },
   ]);
   const [inputText, setInputText] = useState('');
+  const [isTyping, setIsTyping] = useState(false); // ✅ Trạng thái bot đang trả lời
   const scrollViewRef = useRef<ScrollView>(null);
   const [loadingMessageId, setLoadingMessageId] = useState<string | null>(null);
   const [loadingDots, setLoadingDots] = useState('');
@@ -59,129 +55,100 @@ const ChatScreen = () => {
       text: inputText.trim(),
       isUser: true,
       timestamp: new Date(),
-      type: 'text',
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
-
-    // Hiển thị tin nhắn loading
-    const loadingId = (Date.now() + 1).toString();
-    const loadingMsg: Message = {
-      id: loadingId,
-      text: 'Đang xử lý',
-      isUser: false,
-      timestamp: new Date(),
-      type: 'text',
-    };
-    setMessages(prev => [...prev, loadingMsg]);
-    setLoadingMessageId(loadingId);
+    setIsTyping(true); // ✅ Bắt đầu trả lời
 
     try {
-       console.log("🚀 Bắt đầu gọi API Ollama...");
       const response = await fetch('http://10.0.2.2:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'llama3',
-          prompt: `Bạn là chatbot của hệ thống APP PlantShop. 
-Trả lời ngắn gọn, thân thiện, chỉ gợi ý về vấn đề liên quan đến cây cối, cây trồng, chăm sóc cây và đặc biệt phải sử dụng tiếng Việt.
-Người dùng hỏi: "${userMsg.text}"`,
+          prompt: `Bạn là chatbot của hệ thống APP CakeShop. Trả lời ngắn gọn, thân thiện, liên quan đến bánh ngọt bằng tiếng Việt. Người dùng hỏi: "${userMsg.text}"`,
           stream: false
         })
       });
 
-     console.log("📥 Đã nhận phản hồi HTTP, đang parse JSON...");
-    const data = await response.json();
-    console.log("✅ JSON trả về từ Ollama:", data);
-    const reply = data.response || 'Xin lỗi, tôi chưa hiểu ý bạn.';
+      const data = await response.json();
+      const reply = data.response || 'Xin lỗi, tôi chưa hiểu ý bạn.';
 
-      setMessages(prev => prev.map(msg =>
-        msg.id === loadingId ? { ...msg, text: reply, timestamp: new Date() } : msg
-      ));
-      setLoadingMessageId(null);
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: reply,
+        isUser: false,
+        timestamp: new Date(),
+      };
 
+      setMessages(prev => [...prev, botMsg]);
     } catch (err) {
       console.error("❌ Lỗi gọi Ollama:", err);
-      setMessages(prev => prev.map(msg =>
-        msg.id === loadingId ? {
-          ...msg,
-          text: '🌱 Xin lỗi, hệ thống gặp sự cố.',
-          timestamp: new Date()
-        } : msg
-      ));
-      setLoadingMessageId(null);
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 2).toString(),
+        text: 'Xin lỗi, hệ thống gặp sự cố.',
+        isUser: false,
+        timestamp: new Date(),
+      }]);
+    } finally {
+      setIsTyping(false); // ✅ Đã trả lời xong
     }
   };
+
 
   const sendQuickMessage = (text: string) => {
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      text: text,
-      isUser: true,
-      timestamp: new Date(),
-      type: 'text',
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-
-    // Tùy theo text, trả về câu trả lời cứng
-    let botReply = '';
-    switch (text) {
-      case 'Hướng dẫn mua cây':
-        botReply = `Để mua cây:  
-🌱 Bước 1: Chọn vào màn hình home trên thanh Tabbar (icon đầu tiên)
-🌿 Bước 2: Tìm kiếm và chọn loại cây bạn muốn mua
-🍃 Bước 3: Thêm cây vào giỏ hàng
-🌳 Bước 4: Ở thanh Tabbar chọn mục giỏ hàng (icon thứ 2)
-🌲 Bước 5: Ở trang giỏ hàng bạn nhấn thanh toán
-🌺 Bước 6: Điền đủ thông tin và hoàn tất thanh toán`;
-        break;
-      case 'Hướng dẫn thay đổi thông tin tài khoản':
-        botReply = `Hướng dẫn thay đổi thông tin tài khoản:
-🌱 Bước 1: Chọn vào màn hình Profile trên thanh Tabbar (icon cuối cùng)
-🌿 Bước 2: Chọn vào mục "Hồ sơ của bạn"
-🍃 Bước 3: Sửa đổi thông tin mà bạn muốn thay đổi`;
-        break;
-      case 'Hướng dẫn thay đổi địa chỉ giao hàng':
-        botReply = `Hướng dẫn thay đổi hoặc thêm địa chỉ giao cây:
-🌱 Bước 1: Chọn vào màn hình Profile trên thanh Tabbar (icon cuối cùng)
-🌿 Bước 2: Chọn vào mục "Danh sách địa chỉ"
-🍃 Bước 3: Sửa địa chỉ hiện tại hoặc thêm địa chỉ mới bằng nút "+" ở góc phải`;
-        break;
-      case 'Top cây bán chạy':
-        botReply = `🌟 Top cây bán chạy nhất:
-🥇 1. Cây kim tiền - may mắn tài lộc
-🥈 2. Cây trầu bà - dễ chăm sóc
-🥉 3. Cây sen đá - xinh xắn, ít nước`;
-        break;
-      case 'Hướng dẫn theo dõi đơn hàng':
-        botReply = `Hướng dẫn theo dõi đơn hàng cây:
-🌱 Bước 1: Chọn vào màn hình Profile trên thanh Tabbar (icon cuối cùng)
-🌿 Bước 2: Chọn vào mục "Đơn hàng của bạn"
-🍃 Bước 3: Theo dõi trạng thái giao cây của bạn`;
-        break;
-      case 'Hướng dẫn chăm sóc cây':
-        botReply = `🌱 Tips chăm sóc cây cơ bản:
-💧 Tưới nước: 2-3 lần/tuần, tránh úng nước
-☀️ Ánh sáng: Đặt nơi có ánh sáng gián tiếp
-🌡️ Nhiệt độ: 18-25°C là lý tưởng
-🍃 Bón phân: 1-2 lần/tháng với phân hữu cơ`;
-        break;
-      default:
-        botReply = 'Xin lỗi, tôi chưa hiểu yêu cầu của bạn về cây cối.';
-    }
-
-    const botMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      text: botReply,
-      isUser: false,
-timestamp: new Date(),
-      type: 'text',
-    };
-
-    setMessages(prev => [...prev, botMsg]);
+  const userMsg: Message = {
+    id: Date.now().toString(),
+    text,
+    isUser: true,
+    timestamp: new Date(),
   };
+
+  setMessages(prev => [...prev, userMsg]);
+
+  let botReply = '';
+  switch (text) {
+    case 'Hướng dẫn đặt bánh':
+      botReply = `Để đặt bánh:\nBước 1: Vào màn hình Home\nBước 2: Chọn sản phẩm\nBước 3: Thêm vào giỏ hàng\nBước 4: Vào giỏ hàng và thanh toán\nBước 5: Điền thông tin & xác nhận`;
+      break;
+    case 'Hướng dẫn thay đổi thông tin tài khoản':
+      botReply = `Bước 1: Vào Profile\nBước 2: Hồ sơ của bạn\nBước 3: Chỉnh sửa thông tin`;
+      break;
+    case 'Hướng dẫn thay đổi địa chỉ giao hàng':
+      botReply = `Vào Profile → Danh sách địa chỉ → Thêm/Sửa địa chỉ → Ấn dấu +`;
+      break;
+    case 'Bảng xếp hạng các loại bánh bán chạy':
+      botReply = `Top Cake:\n1. Bánh kem socola\n2. Tiramisu\n3. Cupcake`;
+      break;
+    case 'Hướng dẫn theo dõi đơn hàng':
+      botReply = `Vào Profile → Đơn hàng của bạn → Xem trạng thái đơn`;
+      break;
+    case 'Hướng dẫn thay đổi phương thức thanh toán':
+      botReply = `Profile → Phương thức thanh toán → Thay đổi theo ý bạn`;
+      break;
+    default:
+      botReply = 'Xin lỗi, tôi chưa hiểu yêu cầu của bạn.';
+  }
+
+  const botMsg: Message = {
+    id: (Date.now() + 1).toString(),
+    text: botReply,
+    isUser: false,
+    timestamp: new Date(),
+  };
+
+  setMessages(prev => [...prev, botMsg]);
+};
+
+
+
+
+
+
+  useEffect(() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, [messages, isTyping]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('vi-VN', {
@@ -190,41 +157,6 @@ timestamp: new Date(),
       hour12: false
     });
   };
-
-  useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
-
-  const QuickActions = () => (
-    <View style={styles.quickActions}>
-      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn mua cây')}>
-          <Ionicons name="leaf" size={16} color="#2E7D32" />
-          <Text style={styles.quickButtonText}>Hướng dẫn mua cây</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn chăm sóc cây')}>
-          <Ionicons name="water" size={16} color="#2E7D32" />
-          <Text style={styles.quickButtonText}>Chăm sóc cây</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn thay đổi thông tin tài khoản')}>
-          <Ionicons name="person" size={16} color="#2E7D32" />
-          <Text style={styles.quickButtonText}>Thông tin tài khoản</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn thay đổi địa chỉ giao hàng')}>
-          <Ionicons name="location" size={16} color="#2E7D32" />
-          <Text style={styles.quickButtonText}>Địa chỉ giao cây</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn theo dõi đơn hàng')}>
-          <Ionicons name="eye" size={16} color="#2E7D32" />
-          <Text style={styles.quickButtonText}>Theo dõi đơn hàng</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Top cây bán chạy')}>
-          <Ionicons name="star" size={16} color="#2E7D32" />
-          <Text style={styles.quickButtonText}>Top cây hot</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
 
   const MessageBubble = ({ message }: { message: Message }) => (
     <View style={[
@@ -255,9 +187,31 @@ styles.timestamp,
       </View>
     </View>
   );
+  const QuickActions = () => (
+  <View style={styles.quickActions}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      {[
+        'Hướng dẫn đặt bánh',
+        'Hướng dẫn thay đổi thông tin tài khoản',
+        'Hướng dẫn thay đổi địa chỉ giao hàng',
+        'Hướng dẫn theo dõi đơn hàng',
+        'Hướng dẫn thay đổi phương thức thanh toán',
+        'Bảng xếp hạng các loại bánh bán chạy'
+      ].map((text, idx) => (
+        <TouchableOpacity key={idx} style={styles.quickButton} onPress={() => sendQuickMessage(text)}>
+          <Ionicons name="help-circle-outline" size={16} color="#FF6B6B" />
+          <Text style={styles.quickButtonText}>{text}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
+);
+
 
   return (
+    
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#1B5E20" />
@@ -271,19 +225,23 @@ styles.timestamp,
             <Text style={styles.headerSubtitle}>Trợ lý chăm sóc cây xanh</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-vertical" size={20} color="#1B5E20" />
-        </TouchableOpacity>
       </View>
 
+      {/* Messages */}
       <ScrollView ref={scrollViewRef} style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
+        
+        {isTyping && (
+          <View style={styles.typingIndicator}>
+            <MaterialIcons name="cake" size={18} color="#FF6B6B" />
+            <Text style={styles.typingText}>Đang trả lời...</Text>
+          </View>
+        )}
       </ScrollView>
-
-      <QuickActions />
-
+        <QuickActions />
+      {/* Input */}
       <View style={styles.inputContainer}>
         <View style={styles.inputWrapper}>
           <TextInput
@@ -316,10 +274,22 @@ export default ChatScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F5E8', // Nền xanh nhạt như lá cây
+    backgroundColor: '#f8f9fa',
   },
+  typingIndicator: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 8,
+  paddingLeft: 8,
+},
+typingText: {
+  fontSize: 13,
+  color: '#888',
+  marginLeft: 6,
+  fontStyle: 'italic',
+},
 
-  // Header styles với theme xanh lá
+  // Styles cho giao diện
   header: {
     flexDirection: 'row',
     alignItems: 'center',
