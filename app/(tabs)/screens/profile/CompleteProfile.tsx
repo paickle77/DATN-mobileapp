@@ -3,7 +3,7 @@ import { NavigationProp, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateCompleteProfileForm } from '../../utils/validation';
 
@@ -37,6 +37,7 @@ export default function CompleteProfile() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isAvatarChanged, setIsAvatarChanged] = useState('');
 
   const [errors, setErrors] = useState({
     fullName: '',
@@ -91,12 +92,18 @@ export default function CompleteProfile() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
-        exif: false, // Không cần metadata
+        exif: false,
+        base64: true,
       });
+
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedImage = result.assets[0];
         setAvatar(selectedImage.uri);
+        setIsAvatarChanged(selectedImage.base64 ?? ''); // Đánh dấu đã thay đổi avatar
+        setIsUploadingAvatar(true);
+        console.log('Đang tải ảnh lên:', selectedImage.uri);
+        console.log('Base64 của ảnh:', selectedImage.base64);
         console.log('Đã chọn ảnh:', selectedImage.uri);
       }
     } catch (error) {
@@ -148,7 +155,7 @@ export default function CompleteProfile() {
         name: fullName.trim(),
         phone: formattedPhone,
         gender,
-        avatar: avatar || undefined
+        image: isAvatarChanged || undefined,
       });
 
       console.log('Cập nhật hồ sơ thành công cho user ID:', id);

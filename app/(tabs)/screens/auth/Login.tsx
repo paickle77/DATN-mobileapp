@@ -1,11 +1,22 @@
-// screens/Login.tsx
+// Login.tsx (đã sửa - thay Alert bằng Snackbar, note bên dưới)
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import CustomSnackbar from '../../../(tabs)/component/CustomSnackbar'; // ✅ ĐÃ THÊM COMPONENT SNACKBAR
 import { loginAuthService } from '../../services/LoginAuthService';
 import { validateLoginForm } from '../../utils/validation';
+
+// Kiểu dữ liệu navigation
 
 type RootStackParamList = {
   Login: undefined;
@@ -23,19 +34,16 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({
-    email: '',
-    password: '',
-  });
+  const [errors, setErrors] = useState({ email: '', password: '' });
+  
+  const [snackbarVisible, setSnackbarVisible] = useState(false); // ✅ SNACKBAR STATE
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState<'success' | 'error'>('success');
 
   const navigation = useNavigation<LoginNavigationProp>();
 
   const handleLogin = async () => {
-    // Reset errors
-    setErrors({
-      email: '',
-      password: '',
-    });
+    setErrors({ email: '', password: '' });
 
     const { isValid, errors: validationErrors } = validateLoginForm(email, password);
 
@@ -51,15 +59,27 @@ export default function Login() {
 
     try {
       const result = await loginAuthService.login(email, password);
-      
+
       if (result.success) {
-        Alert.alert('Thành công', result.message);
-        navigation.navigate('TabNavigator');
+        setSnackbarMessage(result.message);
+        setSnackbarType('success');
+        setSnackbarVisible(true);
+
+        setTimeout(() => {
+          setSnackbarVisible(false);
+          navigation.navigate('TabNavigator');
+        }, 1500);
       } else {
-        Alert.alert('Lỗi', result.message);
+        setSnackbarMessage(result.message);
+        setSnackbarType('error');
+        setSnackbarVisible(true);
+        setTimeout(() => setSnackbarVisible(false), 2000);
       }
     } catch (error) {
-      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+      setSnackbarMessage('Có lỗi xảy ra. Vui lòng thử lại.');
+      setSnackbarType('error');
+      setSnackbarVisible(true);
+      setTimeout(() => setSnackbarVisible(false), 2000);
     } finally {
       setLoading(false);
     }
@@ -67,23 +87,24 @@ export default function Login() {
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập email trước khi quên mật khẩu');
+      setSnackbarMessage('Vui lòng nhập email trước khi quên mật khẩu');
+      setSnackbarType('error');
+      setSnackbarVisible(true);
+      setTimeout(() => setSnackbarVisible(false), 2000);
       return;
     }
 
-
-
-    // Validate email format
     const emailValidation = validateLoginForm(email, 'dummy').errors.email;
     if (emailValidation) {
-      Alert.alert('Lỗi', emailValidation);
+      setSnackbarMessage(emailValidation);
+      setSnackbarType('error');
+      setSnackbarVisible(true);
+      setTimeout(() => setSnackbarVisible(false), 2000);
       return;
     }
 
     setLoading(true);
-    
     navigation.navigate('OtpVerification', { email });
-    
     setLoading(false);
   };
 
@@ -108,9 +129,7 @@ export default function Login() {
           value={email}
           onChangeText={(text) => {
             setEmail(text);
-            if (errors.email) {
-              setErrors(prev => ({ ...prev, email: '' }));
-            }
+            if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
           }}
           editable={!loading}
         />
@@ -127,9 +146,7 @@ export default function Login() {
           value={password}
           onChangeText={(text) => {
             setPassword(text);
-            if (errors.password) {
-              setErrors(prev => ({ ...prev, password: '' }));
-            }
+            if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
           }}
           editable={!loading}
         />
@@ -143,38 +160,34 @@ export default function Login() {
         {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
       </View>
 
-      {/* Link Quên mật khẩu */}
-      <TouchableOpacity onPress={handleForgotPassword} disabled={loading}>
-        <Text style={[styles.forgotText, loading && styles.disabledText]}>
-          Forgot Password ?
-        </Text>
-      </TouchableOpacity>
+      {/* Quên mật khẩu */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', width: '100%' }}>
+        <TouchableOpacity onPress={handleForgotPassword} disabled={loading}>
+          <Text style={[styles.forgotText, loading && styles.disabledText]}>Forgot Password ?</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Nút Đăng nhập */}
+      {/* Nút đăng nhập */}
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleLogin}
         disabled={loading}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.buttonText}>Đăng nhập</Text>
-        )}
+        {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Đăng nhập</Text>}
       </TouchableOpacity>
 
-      {/* Dòng ngăn cách "Hoặc" */}
+      {/* Hoặc */}
       <View style={styles.separatorContainer}>
         <View style={styles.separatorLine} />
         <Text style={styles.separatorText}>Hoặc</Text>
         <View style={styles.separatorLine} />
       </View>
 
-      {/* Nút Social Login */}
+      {/* Nút Social */}
       <View style={styles.socialContainer}>
         <TouchableOpacity
           style={[styles.socialButton, loading && styles.buttonDisabled]}
-          onPress={() => { /* TODO: Google login */ }}
+          onPress={() => {}}
           disabled={loading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
@@ -182,7 +195,7 @@ export default function Login() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.socialButton, loading && styles.buttonDisabled]}
-          onPress={() => { /* TODO: Facebook login */ }}
+          onPress={() => {}}
           disabled={loading}
         >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />
@@ -190,15 +203,16 @@ export default function Login() {
         </TouchableOpacity>
       </View>
 
-      {/* Footer: Chưa có tài khoản? */}
+      {/* Tạo tài khoản */}
       <View style={styles.footerContainer}>
         <Text style={styles.footerText}>Bạn không có tài khoản </Text>
         <TouchableOpacity onPress={handleGoToRegister} disabled={loading}>
-          <Text style={[styles.footerLink, loading && styles.disabledText]}>
-            Tạo tài khoản
-          </Text>
+          <Text style={[styles.footerLink, loading && styles.disabledText]}>Tạo tài khoản</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ✅ Gắn Snackbar vào cuối layout */}
+      <CustomSnackbar visible={snackbarVisible} message={snackbarMessage} type={snackbarType} />
     </View>
   );
 }

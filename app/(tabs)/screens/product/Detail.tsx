@@ -6,7 +6,6 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   ImageBackground,
   SafeAreaView,
   ScrollView,
@@ -17,8 +16,6 @@ import {
 } from "react-native";
 import { BASE_URL } from "../../services/api";
 import { getUserData } from "../utils/storage";
-
-const { width } = Dimensions.get('window');
 
 interface Product {
   _id: string;
@@ -232,34 +229,31 @@ const handleAddToCart = async () => {
 
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView>
       <SafeAreaView style={styles.SafeAreaView}>
         <ImageBackground
           source={{ uri: product.image_url }}
           style={styles.imageBackground}
-          resizeMode="cover"
         >
-          <View style={styles.gradientOverlay} />
+          <View style={styles.overlay} />
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-              <Ionicons name="chevron-back" size={24} color="#2C3E50" />
+              <Ionicons name="chevron-back" size={24} color="#1e1e1e" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>
               <Ionicons
                 name={isFavorite ? "heart" : "heart-outline"}
                 size={24}
-                color={isFavorite ? "#E74C3C" : "#2C3E50"}
+                color={isFavorite ? "red" : "#000"}
               />
             </TouchableOpacity>
           </View>
-          
-          <View style={styles.productInfoOverlay}>
+          <View style={styles.topSection}>
             <Text style={styles.title}>{product.name}</Text>
-            <View style={styles.ratingContainer}>
-              <Ionicons name="star" size={16} color="#F39C12" />
-              <Text style={styles.rating}>{product.rating}</Text>
-              <Text style={styles.categoryText}>• {product.category_id?.name || 'Chưa phân loại'}</Text>
-            </View>
+            <Text style={styles.rating}>
+              <Ionicons name="star" size={14} color="#FFD700" /> {product.rating} 
+            </Text>
+            <Text style={styles.categoryText}>Loại: {product.category_id?.name || 'Chưa phân loại'}</Text>
           </View>
         </ImageBackground>
 
@@ -321,78 +315,68 @@ const handleAddToCart = async () => {
                const sizeData = sizes.find(s => s.size === selectedSize);
 
               
-                if (sizeData) {
-                  adjustedPrice += sizeData.price_increase * 1000;
-                }
-
-                return (
-                  <View style={styles.priceRow}>
-                    {product.discount_price ? (
-                      <>
-                        <Text style={styles.originalPrice}>
-                          {(() => {
-                            let basePrice = product.price;
-                            if (selectedSize === "17x8cm (nhỏ)") {
-                              basePrice += 60000;
-                            } else if (selectedSize === "21x8cm (vừa)") {
-                              basePrice += 90000;
-                            }
-                            return `${formatPrice(basePrice)}đ`;
-                          })()}
-                        </Text>
-                        <Text style={styles.discountPrice}>
-                          {formatPrice(adjustedPrice)}đ
-                        </Text>
-                        <View style={styles.discountBadge}>
-                          <Text style={styles.discountText}>SALE</Text>
-                        </View>
-                      </>
-                    ) : (
-                      <Text style={styles.regularPrice}>{formatPrice(adjustedPrice)}đ</Text>
-                    )}
-                  </View>
-                );
-              })()}
-            </View>
-          </View>
-
-          {/* Quantity and Total */}
-          <View style={styles.section}>
-            <View style={styles.quantityHeader}>
-              <Text style={styles.quantityLabel}>Số lượng</Text>
-              <Text style={styles.totalLabel}>Tạm tính</Text>
-            </View>
-
-            <View style={styles.quantityRow}>
-              <View style={styles.quantityControls}>
-                <TouchableOpacity
-                  style={[styles.quantityButton, quantity === 0 && styles.disabledButton]}
-                  onPress={decrementQuantity}
-                  disabled={quantity === 0}
-                >
-                  <Text style={[styles.quantityButtonText, quantity === 0 && styles.disabledButtonText]}>−</Text>
-                </TouchableOpacity>
-                <View style={styles.quantityDisplay}>
-                  <Text style={styles.quantityText}>{quantity}</Text>
+              if (sizeData) {
+                adjustedPrice += sizeData.price_increase * 1000; // nếu đơn vị là ngàn
+                console.log("price_increase: ", sizeData.price_increase);
+              }
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {product.discount_price ? (
+                    <>
+                      <Text style={[styles.priceValue, { textDecorationLine: 'line-through', color: '#999', marginRight: 10 }]}>
+                        {(() => {
+                          let basePrice = product.price;
+                          if (selectedSize === "17x8cm (nhỏ)") {
+                            basePrice += 60000;
+                          } else if (selectedSize === "21x8cm (vừa)") {
+                            basePrice += 90000;
+                          }
+                          return `${formatPrice(basePrice)}đ`;
+                        })()}
+                      </Text>
+                      <Text style={[styles.priceValue, { color: '#E53935' }]}>
+                        {formatPrice(adjustedPrice)}đ
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.priceValue}>{formatPrice(adjustedPrice)}đ</Text>
+                  )}
                 </View>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={incrementQuantity}
-                >
-                  <Text style={styles.quantityButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.totalPrice}>{formatPrice(totalPrice)}đ</Text>
+              );
+            })()}
+          </View>
+          <View style={styles.quantityTotalContainer}>
+            <Text style={styles.textLabel}>Đã chọn {quantity} sản phẩm</Text>
+            <Text style={styles.textLabel}>Tạm tính</Text>
+          </View>
+
+          <View style={styles.quantityRow}>
+            <View style={styles.quantityControls}>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={decrementQuantity}
+              >
+                <Text style={styles.quantityButtonText}>-</Text>
+              </TouchableOpacity>
+              <Text style={styles.quantityText}>{quantity}</Text>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={incrementQuantity}
+              >
+                <Text style={styles.quantityButtonText}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <View>
+              <Text style={styles.totalPriceText}>{formatPrice(totalPrice)}đ</Text>
             </View>
           </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actionContainer}>
+          <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.secondaryButton]}
               onPress={() => navigation.navigate('comment', { productId: product._id })}
             >
-              <Text style={styles.reviewButtonText}>Xem đánh giá</Text>
+              <Text style={styles.secondaryButtonText}>Xem đánh giá</Text>
             </TouchableOpacity>
 <TouchableOpacity
   style={[
@@ -424,6 +408,7 @@ const sizeData = sizes.find(s => s.size === selectedSize);
 </TouchableOpacity>
 
           </View>
+
         </View>
       </SafeAreaView>
     </ScrollView>
@@ -431,10 +416,6 @@ const sizeData = sizes.find(s => s.size === selectedSize);
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
   SafeAreaView: {
     flex: 1,
   },
@@ -444,42 +425,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  loadingContainer: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 30,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: '#2C3E50',
-    fontWeight: '500',
-  },
-  errorContainer: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 30,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
   imageBackground: {
     width: "100%",
-    height: 450,
+    height: 430,
     justifyContent: "flex-end",
   },
-  gradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  overlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
   },
   header: {
     position: "absolute",
@@ -488,300 +440,193 @@ const styles = StyleSheet.create({
     right: 20,
     flexDirection: "row",
     justifyContent: "space-between",
-    zIndex: 2,
+    zIndex: 1,
   },
   iconButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 25,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 8,
   },
-  productInfoOverlay: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    padding: 25,
+  topSection: {
+    padding: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: 'auto',
   },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#2C3E50",
-    marginBottom: 8,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
   },
   rating: {
     fontSize: 16,
-    color: "#F39C12",
-    marginLeft: 5,
-    fontWeight: "600",
+    color: "#e1aa01",
+    marginVertical: 5,
+    fontWeight: "bold",
   },
   categoryText: {
     fontSize: 16,
-    color: "#7F8C8D",
-    marginLeft: 5,
-    fontWeight: "500",
+    color: "#666",
+    marginVertical: 5,
   },
-  contentContainer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  section: {
-    marginBottom: 25,
+  bottomSection: {
+    flex: 1,
+    padding: 20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#2C3E50",
-    marginBottom: 12,
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
   },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#5D6D7E",
-    backgroundColor: '#F8F9FA',
-    padding: 15,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#D4A574',
-  },
-  ingredientContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  ingredientChip: {
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#27AE60',
-  },
-  ingredientText: {
-    color: '#27AE60',
+  fullDescription: {
     fontSize: 14,
-    fontWeight: '600',
+    marginVertical: 10,
+    color: "#666",
+    lineHeight: 20,
   },
   sizeContainer: {
     flexDirection: "row",
-    flexWrap: 'wrap',
-    gap: 15,
-    marginBottom: 10,
+    marginVertical: 5,
   },
   sizeButton: {
-    backgroundColor: "#ECF0F1",
-    borderRadius: 25,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 2,
-    borderColor: '#BDC3C7',
-    minWidth: 110,
+    backgroundColor: "#D9D9D9",
+    borderRadius: 20,
+    paddingVertical: 10,
+    marginRight: 10,
+    width: 120,
   },
-  activeSizeButton: {
-    backgroundColor: "#D4A574",
-    borderColor: "#B8956A",
+  activeSize: {
+    backgroundColor: "#6B4F35",
   },
   sizeText: {
-    fontWeight: "600",
-    color: "#2C3E50",
+    fontWeight: "bold",
+    color: "#333",
     textAlign: "center",
-    fontSize: 14,
   },
   activeSizeText: {
     color: "#fff",
   },
-  stockText: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 8,
+  detailRow: {
+    flexDirection: "row",
+    marginVertical: 10,
+    alignItems: "center",
+  },
+  detailValuequantity: {
+    fontSize: 16,
+    fontWeight: "500",
   },
   inStock: {
-    color: "#27AE60",
+    color: "#4CAF50",
   },
   outOfStock: {
-    color: "#E74C3C",
-  },
-  priceContainer: {
-    backgroundColor: '#F8F9FA',
-    padding: 20,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
+    color: "#F44336",
   },
   priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
+    flexDirection: "row",
+    marginVertical: 10,
+    alignItems: "center",
   },
-  originalPrice: {
-    fontSize: 18,
-    textDecorationLine: 'line-through',
-    color: '#95A5A6',
-    fontWeight: '500',
+  priceValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#6B4F35",
   },
-  discountPrice: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#E74C3C',
-  },
-  regularPrice: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#D4A574',
-  },
-  discountBadge: {
-    backgroundColor: '#E74C3C',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  discountText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  quantityHeader: {
+  quantityTotalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    marginTop: 20,
   },
-  quantityLabel: {
-    fontSize: 16,
-    color: '#2C3E50',
-    fontWeight: '600',
-  },
-  totalLabel: {
-    fontSize: 16,
-    color: '#2C3E50',
-    fontWeight: '600',
+  textLabel: {
+    fontSize: 17,
+    color: '#666',
   },
   quantityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: 20,
-    borderRadius: 15,
+    marginBottom: 16,
   },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    padding: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   quantityButton: {
     width: 40,
     height: 40,
-    backgroundColor: '#D4A574',
+    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
-  },
-  disabledButton: {
-    backgroundColor: '#BDC3C7',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   quantityButtonText: {
     fontSize: 20,
-    color: '#fff',
+    color: '#333',
     fontWeight: 'bold',
-  },
-  disabledButtonText: {
-    color: '#95A5A6',
-  },
-  quantityDisplay: {
-    minWidth: 50,
-    alignItems: 'center',
-    paddingHorizontal: 15,
   },
   quantityText: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#2C3E50',
+    marginHorizontal: 16,
+    fontWeight: '500',
   },
-  totalPrice: {
+  totalPriceText: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#D4A574',
+    fontWeight: 'bold',
+    color: '#6B4F35',
   },
-  actionContainer: {
+  actionRow: {
     flexDirection: 'row',
-    gap: 15,
+    justifyContent: 'space-between',
     marginTop: 10,
+    gap: 10,
   },
-  reviewButton: {
+
+  secondaryButton: {
     flex: 1,
-    backgroundColor: '#E8E6FF',
+    backgroundColor: '#ddd',
     paddingVertical: 16,
-    borderRadius: 15,
+    borderRadius: 8,
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 2,
-    borderColor: '#6C5CE7',
+    marginRight: 5,
   },
-  reviewButtonText: {
+
+  secondaryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#6C5CE7',
+    fontWeight: 'bold',
+    color: '#333',
   },
-  addToCartButton: {
-    flex: 2,
+  buyButton: {
+    flex: 1,
+    backgroundColor: '#6B4F35',
     paddingVertical: 16,
-    borderRadius: 15,
+    borderRadius: 8,
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 8,
+    marginLeft: 5,
   },
-  addToCartButtonText: {
+  buyButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: 'bold',
   },
   errorText: {
     fontSize: 16,
     textAlign: "center",
-    color: '#E74C3C',
+    color: '#666',
     marginBottom: 20,
-    fontWeight: '500',
   },
   retryButton: {
-    backgroundColor: '#D4A574',
-    paddingHorizontal: 25,
-    paddingVertical: 12,
-    borderRadius: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    backgroundColor: '#6B4F35',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: 'bold',
   },
 });
 

@@ -11,6 +11,9 @@ import StarRating from '../../component/StarRating';
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
 
+
+const { width } = Dimensions.get('window');
+
 // Define types for product data for better clarity
 type ProductDataType = {
   _id: string;
@@ -281,6 +284,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   cancelButtonText: {
+    color: '#666666',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#fff',
     fontWeight: 'bold',
     textAlign: 'center',

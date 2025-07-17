@@ -10,6 +10,7 @@ export const saveUserData = async (data: UserData) => {
   try {
     const jsonValue = JSON.stringify(data.value);
     await AsyncStorage.setItem(data.key, jsonValue);
+    
   } catch (e) {
     console.error('Lỗi lưu user data:', e);
   }
@@ -30,6 +31,7 @@ export const getUserData = async (key: string): Promise<string | null> => {
 export const clearUserData = async (key: string) => {
   try {
     await AsyncStorage.removeItem(key);
+
   } catch (e) {
     console.error('Lỗi xóa user data:', e);
   }
