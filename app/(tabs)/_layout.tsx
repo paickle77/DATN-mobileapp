@@ -39,7 +39,7 @@ export default function TabLayout() {
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="Login">
+    <Stack.Navigator initialRouteName="Welcom">
       {/* Screens không có tab bar */}
       <Stack.Screen name="payment" component={PaymentScreen} options={{ headerShown: false }} />
       <Stack.Screen name="comment" component={CommentScreen} options={{ headerShown: false }} />      

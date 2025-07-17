@@ -3,19 +3,17 @@ import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useNavigation } from 'expo-router'; // Assuming you are using Expo Router
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import DetailedReview from '../../component/DetailedReview';
 import ProductCard from '../../component/ProductCard';
 import StarRating from '../../component/StarRating';
-
-const { width } = Dimensions.get('window');
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
+
+
+const { width } = Dimensions.get('window');
 
 // Define types for product data for better clarity
 type ProductDataType = {
@@ -183,7 +181,6 @@ const ReviewScreen = () => {
           />
         </View>
       </ScrollView>
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* New Header Container */}
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -296,21 +293,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: 'hidden',
   },
-  ratingSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 4,
-  },
+ 
   reviewSection: {
     marginHorizontal: 20,
     marginBottom: 24,

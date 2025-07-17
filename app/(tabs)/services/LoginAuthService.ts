@@ -87,7 +87,7 @@ async login(email: string, password: string): Promise<LoginResponse> {
       };
     }
   } catch (error: any) {
-    console.error('Lỗi đăng nhập:', error);
+    // console.error('Lỗi đăng nhập:', error);
     return {
       success: false,
       message: 'Đăng nhập thất bại. Vui lòng kiểm tra tài khoản và mật khẩu.',

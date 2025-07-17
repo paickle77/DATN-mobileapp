@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const genAI = new GoogleGenerativeAI("AIzaSyAauakKip4CAEdknvzI6R2jZboBKMX_JUg");
+
 
 interface Message {
   id: string;
@@ -54,8 +54,7 @@ const ChatScreen = () => {
   }, [loadingMessageId]);
 
 
-  const sendMessage = async () => {
-    if (!inputText.trim()) return;
+  
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
@@ -218,37 +217,7 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
-  const QuickActions = () => (
-    <View style={styles.quickActions}>
-      <ScrollView
-        horizontal={true}>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn đặt bánh')}>
-          <Ionicons name="cart" size={16} color="#FF6B6B" />
-          <Text style={styles.quickButtonText}>Hướng dẫn đặt bánh</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn thay đổi thông tin tài khoản')}>
-          <Ionicons name="person" size={16} color="#FF6B6B" />
-          <Text style={styles.quickButtonText}>Hướng dẫn thay đổi thông tin tài khoản</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn thay đổi hoặc thêm địa chỉ giao hàng')}>
-          <Ionicons name="location" size={16} color="#FF6B6B" />
-          <Text style={styles.quickButtonText}>Hướng dẫn thay đổi hoặc thêm địa chỉ giao hàng</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn theo dõi đơn hàng')}>
-          <Ionicons name="eye" size={16} color="#FF6B6B" />
-          <Text style={styles.quickButtonText}>Hướng dẫn theo dõi đơn hàng</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Hướng dẫn thay đổi phương thức thanh toán')}>
-          <Ionicons name="card" size={16} color="#FF6B6B" />
-          <Text style={styles.quickButtonText}>Hướng dẫn thay đổi phương thức thanh toán</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickButton} onPress={() => sendQuickMessage('Bảng xếp hạng các loại bánh bán chạy')}>
-          <Ionicons name="star" size={16} color="#FF6B6B" />
-          <Text style={styles.quickButtonText}>Top Cake</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
+  
 
   const MessageBubble = ({ message }: { message: Message }) => (
     <View style={[
@@ -304,13 +273,12 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
   </View>
 );
 
-
   return (
   <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 60}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
 
     >
       <View style={styles.header}>
