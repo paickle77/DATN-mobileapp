@@ -29,7 +29,8 @@ const initialItems = [
 
 type RootStackParamList = {
   Checkout: undefined;
-  
+  TabNavigator: undefined;
+  Home: undefined;
 };
 
 export default function CartScreen() {
@@ -125,7 +126,7 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Home')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
