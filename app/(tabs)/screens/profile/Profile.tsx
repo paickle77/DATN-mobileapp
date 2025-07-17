@@ -1,4 +1,4 @@
-import { Feather, FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
@@ -153,11 +153,11 @@ const ProfileScreen = () => {
                     label="Danh sách địa chỉ"
                     onPress={() => navigation.navigate('AddressList')}
                 />
-                <MenuItem
+                {/* <MenuItem
                     icon={<FontAwesome5 name="credit-card" size={20} color="#222" />}
                     label="Phương thức thanh toán"
                     onPress={() => navigation.navigate('PaymentMethods')}
-                />
+                /> */}
                 <MenuItem
                     icon={<Feather name="file-text" size={22} color="#222" />}
                     label="Đơn hàng của bạn"

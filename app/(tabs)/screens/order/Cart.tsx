@@ -230,6 +230,7 @@ const total = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
       style={styles.checkoutButton}
       onPress={() => navigation.navigate('Checkout')}
     >
+      
       <Text style={styles.checkoutText}>Tiến hành thanh toán</Text>
     </TouchableOpacity>
   </View>

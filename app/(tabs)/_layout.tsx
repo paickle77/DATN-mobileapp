@@ -15,7 +15,9 @@ import Splash from './screens/auth/Splash';
 import Welcom from './screens/auth/Welcom';
 import ChatScreen from './screens/chat/Chat';
 import TabNavigator from './screens/navigation/TabNavigator';
+import NotificationDemo from './screens/notification/NotificationDemo';
 import NotificationScreen from './screens/notification/NotificationScreen';
+import testPushTokenService from './screens/notification/testPushTokenService';
 import CartScreen from './screens/order/Cart';
 import Checkout from './screens/order/Checkout';
 import CheckoutCard from './screens/order/CheckoutCardScreen';
@@ -33,14 +35,15 @@ import PaymentScreen from './screens/profile/Payement';
 import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings';
 import UserProfile from './screens/profile/UserProfile';
-
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="Login">
+    <Stack.Navigator initialRouteName="testPushTokenService">
       {/* Screens không có tab bar */}
+      <Stack.Screen name="testPushTokenService" component={testPushTokenService} options={{ headerShown: false }} />
+      <Stack.Screen name="NotificationDemo" component={NotificationDemo} options={{ headerShown: false }} />
       <Stack.Screen name="payment" component={PaymentScreen} options={{ headerShown: false }} />
       <Stack.Screen name="comment" component={CommentScreen} options={{ headerShown: false }} />      
         <Stack.Screen name="OderDetails" component={OderDetails} options={{ headerShown: false }} />

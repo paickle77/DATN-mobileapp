@@ -53,7 +53,7 @@ const ChatScreen = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'llama3',
-          prompt: `Bạn là chatbot của hệ thống APP CakeShop. Trả lời ngắn gọn, thân thiện, liên quan đến bánh ngọt bằng tiếng Việt. Người dùng hỏi: "${userMsg.text}"`,
+          prompt: `Bạn là chatbot của hệ thống APP CakeShop. Trả lời ngắn gọn, thân thiện, liên quan đến bánh ngọt, sử dụng 1 loại ngôn ngữ: tiếng Việt. Người dùng hỏi: "${userMsg.text}"`,
           stream: false
         })
       });
