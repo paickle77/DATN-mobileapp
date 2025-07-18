@@ -5,6 +5,12 @@ import React, { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateRegisterForm } from '../../utils/validation';
+import axios from 'axios';
+//nao dung thật thì import
+// import * as Google from 'expo-auth-session/providers/google';
+// import * as Facebook from 'expo-auth-session/providers/facebook';
+import * as WebBrowser from 'expo-web-browser';
+WebBrowser.maybeCompleteAuthSession();
 
 type RootStackParamList = {
   CompleteProfile: {
@@ -81,6 +87,16 @@ export default function Register() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+// Xử lý đăng ký với Google
+  const handleGoogleRegister = async () => {
+   
+  };
+
+  // Xử lý đăng ký với Facebook
+  const handleFacebookRegister = async () => {
+    
   };
 
   return (
@@ -206,7 +222,7 @@ export default function Register() {
       <View style={styles.socialContainer}>
         <TouchableOpacity 
           style={styles.socialButton} 
-          onPress={() => { /* TODO: Google login */ }}
+          onPress={handleGoogleRegister}
           disabled={isLoading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
@@ -214,7 +230,7 @@ export default function Register() {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.socialButton} 
-          onPress={() => { /* TODO: Facebook login */ }}
+          onPress={handleFacebookRegister}
           disabled={isLoading}
         >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />

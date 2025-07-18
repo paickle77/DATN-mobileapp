@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FDF7EE', // Lighter background for a softer feel
   },
-  header: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,

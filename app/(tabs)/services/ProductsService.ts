@@ -31,8 +31,8 @@ class ProductService {
       const response = await axios.get(this.apiUrl);
       
       if (response.data && Array.isArray(response.data.data)) {
-        console.log('Lấy sản phẩm thành công');
-        console.log("Dữ liệu API:",response.data.data)
+        // console.log('Lấy sản phẩm thành công');
+        // console.log("Dữ liệu API:",response.data.data)
         return response.data.data;
       }
 

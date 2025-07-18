@@ -33,7 +33,7 @@ import AddressList from './screens/profile/AddressList';
 import CompleteProfile from './screens/profile/CompleteProfile';
 import PaymentScreen from './screens/profile/Payement';
 import ProfileScreen from './screens/profile/Profile';
-import Settings from './screens/profile/Settings';
+import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
 export default function TabLayout() {
   const colorScheme = useColorScheme();

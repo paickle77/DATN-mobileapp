@@ -11,6 +11,9 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+
 
 interface Message {
   id: string;
@@ -32,7 +35,26 @@ const ChatScreen = () => {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false); // ✅ Trạng thái bot đang trả lời
   const scrollViewRef = useRef<ScrollView>(null);
+  const [loadingMessageId, setLoadingMessageId] = useState<string | null>(null);
+  const [loadingDots, setLoadingDots] = useState('');
 
+
+  useEffect(() => {
+    if (loadingMessageId) {
+      const interval = setInterval(() => {
+        setLoadingDots(prev => {
+          if (prev === '...') return '';
+          return prev + '.';
+        });
+      }, 500);
+      return () => clearInterval(interval);
+    } else {
+      setLoadingDots('');
+    }
+  }, [loadingMessageId]);
+
+
+  
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
@@ -41,11 +63,23 @@ const ChatScreen = () => {
       text: inputText.trim(),
       isUser: true,
       timestamp: new Date(),
+      type: 'text',
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
-    setIsTyping(true); // ✅ Bắt đầu trả lời
+
+    // Gửi tin nhắn "chờ giây lát..."
+    const loadingId = (Date.now() + 1).toString();
+    const loadingMsg: Message = {
+      id: loadingId,
+      text: 'Đang xử lý', // chỉ là nhãn, dấu chấm sẽ thêm trong UI
+      isUser: false,
+      timestamp: new Date(),
+      type: 'text',
+    };
+    setMessages(prev => [...prev, loadingMsg]);
+    setLoadingMessageId(loadingId);
 
     try {
       const response = await fetch('http://10.0.2.2:11434/api/generate', {
@@ -61,71 +95,104 @@ const ChatScreen = () => {
       const data = await response.json();
       const reply = data.response || 'Xin lỗi, tôi chưa hiểu ý bạn.';
 
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        text: reply,
-        isUser: false,
-        timestamp: new Date(),
-      };
+      // Cập nhật lại tin nhắn loading thành câu trả lời
+      setMessages(prev => prev.map(msg => {
+        if (msg.id === loadingId) {
+          return { ...msg, text: reply, timestamp: new Date() };
+        }
+        return msg;
+      }));
+      setLoadingMessageId(null);
 
-      setMessages(prev => [...prev, botMsg]);
     } catch (err) {
       console.error("❌ Lỗi gọi Ollama:", err);
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 2).toString(),
-        text: 'Xin lỗi, hệ thống gặp sự cố.',
-        isUser: false,
-        timestamp: new Date(),
-      }]);
-    } finally {
-      setIsTyping(false); // ✅ Đã trả lời xong
+      // Cập nhật lại loading thành lỗi
+      setMessages(prev => prev.map(msg => {
+        if (msg.id === loadingId) {
+          return {
+            ...msg,
+            text: '❌ Xin lỗi, hệ thống gặp sự cố.',
+            timestamp: new Date()
+          };
+        }
+        return msg;
+      }));
+      setLoadingMessageId(null);
     }
   };
 
 
+
+
   const sendQuickMessage = (text: string) => {
-  const userMsg: Message = {
-    id: Date.now().toString(),
-    text,
-    isUser: true,
-    timestamp: new Date(),
-  };
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: text,
+      isUser: true,
+      timestamp: new Date(),
+      type: 'text',
+    };
 
-  setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMsg]);
 
-  let botReply = '';
-  switch (text) {
-    case 'Hướng dẫn đặt bánh':
-      botReply = `Để đặt bánh:\nBước 1: Vào màn hình Home\nBước 2: Chọn sản phẩm\nBước 3: Thêm vào giỏ hàng\nBước 4: Vào giỏ hàng và thanh toán\nBước 5: Điền thông tin & xác nhận`;
+    // Tùy theo text, trả về câu trả lời cứng
+    let botReply = '';
+    switch (text) {
+      case 'Hướng dẫn đặt bánh':
+        botReply = `Để đặt bánh:  
+ Bước 1: Bạn chọn vào màn hình home trên thanh Tabbar sẽ là icon đầu tiên
+ Bước 2: Tìm kiếm và chọn sản phẩm bạn muốn mua
+ Bước 3: Thêm sản phẩm đấy vào giỏ hàng
+ Bước 4: Ở thanh Tabbar chọn mục giỏ hàng, icon thứ 2
+ Bước 5: Ở trang giỏ hàng bạn nhấn thanh toán
+ Bước 6: Sau khi nhấn thanh toán sẽ chuyển qua màn thanh toán, việc của bạn là điền đủ thông tin rồi ấn thanh toán`;
+        break;
+      case 'Hướng dẫn thay đổi thông tin tài khoản':
+        botReply = `Hướng dẫn thay đổi thông tin tài khoản :
+Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
+Bước 2: Bạn chọn vào mục Hồ sơ của bạn
+Bước 3: Sửa đổi thông tin mà bạn muốn
+      `;
+        break;
+      case 'Hướng dẫn thay đổi địa chỉ giao hàng':
+        botReply = `Hướng dẫn thay đổi hoặc thêm địa chỉ giao hàng :
+Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
+Bước 2: Bạn chọn vào mục danh sách địa chỉ
+Bước 3: Ở đây sẽ hiện địa chỉ mà bạn đã sửa và xóa địa chỉ cũ, nếu muốn thêm địa chỉ ấn vào dấu + ở trên cùng bên tay phải
+      `;
+        break;
+      case 'Bảng xếp hạng các loại bánh bán chạy':
+        botReply = `Top Cake:
+1. Bánh kem socola, 
+2. Bánh tiramisu,
+3. Bánh cupcake.`;
+        break;
+      case 'Hướng dẫn theo dõi đơn hàng':
+        botReply = `Hướng dẫn theo dõi đơn hàng:
+Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
+Bước 2: Bạn chọn vào mục đơn hàng của bạn
+Bước 3: Ở màn hình này bạn có thể theo dõi đơn hàng của bạn rồi;
       break;
-    case 'Hướng dẫn thay đổi thông tin tài khoản':
-      botReply = `Bước 1: Vào Profile\nBước 2: Hồ sơ của bạn\nBước 3: Chỉnh sửa thông tin`;
-      break;
-    case 'Hướng dẫn thay đổi địa chỉ giao hàng':
-      botReply = `Vào Profile → Danh sách địa chỉ → Thêm/Sửa địa chỉ → Ấn dấu +`;
-      break;
-    case 'Bảng xếp hạng các loại bánh bán chạy':
-      botReply = `Top Cake:\n1. Bánh kem socola\n2. Tiramisu\n3. Cupcake`;
-      break;
-    case 'Hướng dẫn theo dõi đơn hàng':
-      botReply = `Vào Profile → Đơn hàng của bạn → Xem trạng thái đơn`;
-      break;
-    case 'Hướng dẫn thay đổi phương thức thanh toán':
-      botReply = `Profile → Phương thức thanh toán → Thay đổi theo ý bạn`;
+               case 'Hướng dẫn thay đổi phương thức thanh toán':
+      botReply = Hướng dẫn thay đổi phương thức thanh toán:
+Bước 1: Bạn chọn vào màn hình Profile trên thanh Tabbar sẽ là icon cuối cùng
+Bước 2: Bạn chọn vào mục phương thức thanh toán
+Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh toán của mình rồi;
       break;
     default:
-      botReply = 'Xin lỗi, tôi chưa hiểu yêu cầu của bạn.';
-  }
+      botReply = 'Xin lỗi, tôi chưa hiểu yêu cầu của bạn.`;
+    }
 
-  const botMsg: Message = {
-    id: (Date.now() + 1).toString(),
-    text: botReply,
-    isUser: false,
-    timestamp: new Date(),
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      text: botReply,
+      isUser: false,
+      timestamp: new Date(),
+      type: 'text',
+    };
+
+    setMessages(prev => [...prev, botMsg]);
   };
-
-  setMessages(prev => [...prev, botMsg]);
-};
 
 
 
@@ -143,6 +210,12 @@ const ChatScreen = () => {
       hour12: false
     });
   };
+
+  useEffect(() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
+
+  
 
   const MessageBubble = ({ message }: { message: Message }) => (
     <View style={[
@@ -162,7 +235,12 @@ const ChatScreen = () => {
           styles.messageText,
           message.isUser ? styles.userMessageText : styles.botMessageText
         ]}>
-          {message.text}
+          <Text style={[
+            styles.messageText,
+            message.isUser ? styles.userMessageText : styles.botMessageText
+          ]}>
+            {message.id === loadingMessageId ? `${message.text}${loadingDots}` : message.text}
+          </Text>
         </Text>
         <Text style={[
           styles.timestamp,
@@ -193,11 +271,14 @@ const ChatScreen = () => {
   </View>
 );
 
-
   return (
-    
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      {/* Header */}
+  <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
+
+    >
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -213,8 +294,13 @@ const ChatScreen = () => {
         </View>
       </View>
 
-      {/* Messages */}
-      <ScrollView ref={scrollViewRef} style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.messagesContainer}
+        contentContainerStyle={{ paddingBottom: 12 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
@@ -252,7 +338,9 @@ const ChatScreen = () => {
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
-  );
+  </SafeAreaView>
+);
+
 };
 
 export default ChatScreen;
@@ -263,18 +351,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  typingIndicator: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingVertical: 8,
-  paddingLeft: 8,
-},
-typingText: {
-  fontSize: 13,
-  color: '#888',
-  marginLeft: 6,
-  fontStyle: 'italic',
-},
 
   // Styles cho giao diện
   header: {

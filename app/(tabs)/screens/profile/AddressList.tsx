@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+
 import AddAddressModal from '../../component/AddAddressModal';
 import EditAddressModal from '../../component/EditAddressModal';
 import { BASE_URL } from '../../services/api';
@@ -44,19 +45,18 @@ type RootStackParamList = {
 const AddressListScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [editModalVisible, setEditModalVisible] = useState(false);  
-const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-    const [addModalVisible, setAddModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [addModalVisible, setAddModalVisible] = useState(false);
 
   const fetchAddresses = async () => {
     try {
-      const userID = await getUserData('userData');
+      const user = await getUserData('userData');
+      const userID = user;
       const response = await axios.get(`${BASE_URL}/GetAllAddress`);
       const allData = response.data?.data ?? [];
-
       const filtered = allData.filter((item: Address) => item.user_id?._id === userID);
       setAddresses(filtered);
-      console.log('✅ Địa chỉ của user:', filtered);
     } catch (error) {
       console.error('❌ Lỗi lấy địa chỉ:', error);
       Alert.alert('Lỗi', 'Không thể tải địa chỉ. Vui lòng thử lại sau.');
@@ -67,23 +67,25 @@ const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     fetchAddresses();
   }, []);
 
-const handleSetDefault = async (id: string) => {
-  try {
-    await axios.put(`${BASE_URL}/set-default/${id}`);
-
-    // Gọi lại danh sách địa chỉ để cập nhật UI
-    fetchAddresses();
-
-    Alert.alert('Thành công', 'Đã đặt địa chỉ mặc định');
-  } catch (error) {
-    console.error('❌ Lỗi cập nhật địa chỉ mặc định:', error);
-    Alert.alert('Lỗi', 'Không thể cập nhật địa chỉ mặc định');
-  }
-};
-
-
+  const handleSetDefault = async (id: string) => {
+    try {
+      await axios.put(`${BASE_URL}/set-default/${id}`);
+      fetchAddresses();
+      Alert.alert('Thành công', 'Đã đặt địa chỉ mặc định');
+    } catch (error) {
+      console.error('❌ Lỗi cập nhật địa chỉ mặc định:', error);
+      Alert.alert('Lỗi', 'Không thể cập nhật địa chỉ mặc định');
+    }
+  };
 
   const handleDeleteAddress = (id: string) => {
+    const addressToDelete = addresses.find(addr => addr._id === id);
+
+    if (addressToDelete?.isDefault === true || addressToDelete?.isDefault === 'true') {
+      Alert.alert('Không thể xóa', 'Đây là địa chỉ mặc định. Vui lòng đặt địa chỉ khác làm mặc định trước khi xóa.');
+      return;
+    }
+
     Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa địa chỉ này?', [
       { text: 'Hủy', style: 'cancel' },
       {
@@ -127,11 +129,10 @@ const handleSetDefault = async (id: string) => {
         <View style={styles.addressActions}>
           <TouchableOpacity
             style={styles.actionButton}
-           onPress={() => {
-            setSelectedAddress(item);
-            setEditModalVisible(true);
-}}
-
+            onPress={() => {
+              setSelectedAddress(item);
+              setEditModalVisible(true);
+            }}
           >
             <Feather name="edit-3" size={16} color="#795548" />
             <Text style={styles.actionText}>Sửa</Text>
@@ -162,18 +163,11 @@ const handleSetDefault = async (id: string) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#222" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Danh sách địa chỉ</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-         onPress={() => setAddModalVisible(true)}
-
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => setAddModalVisible(true)}>
           <Ionicons name="add" size={24} color="#795548" />
         </TouchableOpacity>
       </View>
@@ -186,28 +180,26 @@ const handleSetDefault = async (id: string) => {
         showsVerticalScrollIndicator={false}
       />
 
-<TouchableOpacity
-  style={styles.addAddressButton}
-  onPress={() => setAddModalVisible(true)}
->
-  <Ionicons name="add" size={20} color="#fff" />
-  <Text style={styles.addAddressText}>Thêm địa chỉ mới</Text>
-</TouchableOpacity>
+      <TouchableOpacity
+        style={styles.addAddressButton}
+        onPress={() => setAddModalVisible(true)}
+      >
+        <Ionicons name="add" size={20} color="#fff" />
+        <Text style={styles.addAddressText}>Thêm địa chỉ mới</Text>
+      </TouchableOpacity>
 
       <EditAddressModal
-  visible={editModalVisible}
-  address={selectedAddress}
-  onClose={() => setEditModalVisible(false)}
-  onSaved={fetchAddresses}
-/>
+        visible={editModalVisible}
+        address={selectedAddress}
+        onClose={() => setEditModalVisible(false)}
+        onSaved={fetchAddresses}
+      />
 
-<AddAddressModal
-  visible={addModalVisible}
-  onClose={() => setAddModalVisible(false)}
-  onSaved={fetchAddresses}
-/>
-
-
+      <AddAddressModal
+        visible={addModalVisible}
+        onClose={() => setAddModalVisible(false)}
+        onSaved={fetchAddresses}
+      />
     </SafeAreaView>
   );
 };

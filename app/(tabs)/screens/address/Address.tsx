@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BASE_URL } from '../../services/api';
 
+
 type RootStackParamList = {
   CompleteProfile: {
     address?: string;
@@ -173,7 +174,7 @@ const AddressScreen = () => {
 
             console.log('🔼 Dữ liệu gửi lên API:', JSON.stringify(body, null, 2));
 
-            const response = await axios.post(`${BASE_URL}/addresses`, body);
+            const response = await axios.post(`${BASE_URL}/addresses/first`, body);
             console.log('✅ Phản hồi từ API:', response.data);
 
             navigation.navigate('TabNavigator');
