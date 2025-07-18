@@ -293,7 +293,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: '600',
-    marginTop: 16,
     marginBottom: 8,
     color: '#5D4037',
     fontSize: 15,

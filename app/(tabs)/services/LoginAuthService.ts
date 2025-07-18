@@ -72,13 +72,13 @@ async login(email: string, password: string): Promise<LoginResponse> {
       const { token, user } = response.data.data;
 
       await saveUserData({ key: 'token', value: token });
-      await saveUserData({ key: 'userData', value: user});
+      await saveUserData({ key: 'userData', value: user._id });
       console.log('Lưu token và user thành công:', user);
       
       return {
         success: true,
         message: 'Đăng nhập thành công!',
-        user
+        user: user._id
       };
     } else {
       return {
@@ -87,7 +87,7 @@ async login(email: string, password: string): Promise<LoginResponse> {
       };
     }
   } catch (error: any) {
-    // console.error('Lỗi đăng nhập:', error);
+    console.error('Lỗi đăng nhập:', error);
     return {
       success: false,
       message: 'Đăng nhập thất bại. Vui lòng kiểm tra tài khoản và mật khẩu.',

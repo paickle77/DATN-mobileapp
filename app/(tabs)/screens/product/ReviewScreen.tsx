@@ -1,19 +1,15 @@
 import { useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from 'expo-router';
+import { useNavigation } from 'expo-router'; // Assuming you are using Expo Router
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import DetailedReview from '../../component/DetailedReview';
 import ProductCard from '../../component/ProductCard';
 import StarRating from '../../component/StarRating';
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
-
-
-const { width } = Dimensions.get('window');
 
 // Define types for product data for better clarity
 type ProductDataType = {
@@ -112,7 +108,6 @@ const ReviewScreen = () => {
     setRating(0);
     setReviewText('');
     setImage(null);
-    navigation.goBack()
     Alert.alert('Thông báo', 'Bạn đã hủy đánh giá.'); // More descriptive alert
     navigation.goBack();
   };
@@ -127,60 +122,7 @@ const ReviewScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#FFF8E7', '#FFFFFF']}
-        style={styles.backgroundGradient}
-      />
-      
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Header Section */}
-        <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>Đánh giá sản phẩm</Text>
-          <Text style={styles.headerSubtitle}>Chia sẻ trải nghiệm của bạn</Text>
-        </View>
-
-        {/* Product Card Container */}
-        <View style={styles.productCardContainer}>
-          <ProductCard
-            imageUrl={'https://moderncook.com.vn/recipes/wp-content/uploads/2022/03/e768118c3024fc7aa535-1024x682.jpg'}
-            name={'Bánh gato kiểu pháp'}
-            category={'Bánh sinh nhật'}
-            description={'Spider Plant |'}
-            price={'515.000'}
-          />
-        </View>
-
-        {/* Rating Section */}
-        <View style={styles.ratingSection}>
-          <Text style={styles.sectionTitle}>Đánh giá của bạn</Text>
-          <View style={styles.ratingContainer}>
-            <StarRating rating={rating} setRating={setRating} />
-            {rating > 0 && (
-              <Text style={styles.ratingText}>
-                {rating === 1 ? 'Rất tệ' : 
-                 rating === 2 ? 'Tệ' : 
-                 rating === 3 ? 'Bình thường' : 
-                 rating === 4 ? 'Tốt' : 'Xuất sắc'}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* Review Content Section */}
-        <View style={styles.reviewSection}>
-          <Text style={styles.sectionTitle}>Chi tiết đánh giá</Text>
-          <DetailedReview
-            onImageAdd={pickImage}
-            onTextChange={setReviewText}
-            image={image}
-          />
-        </View>
-      </ScrollView>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* New Header Container */}
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -218,26 +160,16 @@ const ReviewScreen = () => {
         reviewText={reviewText} // Pass reviewText to DetailedReview for controlled input
       />
 
-      {/* Fixed Bottom Buttons */}
-      <View style={styles.bottomContainer}>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Hủy bỏ</Text>
-          </TouchableOpacity>
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <LinearGradient
-              colors={['#D2691E', '#8B4513']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitButtonGradient}
-            >
-              <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+          <Text style={styles.cancelButtonText}>Hủy bỏ</Text>
+        </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -246,103 +178,6 @@ export default ReviewScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  backgroundGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 100, // Space for fixed bottom buttons
-  },
-  headerSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#8B4513',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#666666',
-    textAlign: 'center',
-  },
-  productCardContainer: {
-    marginHorizontal: 16,
-    marginVertical: 20,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-    overflow: 'hidden',
-  },
- 
-  reviewSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#8B4513',
-    marginBottom: 16,
-  },
-  ratingContainer: {
-    alignItems: 'center',
-  },
-  ratingText: {
-    marginTop: 12,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#D2691E',
-  },
-  bottomContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 32,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
     backgroundColor: '#f5f5f5', // Light background
   },
   contentContainer: {
@@ -398,21 +233,11 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 12,
     justifyContent: 'space-between',
     marginTop: 30, // More space above buttons
     marginBottom: 20, // Space at the bottom before end of scroll view
   },
   submitButton: {
-    flex: 2,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  submitButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#28a745', // Green for submit
     paddingVertical: 14, // Slightly less padding for better fit
     paddingHorizontal: 20,
@@ -426,22 +251,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: '#fff',
     fontWeight: 'bold',
     textAlign: 'center',
     fontSize: 16,
   },
   cancelButton: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
     backgroundColor: '#dc3545', // Red for cancel
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -455,9 +270,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   cancelButtonText: {
-    color: '#666666',
-    fontSize: 16,
-    fontWeight: '600',
     color: '#fff',
     fontWeight: 'bold',
     textAlign: 'center',

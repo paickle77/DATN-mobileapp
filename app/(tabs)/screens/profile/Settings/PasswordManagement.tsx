@@ -29,7 +29,7 @@ const PasswordManagement = ({ goBack }: Props) => {
       try {
         setLoading(true);
         const user = await getUserData('userData');
-        const userIdFromStorage = user?.id || user; // Tùy theo structure của user data
+        const userIdFromStorage = user || user; // Tùy theo structure của user data
         setUserId(userIdFromStorage || '');
         console.log("userID:", userIdFromStorage);
       } catch (error) {

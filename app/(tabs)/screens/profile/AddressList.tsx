@@ -52,7 +52,7 @@ const AddressListScreen = () => {
   const fetchAddresses = async () => {
     try {
       const user = await getUserData('userData');
-      const userID = user._id;
+      const userID = user;
       const response = await axios.get(`${BASE_URL}/GetAllAddress`);
       const allData = response.data?.data ?? [];
       const filtered = allData.filter((item: Address) => item.user_id?._id === userID);

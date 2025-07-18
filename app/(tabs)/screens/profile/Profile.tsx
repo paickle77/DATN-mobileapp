@@ -42,9 +42,9 @@ const ProfileScreen = () => {
             setLoading(true);
             try {
                 const userData = await getUserData('userData') as Users | null;
-                if (!userData || !userData._id) return;
+                if (!userData || !userData) return;
 
-                const userId = userData._id;
+                const userId = userData;
                 const response = await axios.get(`${BASE_URL}/users/${userId}`);
                 const user = response.data.data;
                 setUserProfile(user);
@@ -70,7 +70,7 @@ const ProfileScreen = () => {
                 CommonActions.reset({
                     index: 0,
                     routes: [{ name: 'Login' }],
-                })
+                  })
             );
         } catch (err) {
             console.error('❌ Lỗi khi logout:', err);
