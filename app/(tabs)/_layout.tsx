@@ -40,7 +40,7 @@ export default function TabLayout() {
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="testPushTokenService">
+    <Stack.Navigator initialRouteName="Welcom">
       {/* Screens không có tab bar */}
       <Stack.Screen name="testPushTokenService" component={testPushTokenService} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationDemo" component={NotificationDemo} options={{ headerShown: false }} />
