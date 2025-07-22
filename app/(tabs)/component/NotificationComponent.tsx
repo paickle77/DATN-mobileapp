@@ -28,12 +28,12 @@ const NotificationComponent = ({
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 150,
           useNativeDriver: true,
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 150,
           useNativeDriver: true,
         }),
       ]).start();

@@ -16,7 +16,7 @@ import Welcom from './screens/auth/Welcom';
 import ChatScreen from './screens/chat/Chat';
 import TabNavigator from './screens/navigation/TabNavigator';
 import NotificationScreen from './screens/notification/NotificationScreen';
-import CartScreen from './screens/order/Cart';
+import { default as Cart, default as CartScreen } from './screens/order/Cart';
 import Checkout from './screens/order/Checkout';
 import CheckoutCard from './screens/order/CheckoutCardScreen';
 import CheckoutSuccess from './screens/order/CheckoutSuccessScreen';
@@ -33,6 +33,7 @@ import PaymentScreen from './screens/profile/Payement';
 import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
+import VoucherScreen from './screens/profile/VoucherScreen';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -67,6 +68,9 @@ export default function TabLayout() {
       <Stack.Screen name="CheckoutCard" component={CheckoutCard} options={{ headerShown: false }} />
       <Stack.Screen name="CartScreen" component={CartScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CategoryItem" component={CategoryItem} options={{ headerShown: false }} />
+      <Stack.Screen name="Cart" component={Cart} options={{ headerShown: false }} />
+      
 
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}
       <Stack.Screen name="TabNavigator" component={TabNavigator} options={{ headerShown: false }} />
@@ -80,6 +84,7 @@ export default function TabLayout() {
       <Stack.Screen name="UserProfile" component={UserProfile} options={{ headerShown: false }} />
       <Stack.Screen name="PaymentMethods" component={PaymentMethods} options={{ headerShown: false }} />
       <Stack.Screen name="AddressList" component={AddressList} options={{ headerShown: false }} />
+      <Stack.Screen name="VoucherScreen" component={VoucherScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

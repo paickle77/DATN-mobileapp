@@ -26,6 +26,7 @@ type RootStackParamList = {
     AddressList: { userId: string } | undefined;
     PaymentMethods: { userId: string } | undefined;
     OrderHistoryScreen: { userId: string } | undefined;
+    VoucherScreen: { userId: string } | undefined;
     Login: undefined;
 };
 
@@ -36,27 +37,27 @@ const ProfileScreen = () => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     // Xoá useState cho user vì không dùng đến
     // 👉 Gọi hàm từ service để lấy user
-   useFocusEffect(
-    useCallback(() => {
-        const fetchUserFromStorage = async () => {
-            setLoading(true);
-            try {
-                const userData = await getUserData('userData') as Users | null;
-                if (!userData || !userData) return;
+    useFocusEffect(
+        useCallback(() => {
+            const fetchUserFromStorage = async () => {
+                setLoading(true);
+                try {
+                    const userData = await getUserData('userData') as Users | null;
+                    if (!userData || !userData) return;
 
-                const userId = userData;
-                const response = await axios.get(`${BASE_URL}/users/${userId}`);
-                const user = response.data.data;
-                setUserProfile(user);
-            } catch (err) {
-                console.error('❌ Lỗi khi lấy user:', err);
-            }
-            setLoading(false);
-        };
+                    const userId = userData;
+                    const response = await axios.get(`${BASE_URL}/users/${userId}`);
+                    const user = response.data.data;
+                    setUserProfile(user);
+                } catch (err) {
+                    console.error('❌ Lỗi khi lấy user:', err);
+                }
+                setLoading(false);
+            };
 
-        fetchUserFromStorage();
-    }, [])
-);
+            fetchUserFromStorage();
+        }, [])
+    );
 
 
 
@@ -70,7 +71,7 @@ const ProfileScreen = () => {
                 CommonActions.reset({
                     index: 0,
                     routes: [{ name: 'Login' }],
-                  })
+                })
             );
         } catch (err) {
             console.error('❌ Lỗi khi logout:', err);
@@ -134,11 +135,15 @@ const ProfileScreen = () => {
                     onPress={() => navigation.navigate('UserProfile',
                         { userId: userProfile?._id ?? '' },
                     )} />
+                <MenuItem icon={<Ionicons name="pricetags-outline" size={24} color="#222" />} label="Kho voucher"
+                    onPress={() => navigation.navigate('VoucherScreen',
+                        { userId: userProfile?._id ?? '' },
+                    )} />
                 <MenuItem icon={<Ionicons name="location-outline" size={24} color="#222" />} label="Danh sách địa chỉ"
                     onPress={() => navigation.navigate('AddressList',
                         { userId: userProfile?._id ?? '' }
                     )} />
-               
+
                 <MenuItem icon={<Feather name="file-text" size={22} color="#222" />} label="Đơn hàng của bạn"
                     onPress={() => navigation.navigate('OrderHistoryScreen',
                         { userId: userProfile?._id ?? '' }
@@ -146,7 +151,7 @@ const ProfileScreen = () => {
                 <MenuItem icon={<Feather name="settings" size={22} color="#222" />} label="Cài đặt"
                     onPress={() => navigation.navigate('Settings',
                         { userId: userProfile?._id ?? '' },
-                    
+
                     )} />
             </View>
 
