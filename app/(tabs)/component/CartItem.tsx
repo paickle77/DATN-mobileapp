@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ItemCart {
   name: string;
@@ -46,8 +46,8 @@ const CartItem: React.FC<ItemCart> = ({
       <Image source={{ uri: image }} style={styles.image} />
       <View style={styles.details}>
         <Text style={styles.name}>{name}</Text>
-        <Text style={styles.size}>{Size} cm</Text>
-        <Text style={styles.price}>{price} VND</Text>
+        <Text style={styles.size}>{Size} </Text>
+        <Text style={styles.price}>{price}</Text>
         <View style={styles.quantityRow}>
           <TouchableOpacity style={styles.button} onPress={handlePressDown}>
             <Feather name="minus" size={16} color="#333" />
