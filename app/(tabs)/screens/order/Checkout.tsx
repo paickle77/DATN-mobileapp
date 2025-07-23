@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -37,7 +37,18 @@ type RootStackParamList = {
   EditAddress: { address: Address };
 };
 
-const Checkout = ({ navigation, route }) => {
+interface CheckoutRouteParams {
+  selectedPaymentMethod?: any;
+  selectedVoucher?: any;
+}
+
+const Checkout = ({
+  navigation,
+  route,
+}: {
+  navigation: any;
+  route: { params?: CheckoutRouteParams };
+}) => {
   const [note, setNote] = useState('');
   const [selectedShippingMethod, setSelectedShippingMethod] = useState('standard');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
@@ -45,6 +56,20 @@ const Checkout = ({ navigation, route }) => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [listCart,setListCart]=useState([]);
   const [fullPaymentObject, setFullPaymentObject] = useState<any>(null);
+  const [voucher, setVoucher] = useState()
+  const [percent, setPercent] = useState<number>(1);
+  const [nameCode,setNameCode]=useState('');
+  //CAll API của voucher
+  const FetchDataVourcher= async ()=>{
+    const userData = await getUserData('userData');
+    const nameVoucher=await getUserData('code');
+    console.log("nameVoucher",nameVoucher)
+    setNameCode(nameVoucher ?? '')
+    const ListVoucher = await axios.get(`${BASE_URL}/voucher_users/user/${userData}`);
+    console.log('✅✅✅✅✅✅✅ dữ liệu Voucher',ListVoucher.data.data)
+    setVoucher(ListVoucher.data.data)
+  }
+
 
 const buildBillPayload = async () => {
   const userData = await getUserData('userData');
@@ -127,6 +152,7 @@ useFocusEffect(
   useCallback(() => {
     fetchAddresses();
     FetchData();
+    FetchDataVourcher();
   }, [])
 );
 
@@ -188,11 +214,22 @@ const fetchAddresses = async () => {
 
   // const defaultAddress = addresses.find(addr => addr.isDefault === true || addr.isDefault === 'true') || addresses[0];
 
-
+useEffect(() => {
+  const fetchDiscountPercent = async () => {
+    const discount_percent = await getUserData('discount_percent');
+    const percentValue = discount_percent !== null ? Number(discount_percent) : 1;
+    setPercent(isNaN(percentValue) ? 1 : percentValue);
+    // You can use discount_percent here if needed
+    // console.log('Fetched discount_percent:', discount_percent);
+  };
+  fetchDiscountPercent();
+}, []);
 
   useFocusEffect(
     useCallback(() => {
       const selectedPayment = route.params?.selectedPaymentMethod;
+   
+      console.log('====================================');
       console.log('Selected Payment Method:', selectedPayment);
       if (selectedPayment) {
         setSelectedPaymentMethod(selectedPayment.id);
@@ -251,6 +288,7 @@ const fetchAddresses = async () => {
   const subtotal = listCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingFee = shippingMethods.find(method => method.id === selectedShippingMethod)?.price || 0;
   const total = subtotal + shippingFee;
+  const total2 = total - (total*percent)/100;
 
   const formatPrice = (price) => {
     return price.toLocaleString('vi-VN') + 'đ';
@@ -261,10 +299,17 @@ const fetchAddresses = async () => {
   };
 
   const handlePaymentMethodPress = () => {
-    navigation.navigate('PaymentMethods');
+    const selectedVoucher = route.params?.selectedVoucher;
+    navigation.navigate('PaymentMethods', {
+      selectedVoucher: selectedVoucher, // truyền voucher hiện tại nếu có
+    });
   };
 
-
+  const handleVoucherMethodPress = () => {
+    navigation.navigate('VoucherCardList', {
+      selectedPaymentMethod: fullPaymentObject, // truyền payment hiện tại nếu có
+    });
+  };
 const handleCheckOut = async () => {
   try {
     const userData = await getUserData('userData');
@@ -330,7 +375,7 @@ const handlePlaceOrder = () => {
 
   Alert.alert(
     'Xác nhận đặt hàng',
-    `Tổng tiền: ${formatPrice(total)}\nPhương thức thanh toán: ${selectedPaymentName}`,
+    `Tổng tiền: ${formatPrice(total2)}\nPhương thức thanh toán: ${selectedPaymentName}`,
     [
       { text: 'Hủy', style: 'cancel' },
       { text: 'Đặt hàng', onPress: () => handleCheckOut() },
@@ -467,6 +512,31 @@ const handlePlaceOrder = () => {
           ))}
         </View>
 
+           {/* Voucher */}
+<View style={styles.voucherContainer}>
+  <Text style={styles.voucherLabel}>🎟️ Mã giảm giá</Text>
+
+  <TouchableOpacity style={styles.voucherBox} onPress={handleVoucherMethodPress}>
+    <View style={styles.voucherContent}>
+      {nameCode ? (
+        <>
+          <Ionicons 
+            name="pricetag" // hoặc getPaymentIcon nếu anh có xử lý theo icon riêng
+            size={20} 
+            color="#5C4033" 
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.voucherText}>{nameCode}</Text>
+        </>
+      ) : (
+        <Text style={styles.voucherPlaceholder}>Chọn mã giảm giá</Text>
+      )}
+    </View>
+
+    <Ionicons name="chevron-forward" size={20} color="#999" />
+  </TouchableOpacity>
+</View>
+
         {/* Phương thức thanh toán */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -493,21 +563,32 @@ const handlePlaceOrder = () => {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
         </View>
+              
+
+
 
         {/* Tóm tắt đơn hàng */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tóm tắt đơn hàng</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tạm tính</Text>
+            <Text style={styles.summaryLabel}>Giá trị đơn hàng</Text>
             <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Phí vận chuyển</Text>
             <Text style={styles.summaryValue}>{formatPrice(shippingFee)}</Text>
           </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Giảm giá</Text>
+            {percent && percent !== 1 ? (
+              <Text style={styles.summaryValue}>{formatPrice((percent * total) / 100)}</Text>
+            ) : (
+              <Text style={styles.summaryValue}>{formatPrice(0)}</Text>
+            )}
+          </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Tổng cộng</Text>
-            <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+            <Text style={styles.totalValue}>{formatPrice(total2)}</Text>
           </View>
         </View>
       </ScrollView>
@@ -515,7 +596,7 @@ const handlePlaceOrder = () => {
       {/* Bottom Bar */}
       <View style={styles.bottomBar}>
         <View style={styles.totalContainer}>
-          <Text style={styles.totalText}>Tổng: {formatPrice(total)}</Text>
+          <Text style={styles.totalText}>Tổng: {formatPrice(total2)}</Text>
         </View>
         <TouchableOpacity style={styles.orderButton} onPress={handlePlaceOrder}>
           <Text style={styles.orderButtonText}>Đặt hàng</Text>
@@ -526,6 +607,41 @@ const handlePlaceOrder = () => {
 };
 
 const styles = StyleSheet.create({
+  voucherContainer: {
+    marginVertical: 16,
+    paddingHorizontal: 16,
+  },
+  voucherLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  voucherBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA',
+  },
+  voucherContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  voucherText: {
+    fontSize: 14,
+    color: '#5C4033',
+    fontWeight: '500',
+  },
+  voucherPlaceholder: {
+    fontSize: 14,
+    color: '#999',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

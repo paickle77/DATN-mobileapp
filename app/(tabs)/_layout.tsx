@@ -3,6 +3,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryItem from '../(tabs)/component/category';
 import Odercomponent from './component/Odercomponent';
+import VoucherCardList from './component/VoucherCardList';
 import AddressScreen from './screens/address/Address';
 import ManualAddress from './screens/address/manual-address';
 import MapAddress from './screens/address/MapAddress';
@@ -37,7 +38,6 @@ import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
 import VoucherScreen from './screens/profile/VoucherScreen';
-
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
@@ -45,6 +45,7 @@ export default function TabLayout() {
   return (
     <Stack.Navigator initialRouteName="Welcom">
       {/* Screens không có tab bar */}
+       <Stack.Screen name="VoucherCardList" component={VoucherCardList} options={{ headerShown: false }} />
       <Stack.Screen name="testPushTokenService" component={testPushTokenService} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationDemo" component={NotificationDemo} options={{ headerShown: false }} />
       <Stack.Screen name="payment" component={PaymentScreen} options={{ headerShown: false }} />

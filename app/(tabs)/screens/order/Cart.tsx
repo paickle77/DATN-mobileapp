@@ -115,7 +115,7 @@ export default function CartScreen() {
   // Tổng tiền
   const subtotal = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingFee = 35000;
-  const total = subtotal + shippingFee;
+  const total = subtotal ;
 
   return (
     <View style={styles.container}>
@@ -213,10 +213,10 @@ export default function CartScreen() {
               <Text style={styles.paymentValue}>{formatCurrency(subtotal)}</Text>
             </View>
 
-            <View style={styles.paymentRow}>
+            {/* <View style={styles.paymentRow}>
               <Text style={styles.paymentLabel}>Phí vận chuyển</Text>
               <Text style={styles.paymentValue}>{formatCurrency(shippingFee)}</Text>
-            </View>
+            </View> */}
 
             <View style={styles.divider} />
 
