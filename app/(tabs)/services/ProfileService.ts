@@ -41,14 +41,14 @@ class ProfileService {
   async getCurrentUserProfile(): Promise<Users | null> {
     try {
       const user = await getUserData('userData');
-      if (!user || !user._id) {
+      if (!user || !user) {
         console.warn('⚠️ Không tìm thấy user từ AsyncStorage');
         return null;
       }
 
       const result = await this.getAll();
       if (result.success && result.data.length > 0) {
-        const found = result.data.find((u) => String(u._id) === String(user._id));
+        const found = result.data.find((u) => String(u._id) === String(user));
         return found || null;
       }
 

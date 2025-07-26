@@ -4,7 +4,7 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import {
     ActivityIndicator,
@@ -66,14 +66,12 @@ const UserProfileScreen = () => {
         email: '',
         phone: '',
         address: '',
-
     });
 
     const [isEditing, setIsEditing] = useState(false);
-    const [editableData, setEditableData] = useState({
-        fullName: '',
-        address: ''
-    });
+    
+    // ✅ FIX: Tách riêng state cho input editing
+    const [editingName, setEditingName] = useState('');
 
     // API call để lấy thông tin user
     const fetchUserData = async (userId: string) => {
@@ -172,10 +170,8 @@ const UserProfileScreen = () => {
                     };
 
                     setProfileData(newProfileData);
-                    setEditableData({
-                        fullName: newProfileData.fullName,
-                        address: newProfileData.address
-                    });
+                    // ✅ FIX: Set editing name state
+                    setEditingName(newProfileData.fullName);
                 }
             } catch (error) {
                 console.error('❌ Error loading data:', error);
@@ -250,13 +246,18 @@ const UserProfileScreen = () => {
         );
     };
 
-    // Hàm lưu thông tin
     const handleSave = async () => {
         if (!user) return;
+        
+        // ✅ Thêm validation
+        if (!editingName.trim()) {
+            Alert.alert('Lỗi', 'Tên không được để trống');
+            return;
+        }
+        
         try {
-            // Nếu avatar là base64 (ảnh mới chọn/chụp), lấy base64, nếu không thì giữ nguyên
             let imageBase64 = profileData.image;
-            // Nếu avatar là uri local (ảnh vừa chọn/chụp), convert sang base64
+            
             if (
                 profileData.avatar?.uri &&
                 !profileData.avatar.uri.startsWith('http') &&
@@ -271,19 +272,26 @@ const UserProfileScreen = () => {
                 profileData.avatar?.uri &&
                 profileData.avatar.uri.startsWith('data:image')
             ) {
-                // Nếu đã là data:image thì lấy phần base64
                 imageBase64 = profileData.avatar.uri.split(',')[1];
             }
 
             const response = await axios.put(`${BASE_URL}/users/${user._id}`, {
-                name: editableData.fullName,
+                name: editingName.trim(), // ✅ Trim whitespace
                 image: imageBase64,
             });
 
             if (response.data?.success !== false) {
                 Alert.alert('Thành công', 'Thông tin đã được cập nhật!');
+                
+                // ✅ Cập nhật state ngay lập tức để tránh delay
+                setProfileData(prev => ({
+                    ...prev,
+                    fullName: editingName.trim(),
+                }));
+                
                 setIsEditing(false);
-                // Reload lại user
+                
+                // ✅ Fetch lại data trong background
                 const updatedUser = await fetchUserData(user._id);
                 if (updatedUser) {
                     setProfileData(prev => ({
@@ -294,10 +302,7 @@ const UserProfileScreen = () => {
                             ? { uri: `data:image/jpeg;base64,${updatedUser.image}` }
                             : prev.avatar
                     }));
-                    setEditableData({
-                        fullName: updatedUser.name || '',
-                        address: profileData.address
-                    });
+                    setEditingName(updatedUser.name || '');
                 }
             } else {
                 Alert.alert('Thất bại', response.data.message || 'Không thể cập nhật thông tin.');
@@ -308,33 +313,45 @@ const UserProfileScreen = () => {
         }
     };
 
+    // ✅ FIX: Optimize handleCancel
     const handleCancel = () => {
-        setEditableData({
-            fullName: profileData.fullName,
-            address: profileData.address
-        });
+        setEditingName(profileData.fullName);
         setIsEditing(false);
     };
 
-    const InfoItem = ({
+    // ✅ FIX: Thêm useCallback để tránh re-render không cần thiết
+    const handleNameChange = useCallback((text: string) => {
+        setEditingName(text);
+    }, []);
+
+    // ✅ FIX: Sửa lại InfoItem component
+    const InfoItem = React.memo(({
         label,
         value,
         editable = false,
-        onChangeText
+        onChangeText,
+        inputValue
     }: {
         label: string;
         value: string;
         editable?: boolean;
-        onChangeText?: (text: string) => void
+        onChangeText?: (text: string) => void;
+        inputValue?: string;
     }) => (
         <View style={styles.infoItem}>
             <Text style={styles.label}>{label}</Text>
             {editable && isEditing ? (
                 <TextInput
                     style={styles.editableInput}
-                    value={value}
+                    value={inputValue !== undefined ? inputValue : value}
                     onChangeText={onChangeText}
                     multiline={label === 'Địa chỉ'}
+                    autoFocus={label === 'Họ và tên'}
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    textContentType="name"
+                    autoCorrect={false}
+                    autoCapitalize="words"
                 />
             ) : (
                 <Text style={[styles.value, !editable && styles.disabledValue]}>
@@ -342,7 +359,7 @@ const UserProfileScreen = () => {
                 </Text>
             )}
         </View>
-    );
+    ));
 
     // Hiển thị loading
     if (loading) {
@@ -383,6 +400,7 @@ const UserProfileScreen = () => {
                         if (isEditing) {
                             handleSave();
                         } else {
+                            setEditingName(profileData.fullName); // ✅ Set giá trị ban đầu khi bắt đầu edit
                             setIsEditing(true);
                         }
                     }}
@@ -413,12 +431,15 @@ const UserProfileScreen = () => {
 
                 {/* User Information */}
                 <View style={styles.infoSection}>
+                    {/* ✅ FIX: Sử dụng editingName và setEditingName */}
                     <InfoItem
                         label="Họ và tên"
-                        value={isEditing ? editableData.fullName : user?.name || ''}
-                        editable={true}
-                        onChangeText={(text) => setEditableData(prev => ({ ...prev, fullName: text }))}
+                        value={profileData.fullName}
+                        inputValue={editingName}
+                        editable={isEditing}
+                        onChangeText={handleNameChange}
                     />
+
 
                     <InfoItem
                         label="Email"
@@ -437,7 +458,6 @@ const UserProfileScreen = () => {
                         value={profileData.address}
                         editable={false}
                     />
-
                 </View>
 
                 {/* Action Buttons when editing */}
@@ -573,6 +593,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#795548',
         minHeight: 48,
+        textAlignVertical: 'top',
     },
     addressSection: {
         marginTop: 16,

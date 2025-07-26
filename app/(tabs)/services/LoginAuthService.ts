@@ -75,7 +75,7 @@ async login(email: string, password: string): Promise<LoginResponse> {
 
 
       await saveUserData({ key: 'token', value: token });
-      await saveUserData({ key: 'userData', value: user});
+      await saveUserData({ key: 'userData', value: user._id});
       console.log('Lưu token và user thành công:', user);
       
       return {

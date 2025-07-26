@@ -11,9 +11,6 @@ import StarRating from '../../component/StarRating';
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
 
-
-const { width } = Dimensions.get('window');
-
 // Define types for product data for better clarity
 type ProductDataType = {
   _id: string;
@@ -163,26 +160,16 @@ const ReviewScreen = () => {
         reviewText={reviewText} // Pass reviewText to DetailedReview for controlled input
       />
 
-      {/* Fixed Bottom Buttons */}
-      <View style={styles.bottomContainer}>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Hủy bỏ</Text>
-          </TouchableOpacity>
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <LinearGradient
-              colors={['#D2691E', '#8B4513']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitButtonGradient}
-            >
-              <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+          <Text style={styles.cancelButtonText}>Hủy bỏ</Text>
+        </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -264,8 +251,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: '#fff',
     fontWeight: 'bold',
     textAlign: 'center',
     fontSize: 16,
@@ -284,9 +270,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   cancelButtonText: {
-    color: '#666666',
-    fontSize: 16,
-    fontWeight: '600',
     color: '#fff',
     fontWeight: 'bold',
     textAlign: 'center',
