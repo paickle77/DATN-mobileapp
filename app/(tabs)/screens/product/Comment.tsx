@@ -1,6 +1,5 @@
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,89 +11,69 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { BASE_URL } from '../../services/api';
+import commentService from '../../services/CommentService';
+import { Review, ReviewSummary } from '../../services/DetailService';
 import { getUserData } from '../utils/storage';
 
 const { width } = Dimensions.get('window');
 
-type Review = {
-  _id: string;
-  user_id: string;
-  review_date: string;
-  star_rating: number;
-  content: string;
-  image?: string;
-};
-
 const CommentScreen = () => {
   const navigation = useNavigation();
- const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({
+    averageRating: 0,
+    totalReviews: 0,
+    reviews: []
+  });
   const [loading, setLoading] = useState(true);
-  const [userNames, setUserNames] = useState<{ [key: string]: string }>({});
+  const [error, setError] = useState<string | null>(null);
 
-  // Hàm lấy thông tin user theo ID
-  const fetchUserName = async (userId: any) => {
-    try {
-      if (userNames[userId]) {
-        return userNames[userId]; // Return from cache
-      }
-      
-      const response = await axios.get(`${BASE_URL}/users/${userId}`);
-      const userName = response.data.data?.name || 'Khách hàng';
-      
-      // Cache the result
-      setUserNames(prev => ({
-        ...prev,
-        [userId]: userName
-      }));
-      
-      return userName;
-    } catch (error) {
-      console.error('Lỗi khi lấy thông tin user:', error);
-      return 'Khách hàng';
-    }
-  };
+  useEffect(() => {
+    initializeData();
+  }, []);
 
-  const fetchReview = async () => {
+  const initializeData = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/GetAllReview`);
+      setLoading(true);
       const productID = await getUserData('productID');
-
-      const allReviews = response.data.data;
-
-      const filteredReviews = allReviews.filter((item: any) => {
-        const itemProductId =
-          typeof item.product_id === 'object' && item.product_id._id
-            ? item.product_id._id
-            : item.product_id;
-        return itemProductId === productID;
-      });
-
-      setReviews(filteredReviews);
       
-      // Fetch user names for all reviews
-      const userIds = [...new Set(filteredReviews.map((review: Review) => review.user_id))];
-      const userNamePromises = userIds.map(async (userId) => {
-        const userName = await fetchUserName(userId);
-        return { [userId]: userName };
-      });
-      
-      const userNameResults = await Promise.all(userNamePromises);
-      const userNamesMap = Object.assign({}, ...userNameResults);
-      setUserNames(userNamesMap);
-      
-    } catch (error) {
-      console.error('Lỗi khi gọi API bằng axios:', error.message);
+      if (!productID) {
+        setError('Không tìm thấy ID sản phẩm');
+        return;
+      }
+
+      await Promise.all([
+        fetchReviews(productID),
+        fetchReviewSummary(productID)
+      ]);
+    } catch (err) {
+      setError('Lỗi khi tải dữ liệu đánh giá');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchReview();
-  }, []);
+  const fetchReviews = async (productId: string) => {
+    try {
+      const reviewsData = await commentService.getProductReviewsWithUsers(productId);
+      setReviews(reviewsData);
+    } catch (error) {
+      console.error('Lỗi khi tải đánh giá:', error);
+      throw error;
+    }
+  };
 
-  const renderStars = (count: any) => {
+  const fetchReviewSummary = async (productId: string) => {
+    try {
+      const summary = await commentService.getReviewSummary(productId);
+      setReviewSummary(summary);
+    } catch (error) {
+      console.error('Lỗi khi tải tóm tắt đánh giá:', error);
+      throw error;
+    }
+  };
+
+  const renderStars = (count: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <FontAwesome
         key={i}
@@ -106,16 +85,28 @@ const CommentScreen = () => {
     ));
   };
 
-  // Hàm get tên user với fallback
-  const getUserName = (item: any) => {
-    if (item.user_id && typeof item.user_id === 'object' && item.user_id.name) {
-      // Trường hợp đã populate trong API
-      return item.user_id.name;
-    } else if (userNames[item.user_id]) {
-      // Trường hợp lấy từ cache
-      return userNames[item.user_id];
-    }
-    return 'Khách hàng'; // Fallback
+  const renderRatingDistribution = () => {
+    const distribution = commentService.calculateRatingDistribution(reviews);
+    
+    return (
+      <View style={styles.distributionContainer}>
+        {[5, 4, 3, 2, 1].map(star => (
+          <View key={star} style={styles.distributionRow}>
+            <Text style={styles.starLabel}>{star}</Text>
+            <FontAwesome name="star" size={12} color="#FF6B35" />
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${distribution[star].percentage}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.countLabel}>({distribution[star].count})</Text>
+          </View>
+        ))}
+      </View>
+    );
   };
 
   if (loading) {
@@ -123,6 +114,20 @@ const CommentScreen = () => {
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#FF6B35" />
         <Text style={styles.loadingText}>Đang tải đánh giá...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.emptyContainer}>
+        <FontAwesome name="exclamation-triangle" size={64} color="#FF6B35" />
+        <Text style={styles.emptyTitle}>Có lỗi xảy ra</Text>
+        <Text style={styles.emptySubtitle}>{error}</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={initializeData}>
+          <FontAwesome name="refresh" size={16} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.buttonText}>Thử lại</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -141,9 +146,6 @@ const CommentScreen = () => {
     );
   }
 
-  // Tính toán điểm đánh giá trung bình
-  const averageRating = reviews.reduce((sum, item) => sum + item.star_rating, 0) / reviews.length;
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -158,12 +160,19 @@ const CommentScreen = () => {
       {/* Summary */}
       <View style={styles.summaryContainer}>
         <View style={styles.ratingOverview}>
-          <Text style={styles.averageRating}>{averageRating.toFixed(1)}</Text>
+          <Text style={styles.averageRating}>
+            {reviewSummary.averageRating.toFixed(1)}
+          </Text>
           <View style={styles.averageStars}>
-            {renderStars(Math.round(averageRating))}
+            {renderStars(Math.round(reviewSummary.averageRating))}
           </View>
-          <Text style={styles.totalReviews}>({reviews.length} đánh giá)</Text>
+          <Text style={styles.totalReviews}>
+            ({reviewSummary.totalReviews} đánh giá)
+          </Text>
         </View>
+        
+        {/* Rating Distribution */}
+        {renderRatingDistribution()}
       </View>
 
       {/* Reviews List */}
@@ -182,13 +191,15 @@ const CommentScreen = () => {
               <View style={styles.userInfo}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
-                    {getUserName(item).charAt(0).toUpperCase()}
+                    {commentService.getUserDisplayName(item).charAt(0).toUpperCase()}
                   </Text>
                 </View>
                 <View>
-                  <Text style={styles.username}>{getUserName(item)}</Text>
+                  <Text style={styles.username}>
+                    {commentService.getUserDisplayName(item)}
+                  </Text>
                   <Text style={styles.reviewDate}>
-                    {new Date(item.review_date).toLocaleDateString('vi-VN')}
+                    {commentService.formatReviewDate(item.review_date)}
                   </Text>
                 </View>
               </View>
@@ -270,6 +281,7 @@ const styles = StyleSheet.create({
   },
   ratingOverview: {
     alignItems: 'center',
+    marginBottom: 20,
   },
   averageRating: {
     fontSize: 48,
@@ -284,6 +296,40 @@ const styles = StyleSheet.create({
   totalReviews: {
     fontSize: 14,
     color: '#666',
+  },
+
+  // Distribution Styles
+  distributionContainer: {
+    gap: 8,
+  },
+  distributionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  starLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    width: 12,
+  },
+  progressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF6B35',
+    borderRadius: 4,
+  },
+  countLabel: {
+    fontSize: 12,
+    color: '#666',
+    width: 30,
+    textAlign: 'right',
   },
 
   // Reviews List Styles

@@ -70,6 +70,9 @@ async login(email: string, password: string): Promise<LoginResponse> {
 
     if (response.data.success && response.data.data?.user) {
       const { token, user } = response.data.data;
+      console.log('Token:', token);
+      console.log('User:', user._id);
+
 
       await saveUserData({ key: 'token', value: token });
       await saveUserData({ key: 'userData', value: user._id });

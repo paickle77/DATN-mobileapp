@@ -1,17 +1,20 @@
 import dayjs from 'dayjs';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import voucherService, {
-    UserVoucher,
-    Voucher,
+  UserVoucher,
+  Voucher,
 } from '../services/VoucherService';
+
+const { width } = Dimensions.get('window');
 
 type Props = {
   data: Voucher[];
@@ -30,46 +33,92 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
     );
 
     if (alreadySaved) {
-      Alert.alert('Voucher này đã được lưu rồi!');
+      Alert.alert('Thông báo', 'Voucher này đã được lưu rồi!', [
+        { text: 'OK', style: 'default' }
+      ]);
       return;
     }
 
     try {
       await voucherService.addVoucherToUser(v._id);
-      Alert.alert('✅ Đã lưu voucher!');
-      if (onSave) onSave(v); // Gọi lại loadData từ parent
+      Alert.alert('Thành công', '✅ Đã lưu voucher!', [
+        { text: 'OK', style: 'default' }
+      ]);
+      if (onSave) onSave(v);
     } catch (err) {
       console.error(err);
-      Alert.alert('❌ Lỗi khi lưu voucher');
+      Alert.alert('Lỗi', '❌ Lỗi khi lưu voucher', [
+        { text: 'OK', style: 'default' }
+      ]);
     }
   };
 
   // 🔥 Chỉ lọc voucher còn hạn sử dụng
   const validVouchers = data.filter((v) => dayjs(v.end_date).isAfter(dayjs()));
 
+  if (validVouchers.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🎫</Text>
+        <Text style={styles.emptyText}>Hiện tại không có voucher nào</Text>
+        <Text style={styles.emptySubText}>Hãy quay lại sau nhé!</Text>
+      </View>
+    );
+  }
+
   return (
     <View>
       <Text style={styles.header}>📢 Voucher có sẵn</Text>
-      {validVouchers.map((v) => (
-        <View key={v._id} style={styles.card}>
-          <View style={styles.row}>
-            <Text style={styles.code}>{v.code}</Text>
-            <TouchableOpacity onPress={() => setSelectedVoucher(v)}>
-              <Text style={styles.detailBtn}>Chi tiết</Text>
+      {validVouchers.map((v) => {
+        const isAlreadySaved = userVouchers.some(
+          (uv) => uv.voucher_id._id === v._id
+        );
+        
+        return (
+          <View key={v._id} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.codeContainer}>
+                <Text style={styles.code}>{v.code}</Text>
+                {isAlreadySaved && (
+                  <View style={styles.savedBadge}>
+                    <Text style={styles.savedText}>✓ Đã lưu</Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity 
+                onPress={() => setSelectedVoucher(v)}
+                style={styles.detailBtn}
+              >
+                <Text style={styles.detailBtnText}>Chi tiết</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.discountContainer}>
+              <Text style={styles.discount}>Giảm {v.discount_percent}%</Text>
+            </View>
+            
+            <Text style={styles.dateRange}>
+              📅 {formatDate(v.start_date)} - {formatDate(v.end_date)}
+            </Text>
+            
+            <TouchableOpacity
+              onPress={() => handleSave(v)}
+              style={[
+                styles.saveButton,
+                isAlreadySaved && styles.disabledButton
+              ]}
+              disabled={isAlreadySaved}
+            >
+              <Text style={[
+                styles.saveText,
+                isAlreadySaved && styles.disabledText
+              ]}>
+                {isAlreadySaved ? '✓ Đã lưu' : '💾 Lưu Voucher'}
+              </Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.discount}>Giảm {v.discount_percent}%</Text>
-          <Text style={styles.line}>
-            {formatDate(v.start_date)} - {formatDate(v.end_date)}
-          </Text>
-          <TouchableOpacity
-            onPress={() => handleSave(v)}
-            style={styles.saveButton}
-          >
-            <Text style={styles.saveText}>Lưu Voucher</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
+        );
+      })}
 
       {/* Modal chi tiết */}
       <Modal visible={!!selectedVoucher} animationType="fade" transparent>
@@ -77,20 +126,52 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
           <View style={styles.modalContent}>
             {selectedVoucher && (
               <>
-                <Text style={styles.modalTitle}>Chi tiết Voucher</Text>
-                <Text style={styles.modalLabel}>
-                  🎫 Mã: {selectedVoucher.code}
-                </Text>
-                <Text style={styles.modalLabel}>
-                  📜 Mô tả: {selectedVoucher.description}
-                </Text>
-                <Text style={styles.modalLabel}>
-                  💸 Giảm: {selectedVoucher.discount_percent}%
-                </Text>
-                <Text style={styles.modalLabel}>
-                  🕒 Hiệu lực: {formatDate(selectedVoucher.start_date)} -{' '}
-                  {formatDate(selectedVoucher.end_date)}
-                </Text>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Chi tiết Voucher</Text>
+                  <TouchableOpacity
+                    onPress={() => setSelectedVoucher(null)}
+                    style={styles.closeIconButton}
+                  >
+                    <Text style={styles.closeIcon}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.modalBody}>
+                  <View style={styles.modalRow}>
+                    <Text style={styles.modalIcon}>🎫</Text>
+                    <View style={styles.modalTextContainer}>
+                      <Text style={styles.modalLabelTitle}>Mã voucher</Text>
+                      <Text style={styles.modalValue}>{selectedVoucher.code}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.modalRow}>
+                    <Text style={styles.modalIcon}>📜</Text>
+                    <View style={styles.modalTextContainer}>
+                      <Text style={styles.modalLabelTitle}>Mô tả</Text>
+                      <Text style={styles.modalValue}>{selectedVoucher.description}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.modalRow}>
+                    <Text style={styles.modalIcon}>💸</Text>
+                    <View style={styles.modalTextContainer}>
+                      <Text style={styles.modalLabelTitle}>Giảm giá</Text>
+                      <Text style={styles.modalValueHighlight}>{selectedVoucher.discount_percent}%</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.modalRow}>
+                    <Text style={styles.modalIcon}>🕒</Text>
+                    <View style={styles.modalTextContainer}>
+                      <Text style={styles.modalLabelTitle}>Thời gian hiệu lực</Text>
+                      <Text style={styles.modalValue}>
+                        {formatDate(selectedVoucher.start_date)} - {formatDate(selectedVoucher.end_date)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                
                 <TouchableOpacity
                   onPress={() => setSelectedVoucher(null)}
                   style={styles.closeButton}
@@ -108,86 +189,211 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
 
 const styles = StyleSheet.create({
   header: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginVertical: 12,
+    marginVertical: 16,
     color: '#5C4033',
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#EFE9E1',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    borderColor: '#D6CBBE',
-    borderWidth: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 3,
+    shadowColor: '#5C4033',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#5C4033',
   },
-  code: { fontWeight: 'bold', fontSize: 16, color: '#5C4033' },
-  desc: { color: '#444', fontSize: 14, marginBottom: 4 },
-  discount: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: '#cc4747ff',
-  },
-  line: { fontSize: 13, color: '#666' },
-  row: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  detailBtn: {
+  codeContainer: {
+    flex: 1,
+  },
+  code: { 
+    fontWeight: 'bold', 
+    fontSize: 18, 
     color: '#5C4033',
-    fontSize: 13,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#5C4033',
+    marginBottom: 4,
   },
-  saveButton: {
-    marginTop: 10,
-    backgroundColor: '#5C4033',
+  savedBadge: {
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  savedText: {
+    color: '#4CAF50',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  discountContainer: {
+    backgroundColor: '#FFF3F3',
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  discount: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    color: '#D32F2F',
+  },
+  dateRange: { 
+    fontSize: 14, 
+    color: '#666',
+    marginBottom: 16,
+  },
+  detailBtn: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#5C4033',
+  },
+  detailBtnText: {
+    color: '#5C4033',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: '#5C4033',
+    paddingVertical: 12,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#5C4033',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  disabledButton: {
+    backgroundColor: '#E0E0E0',
+    elevation: 0,
+    shadowOpacity: 0,
   },
   saveText: {
     textAlign: 'center',
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  disabledText: {
+    color: '#999',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#5C4033',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 30,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 20,
   },
   modalContent: {
     backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 12,
+    borderRadius: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
     color: '#5C4033',
   },
-  modalLabel: {
+  closeIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeIcon: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  modalIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    marginTop: 2,
+  },
+  modalTextContainer: {
+    flex: 1,
+  },
+  modalLabelTitle: {
     fontSize: 14,
-    marginBottom: 6,
+    color: '#666',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  modalValue: {
+    fontSize: 16,
     color: '#333',
+    fontWeight: '400',
+  },
+  modalValueHighlight: {
+    fontSize: 18,
+    color: '#D32F2F',
+    fontWeight: 'bold',
   },
   closeButton: {
-    marginTop: 10,
-    backgroundColor: '#999',
-    paddingVertical: 8,
-    borderRadius: 8,
+    margin: 20,
+    marginTop: 0,
+    backgroundColor: '#5C4033',
+    paddingVertical: 14,
+    borderRadius: 12,
   },
   closeText: {
     textAlign: 'center',
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 

@@ -19,14 +19,12 @@ import TabNavigator from './screens/navigation/TabNavigator';
 import NotificationDemo from './screens/notification/NotificationDemo';
 import NotificationScreen from './screens/notification/NotificationScreen';
 import testPushTokenService from './screens/notification/testPushTokenService';
-import CartScreen from './screens/order/Cart';
-import { default as Cart, default as CartScreen } from './screens/order/Cart';
+import CartScreen, { default as Cart } from './screens/order/Cart';
 import Checkout from './screens/order/Checkout';
-import CheckoutCard from './screens/order/CheckoutCardScreen';
-import CheckoutSuccess from './screens/order/CheckoutSuccessScreen';
 import OderDetails from './screens/order/OrderDetails';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
+import CategoryScreen from './screens/product/CategoryScreen';
 import CommentScreen from './screens/product/Comment';
 import Detail from './screens/product/Detail';
 import Home from './screens/product/Home';
@@ -70,8 +68,6 @@ export default function TabLayout() {
       <Stack.Screen name="NewPassword" component={NewPassword} options={{ headerShown: false }} />
       <Stack.Screen name="CompleteProfile" component={CompleteProfile} options={{ headerShown: false }} />
       <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false }} />
-      <Stack.Screen name="CheckoutSuccess" component={CheckoutSuccess} options={{ headerShown: false }} />
-      <Stack.Screen name="CheckoutCard" component={CheckoutCard} options={{ headerShown: false }} />
       <Stack.Screen name="CartScreen" component={CartScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CategoryItem" component={CategoryItem} options={{ headerShown: false }} />
@@ -84,6 +80,7 @@ export default function TabLayout() {
       {/* Screens có thể được navigate từ tab navigator */}
       <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
+      <Stack.Screen name="Category" component={CategoryScreen} options={{ headerShown: false }} />
 
       {/* Settings Screen - được navigate từ Profile */}
       <Stack.Screen name="Settings" component={Settings} options={{ headerShown: false }} />

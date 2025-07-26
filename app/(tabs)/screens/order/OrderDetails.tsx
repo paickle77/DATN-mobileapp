@@ -45,9 +45,11 @@ const OderDetails = () => {
       setError(null);
       const response = await axios.get(`${BASE_URL}/GetAllBillDetails`);
       const filteredData: BillDetailItemType[] = response.data.data.filter(
-        (item: BillDetailItemType) => item.bill_id._id === orderId
+        (item: BillDetailItemType) =>
+          item?.bill_id?._id === orderId &&
+          item?.product_id !== null // nếu cần kiểm tra thêm
       );
-      console.log('✅ Dữ liệu chi tiết đơn hàng (đã lọc):', filteredData);
+      // console.log('✅ Dữ liệu chi tiết đơn hàng (đã lọc):', filteredData);
       setData(filteredData);
     } catch (err) {
       console.error('Lỗi khi tải chi tiết đơn hàng:', err);
@@ -85,9 +87,9 @@ const OderDetails = () => {
 
   return (
     <ScrollView style={styles.container}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 15 }}>
-          <Icon name="arrow-back" size={25} color="#000" />
-        </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 15 }}>
+        <Icon name="arrow-back" size={25} color="#000" />
+      </TouchableOpacity>
       {data.length > 0 ? (
         data.map((item) => (
           <OrderItemDetail key={item._id} orderItem={item} />

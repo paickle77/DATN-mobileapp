@@ -22,6 +22,7 @@ interface CartItemType {
   price: number;
   image: string;
   quantity: number;
+  discount_price?: number; // Thêm giá khuyến mãi nếu có
 }
 
 export default function CartScreen() {
@@ -43,32 +44,53 @@ export default function CartScreen() {
 
   const FetchData = async () => {
     const user = await getUserData('userData');
-    const userId = user
+    const userId = user;
     console.log("userID:", userId);
 
     try {
-      const response = await axios.get(`${BASE_URL}/GetAllCarts`);
-      const listCart = response.data.data;
+      const [cartRes, sizeRes] = await Promise.all([
+        axios.get(`${BASE_URL}/GetAllCarts`),
+        axios.get(`${BASE_URL}/sizes`)
+      ]);
 
-      const formattedData = listCart.map((item: any) => ({
-        id: item._id,
-        title: item.product_id.name,
-        user_id: item.user_id,
-        Size: item.size_id.size,
-        price: item.product_id.price,
-        image: item.product_id.image_url,
-        quantity: item.quantity,
-      }));
+      const listCart = cartRes.data.data;
+      const sizeList = sizeRes.data.data;
 
-      // 🔍 Lọc ra những item có user_id khớp với user hiện tại
+      const formattedData = listCart.map((item: any) => {
+        const sizeInfo = sizeList.find((s: any) =>
+          s._id === item.size_id._id ||
+          (s.size === item.size_id.size && s.Product_id === item.product_id._id)
+        );
+
+        const priceIncrease = sizeInfo?.price_increase || 0;
+        const basePrice = item.product_id.discount_price || item.product_id.price;
+        const finalPrice = basePrice + priceIncrease * 1000;
+
+      
+        
+
+        return {
+          id: item._id,
+          title: item.product_id.name,
+          user_id: item.user_id,
+          Size: item.size_id.size,
+          price: finalPrice,
+          image: item.product_id.image_url,
+          quantity: item.quantity,
+        };
+      });
+
+    
+
       const userCartItems = formattedData.filter((item: any) => item.user_id === userId);
+      setList(userCartItems);
+      console.log("✅ Dữ liệu giỏ hàng theo user:", userCartItems);
 
-      setList(userCartItems); // 👉 chỉ render dữ liệu thuộc user này
-      console.log("Dữ liệu giỏ hàng theo user:", userCartItems);
     } catch (error) {
-      console.log("Lỗi API:", error);
+      console.log("❌ Lỗi API:", error);
     }
   };
+
 
   // Format currency VND
   const formatCurrency = (amount: number) => {
@@ -113,9 +135,8 @@ export default function CartScreen() {
   };
 
   // Tổng tiền
-  const subtotal = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingFee = 35000;
-  const total = subtotal ;
+  const subtotal = list.reduce((sum, item) => sum + (item.discount_price || item.price) * item.quantity, 0);
+  const total = subtotal;
 
   return (
     <View style={styles.container}>
@@ -124,7 +145,7 @@ export default function CartScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-         onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' })}
+          onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' })}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -143,7 +164,7 @@ export default function CartScreen() {
         renderItem={({ item, index }) => (
           <CartItem
             name={item.title}
-            price={formatCurrency(item.price)} // Đã định dạng kiểu "50.000 ₫"
+            price={formatCurrency(item.discount_price || item.price)} // Đã định dạng kiểu "50.000 ₫"
             image={item.image}
             Size={item.Size}
             quantily={item.quantity}

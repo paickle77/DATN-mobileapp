@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import axios from 'axios';
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,43 +14,16 @@ import {
   View
 } from "react-native";
 import NotificationComponent from "../../component/NotificationComponent";
-import { BASE_URL } from "../../services/api";
+import detailService, { Product, ReviewSummary, Size } from "../../services/DetailService";
 import { getUserData } from "../utils/storage";
 
-
 const { width, height } = Dimensions.get('window');
-
-interface Product {
-  _id: string;
-  name: string;
-  description: string;
-  price: number;
-  discount_price: number;
-  image_url: string;
-  rating: number;
-  is_active: boolean;
-  category_id: {
-    _id: string;
-    name: string;
-  };
-  ingredient_id: {
-    _id: string;
-    name: string;
-  };
-}
-
-interface Size {
-  _id: string;
-  Product_id: string;
-  quantity: number;
-  size: string;
-  price_increase: number;
-}
 
 type RootStackParamList = {
   Checkout: undefined;
   Review: { productId: string };
   Cart: undefined;
+  comment: { productId: string };
 };
 
 const Detail: React.FC = () => {
@@ -64,6 +36,13 @@ const Detail: React.FC = () => {
   const [quantity, setQuantity] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({
+    averageRating: 0,
+    totalReviews: 0,
+    reviews: []
+  });
+
+
 
   const [notification, setNotification] = useState({
     message: '',
@@ -75,92 +54,132 @@ const Detail: React.FC = () => {
     setNotification({ message, type, visible: true });
   };
 
-
   useEffect(() => {
-    fetchProductDetails();
-    fetchSizes();
-    checkFavoriteStatus();
+    initializeData();
   }, []);
 
   useEffect(() => {
-    if (product) {
-      let basePrice = product.discount_price || product.price;
-      const sizeData = sizes.find(s => s.size === selectedSize);
-      if (sizeData) basePrice += sizeData.price_increase * 1000;
-      setTotalPrice(quantity * basePrice);
-    }
+    calculateTotalPrice();
   }, [quantity, product, selectedSize, sizes]);
 
-  const fetchProductDetails = async () => {
+  const initializeData = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${BASE_URL}/productsandcategoryid`);
-      const id = await getUserData('productID');
-      const products = res.data.data || res.data;
-      const found = products.find((item: Product) => item._id === id);
-      if (found) setProduct(found);
-      else setError('Không tìm thấy sản phẩm');
+      const productId = await getUserData('productID');
+      
+      if (!productId) {
+        setError('Không tìm thấy ID sản phẩm');
+        return;
+      }
+
+      await Promise.all([
+        fetchProductDetails(productId),
+        fetchSizes(productId),
+        checkFavoriteStatus(productId),
+        fetchReviewSummary(productId)
+      ]);
     } catch (err) {
-      setError('Lỗi khi tải dữ liệu sản phẩm');
+      setError('Lỗi khi tải dữ liệu');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchSizes = async () => {
+  const fetchProductDetails = async (productId: string) => {
     try {
-      const res = await axios.get(`${BASE_URL}/sizes`);
-      const id = await getUserData('productID');
-      const allSizes = res.data.data || res.data;
-      const foundSizes = allSizes.filter((s: Size) => s.Product_id === id);
-      setSizes(foundSizes);
-    } catch (err) {
-      console.error(err);
+      const productData = await detailService.getProductDetails(productId);
+      if (productData) {
+        setProduct(productData);
+      } else {
+        setError('Không tìm thấy sản phẩm');
+      }
+    } catch (error) {
+      setError('Lỗi khi tải dữ liệu sản phẩm');
+      throw error;
     }
   };
 
-  const checkFavoriteStatus = async () => {
+  const fetchSizes = async (productId: string) => {
     try {
-      const res = await axios.get(`${BASE_URL}/favorites2`);
-      const format = res.data.data;
-      const userID = await getUserData('userData');
-      const productID = await getUserData('productID');
-      const found = format.find(item => item.user_id === userID && item.product_id?._id === productID);
-      setIsFavorite(!!found);
-    } catch (err) {
+      const sizesData = await detailService.getProductSizes(productId);
+      setSizes(sizesData);
+    } catch (error) {
+      console.error('Lỗi khi tải sizes:', error);
+      // Không throw error để không làm crash app
+    }
+  };
+
+  const checkFavoriteStatus = async (productId: string) => {
+    try {
+      const userId = await getUserData('userData');
+      if (!userId) return;
+      
+      const favoriteStatus = await detailService.checkFavoriteStatus(userId, productId);
+      setIsFavorite(favoriteStatus);
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra trạng thái yêu thích:', error);
       setIsFavorite(false);
+    }
+  };
+
+  const fetchReviewSummary = async (productId: string) => {
+    try {
+      const summary = await detailService.getReviewSummary(productId);
+      setReviewSummary(summary);
+    } catch (error) {
+      console.error('Lỗi khi tải tóm tắt đánh giá:', error);
+      // Không throw error để không làm crash app
     }
   };
 
   const toggleFavorite = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/favorites2`);
-      const data = res.data.data;
-      const userID = await getUserData('userData');
-      const id = await getUserData('productID');
-      const found = data.find(item => item.user_id === userID && item.product_id?._id === id);
-      if (found) {
-        await axios.delete(`${BASE_URL}/favorites/${found._id}`);
-        setIsFavorite(false);
-        showNotification('Đã xóa khỏi danh sách yêu thích!', 'info');
-      } else {
-        await axios.post(`${BASE_URL}/favorites`, { user_id: userID, product_id: id });
-        setIsFavorite(true);
-        showNotification('Đã thêm vào danh sách yêu thích!', 'success');
+      const userId = await getUserData('userData');
+      const productId = await getUserData('productID');
+      
+      if (!userId || !productId) {
+        showNotification('Không thể xác định thông tin người dùng', 'error');
+        return;
       }
-    } catch (err) {
+
+      const result = await detailService.toggleFavorite(userId, productId);
+      
+      setIsFavorite(result.isAdded);
+      showNotification(
+        result.isAdded 
+          ? 'Đã thêm vào danh sách yêu thích!' 
+          : 'Đã xóa khỏi danh sách yêu thích!',
+        result.isAdded ? 'success' : 'info'
+      );
+    } catch (error) {
       showNotification('Không thể cập nhật danh sách yêu thích.', 'error');
     }
   };
 
+  const calculateTotalPrice = () => {
+    if (!product) return;
+    
+    let basePrice = product.discount_price || product.price;
+    const sizeData = sizes.find(s => s.size === selectedSize);
+    if (sizeData) {
+      basePrice += sizeData.price_increase * 1000;
+    }
+    setTotalPrice(quantity * basePrice);
+  };
+
   const incrementQuantity = () => {
     const sizeData = sizes.find(s => s.size === selectedSize);
-    if (sizeData && quantity < sizeData.quantity) setQuantity(q => q + 1);
-    else showNotification('Không đủ hàng trong kho hoặc chưa chọn size', 'warning');
+    if (sizeData && quantity < sizeData.quantity) {
+      setQuantity(q => q + 1);
+    } else {
+      showNotification('Không đủ hàng trong kho hoặc chưa chọn size', 'warning');
+    }
   };
 
   const decrementQuantity = () => {
-    if (quantity > 0) setQuantity(q => q - 1);
+    if (quantity > 0) {
+      setQuantity(q => q - 1);
+    }
   };
 
   const handleAddToCart = async () => {
@@ -168,50 +187,59 @@ const Detail: React.FC = () => {
       return showNotification('Vui lòng chọn số lượng sản phẩm', 'warning');
     }
 
+    if (!selectedSize) {
+      return showNotification('Vui lòng chọn size sản phẩm', 'warning');
+    }
+
     try {
-      const userID = await getUserData('userData');
+      const userId = await getUserData('userData');
       const sizeData = sizes.find(s => s.size === selectedSize);
-      if (!sizeData) return showNotification('Vui lòng chọn size hợp lệ', 'error');
+      
+      if (!sizeData) {
+        return showNotification('Vui lòng chọn size hợp lệ', 'error');
+      }
 
-      const productID = product?._id;
-      const sizeID = sizeData._id;
+      if (!product?._id || !userId) {
+        return showNotification('Thông tin không hợp lệ', 'error');
+      }
 
-      const response = await axios.get(`${BASE_URL}/GetAllCarts`);
-      const cartItems = response.data.data;
-
-      const existingCartItem = cartItems.find((item: any) =>
-        item.user_id === userID &&
-        item.product_id?._id === productID &&
-        item.size_id?._id === sizeID
+      const result = await detailService.handleAddToCart(
+        userId,
+        product._id,
+        sizeData._id,
+        quantity
       );
 
-      if (existingCartItem) {
-        const updatedQuantity = existingCartItem.quantity + quantity;
-        await axios.put(`${BASE_URL}/carts/${existingCartItem._id}`, {
-          quantity: updatedQuantity
-        });
-
-        showNotification(`Đã thêm ${quantity} sản phẩm. Tổng hiện tại: ${updatedQuantity} sản phẩm`, 'success');
-
+      if (result.isUpdate) {
+        showNotification(
+          `Đã thêm ${quantity} sản phẩm. Tổng hiện tại: ${result.totalQuantity} sản phẩm`,
+          'success'
+        );
       } else {
-        await axios.post(`${BASE_URL}/addtocarts`, {
-          user_id: userID,
-          product_id: productID,
-          size_id: sizeID,
-          quantity: quantity
-        });
-
-        showNotification(`Đã thêm ${quantity} sản phẩm vào giỏ hàng`, 'success');
-
+        showNotification(
+          `Đã thêm ${quantity} sản phẩm vào giỏ hàng`,
+          'success'
+        );
       }
 
     } catch (error) {
-      console.error('❌ Lỗi khi xử lý giỏ hàng:', error);
       showNotification('Không thể thêm vào giỏ hàng. Vui lòng thử lại.', 'error');
     }
   };
 
   const formatPrice = (val: number) => val.toLocaleString("vi-VN");
+
+  const renderStars = (rating: number, size: number = 14) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Ionicons
+        key={i}
+        name={i < Math.floor(rating) ? 'star' : i < rating ? 'star-half' : 'star-outline'}
+        size={size}
+        color={i < rating ? '#FFD700' : '#E0E0E0'}
+        style={{ marginRight: 2 }}
+      />
+    ));
+  };
 
   if (loading) return (
     <SafeAreaView style={styles.SafeAreaView}>
@@ -227,7 +255,7 @@ const Detail: React.FC = () => {
       <View style={styles.centerContainer}>
         <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
         <Text style={styles.errorText}>{error || 'Không có dữ liệu sản phẩm'}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchProductDetails}>
+        <TouchableOpacity style={styles.retryButton} onPress={initializeData}>
           <Text style={styles.retryButtonText}>Thử lại</Text>
         </TouchableOpacity>
       </View>
@@ -236,7 +264,6 @@ const Detail: React.FC = () => {
 
   return (
     <View style={styles.container}>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <ImageBackground
           source={{ uri: product.image_url }}
@@ -272,8 +299,15 @@ const Detail: React.FC = () => {
             <Text style={styles.productTitle}>{product.name}</Text>
             <View style={styles.ratingContainer}>
               <View style={styles.ratingBadge}>
-                <Ionicons name="star" size={14} color="#FFD700" />
-                <Text style={styles.ratingText}>{product.rating}</Text>
+                <View style={styles.starsContainer}>
+                  {renderStars(reviewSummary.averageRating)}
+                </View>
+                <Text style={styles.ratingText}>
+                  {reviewSummary.averageRating > 0 ? reviewSummary.averageRating.toFixed(1) : '0.0'}
+                </Text>
+                <Text style={styles.reviewCount}>
+                  ({reviewSummary.totalReviews})
+                </Text>
               </View>
               <View style={styles.categoryBadge}>
                 <Text style={styles.categoryText}>{product.category_id?.name || 'Chưa phân loại'}</Text>
@@ -302,6 +336,33 @@ const Detail: React.FC = () => {
             <Text style={styles.ingredientText}>
               {product.ingredient_id.map(i => i.name).join(", ")}
             </Text>
+          </View>
+
+          {/* Reviews Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>
+              <Ionicons name="chatbubble-outline" size={20} color="#2196F3" /> Đánh giá sản phẩm
+            </Text>
+            <View style={styles.reviewSummaryContainer}>
+              <View style={styles.ratingOverview}>
+                <Text style={styles.averageRatingLarge}>
+                  {reviewSummary.averageRating > 0 ? reviewSummary.averageRating.toFixed(1) : '0.0'}
+                </Text>
+                <View style={styles.starsContainerLarge}>
+                  {renderStars(reviewSummary.averageRating, 16)}
+                </View>
+                <Text style={styles.totalReviewsText}>
+                  {reviewSummary.totalReviews} đánh giá
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.viewAllReviewsButton}
+                onPress={() => navigation.navigate('comment', { productId: product._id })}
+              >
+                <Text style={styles.viewAllReviewsText}>Xem tất cả</Text>
+                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Size Selection Card */}
@@ -388,13 +449,10 @@ const Detail: React.FC = () => {
                     <>
                       <Text style={styles.originalPrice}>
                         {(() => {
-                          let basePrice = product.price;
-                          if (selectedSize === "17x8cm (nhỏ)") {
-                            basePrice += 60000;
-                          } else if (selectedSize === "21x8cm (vừa)") {
-                            basePrice += 90000;
-                          }
-                          return `${formatPrice(basePrice)}đ`;
+                          const sizeInfo = sizes.find(s => s.size === selectedSize);
+                          const priceIncrease = sizeInfo ? sizeInfo.price_increase * 1000 : 0;
+                          const fullOriginalPrice = product.price + priceIncrease;
+                          return `${formatPrice(fullOriginalPrice)}đ`;
                         })()}
                       </Text>
                       <View style={styles.discountBadge}>
@@ -495,6 +553,7 @@ const Detail: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+      
       {notification.visible && (
         <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center', zIndex: 999 }}>
           <NotificationComponent
@@ -508,9 +567,7 @@ const Detail: React.FC = () => {
         </View>
       )}
     </View>
-
   );
-
 };
 
 const styles = StyleSheet.create({
@@ -523,7 +580,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   scrollContent: {
-    paddingBottom: 200, // Space for fixed bottom section
+    paddingBottom: 200,
   },
   centerContainer: {
     flex: 1,
@@ -534,124 +591,134 @@ const styles = StyleSheet.create({
   imageBackground: {
     width: width,
     height: height * 0.5,
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
   },
   backgroundImage: {
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    resizeMode: 'cover',
   },
   imageOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   header: {
-    position: "absolute",
-    top: 50,
-    left: 20,
-    right: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    zIndex: 2,
-  },
-  headerRight: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
   },
   headerButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 25,
-    padding: 12,
-    shadowColor: "#000",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 12,
   },
   cartButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
   },
   productInfoOverlay: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    margin: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    marginHorizontal: 20,
+    marginBottom: 20,
     padding: 20,
-    borderRadius: 20,
-    shadowColor: "#000",
+    borderRadius: 16,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 8,
   },
   productTitle: {
     fontSize: 24,
-    fontWeight: "800",
-    color: "#2C2C2C",
-    marginBottom: 10,
-    textAlign: 'center',
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 12,
+    lineHeight: 32,
   },
   ratingContainer: {
-    flexDirection: "row",
-    justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 10,
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF9C4',
+    backgroundColor: '#FFF3E0',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    gap: 4,
+    borderWidth: 1,
+    borderColor: '#FFB74D',
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginRight: 8,
   },
   ratingText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#F57F17",
+    fontWeight: '600',
+    color: '#FF8F00',
+    marginRight: 4,
+  },
+  reviewCount: {
+    fontSize: 12,
+    color: '#666',
   },
   categoryBadge: {
-    backgroundColor: '#E8F5E8',
+    backgroundColor: '#E3F2FD',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#90CAF9',
   },
   categoryText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#2E7D32",
+    fontWeight: '600',
+    color: '#1976D2',
   },
   contentSection: {
-    padding: 20,
-    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
-    shadowColor: "#000",
+    marginBottom: 16,
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#2C2C2C",
+    fontWeight: '700',
+    color: '#2C3E50',
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -659,71 +726,111 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 15,
     lineHeight: 24,
-    color: "#666",
+    color: '#546E7A',
+    textAlign: 'justify',
   },
   ingredientText: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#4CAF50",
-    fontWeight: "500",
+    color: '#4CAF50',
+    fontWeight: '500',
+  },
+  reviewSummaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ratingOverview: {
+    flex: 1,
+  },
+  averageRatingLarge: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FF8F00',
+    marginBottom: 4,
+  },
+  starsContainerLarge: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  totalReviewsText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  viewAllReviewsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#90CAF9',
+  },
+  viewAllReviewsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2196F3',
+    marginRight: 4,
   },
   sizeContainer: {
-    flexDirection: "column",
-    flexWrap: 'nowrap',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginBottom: 16,
   },
   sizeButton: {
-    backgroundColor: "#F5F5F5",
+    minWidth: 80,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 12,
-    padding: 16,
     borderWidth: 2,
-    borderColor: 'transparent',
-    minWidth: width * 0.4,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FAFAFA',
     alignItems: 'center',
   },
   activeSizeButton: {
-    backgroundColor: "#8B4513",
-    borderColor: "#8B4513",
+    borderColor: '#FF9800',
+    backgroundColor: '#FFF3E0',
   },
   sizeText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    textAlign: "center",
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
     marginBottom: 4,
   },
   activeSizeText: {
-    color: "#FFFFFF",
+    color: '#FF9800',
   },
   sizePrice: {
     fontSize: 12,
-    color: "#666",
-    textAlign: "center",
+    color: '#999',
+    fontWeight: '500',
   },
   activeSizePrice: {
-    color: "#FFFFFF",
+    color: '#FF9800',
   },
   stockContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     backgroundColor: '#F8F9FA',
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
   },
   stockText: {
     fontSize: 14,
-    fontWeight: "500",
-  },
-  noSelection: {
-    color: "#FF9800",
+    fontWeight: '500',
+    marginLeft: 8,
   },
   inStock: {
-    color: "#4CAF50",
+    color: '#4CAF50',
   },
   outOfStock: {
-    color: "#F44336",
+    color: '#F44336',
+  },
+  noSelection: {
+    color: '#FF9800',
   },
   priceContainer: {
     flexDirection: 'row',
@@ -735,6 +842,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     textDecorationLine: 'line-through',
+    fontWeight: '500',
   },
   discountBadge: {
     backgroundColor: '#FF5722',
@@ -743,14 +851,14 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   discountText: {
-    color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   currentPrice: {
     fontSize: 24,
-    fontWeight: "800",
-    color: "#E91E63",
+    fontWeight: 'bold',
+    color: '#E91E63',
   },
   bottomFixedSection: {
     position: 'absolute',
@@ -758,49 +866,54 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    shadowColor: "#000",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 34, // Safe area for iPhone
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: -4,
+      height: -2,
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 10,
   },
   quantityTotalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   quantitySection: {
     flex: 1,
+    marginRight: 20,
   },
   quantityLabel: {
     fontSize: 14,
+    fontWeight: '600',
     color: '#666',
     marginBottom: 8,
-    fontWeight: '500',
   },
   quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 20, // Reduced from 25
-    padding: 2, // Reduced padding
-    alignSelf: 'flex-start', // Added to prevent stretching
-  },
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  alignSelf: 'flex-start',     // tự ôm chiều ngang nội dung
+  backgroundColor: '#dfd6d6ff',
+  borderRadius: 25,
+  paddingHorizontal: 6,        // nhỏ lại padding ngang
+  paddingVertical: 4,
+},
   quantityButton: {
-    width: 32, // Reduced from 36
-    height: 32, // Reduced from 36
-    borderRadius: 16, // Adjusted accordingly
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 1,
@@ -810,14 +923,16 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   disabledButton: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F5F5F5',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   quantityDisplay: {
-    fontSize: 16, // Reduced from 18
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
-    marginHorizontal: 16, // Reduced from 20
-    minWidth: 24, // Reduced from 30
+    marginHorizontal: 20,
+    minWidth: 30,
     textAlign: 'center',
   },
   totalSection: {
@@ -825,74 +940,76 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 14,
+    fontWeight: '600',
     color: '#666',
     marginBottom: 4,
-    fontWeight: '500',
   },
   totalPrice: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#8B4513',
+    fontWeight: 'bold',
+    color: '#E91E63',
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
   },
   reviewButton: {
-    flex: 1,
+    flex: 0.3,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     gap: 8,
   },
   reviewButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#666',
   },
   addToCartButton: {
-    flex: 2,
+    flex: 0.7,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8B4513',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-  },
-  addToCartText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  errorText: {
-    fontSize: 18,
-    textAlign: "center",
-    color: '#666',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  retryButton: {
-    backgroundColor: '#8B4513',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
+  },
+  addToCartText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF6B6B',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  retryButton: {
+    backgroundColor: '#8B4513',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
 export default Detail;
