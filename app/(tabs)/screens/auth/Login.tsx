@@ -67,7 +67,7 @@ export default function Login() {
 
         setTimeout(() => {
           setSnackbarVisible(false);
-          navigation.navigate('TabNavigator');
+           navigation.navigate('TabNavigator', { screen: 'Home' })
         }, 1500);
       } else {
         setSnackbarMessage(result.message);

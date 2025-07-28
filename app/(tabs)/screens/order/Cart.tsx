@@ -234,11 +234,6 @@ export default function CartScreen() {
               <Text style={styles.paymentValue}>{formatCurrency(subtotal)}</Text>
             </View>
 
-            {/* <View style={styles.paymentRow}>
-              <Text style={styles.paymentLabel}>Phí vận chuyển</Text>
-              <Text style={styles.paymentValue}>{formatCurrency(shippingFee)}</Text>
-            </View> */}
-
             <View style={styles.divider} />
 
             {/* Tổng chi phí */}

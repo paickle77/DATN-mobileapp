@@ -64,50 +64,64 @@ class CheckoutService {
   }
 
   /**
-   * Lấy danh sách giỏ hàng của user
+   * Lấy danh sách giỏ hàng của user với giá chính xác theo size
    */
   async fetchCartData(): Promise<CartItem[]> {
-    try {
-      const user = await getUserData('userData');
-      const userId = user;
-      console.log("userID:", userId);
+  try {
+    const user = await getUserData('userData');
+    const userId = user;
+    console.log("userID:", userId);
 
-      const response = await axios.get(`${BASE_URL}/GetAllCarts`);
-      const APIlistCart = response.data.data;
-      console.log("listCart from API: ⭐️⭐️⭐️", APIlistCart);
+    // Gọi cả 2 API: giỏ hàng và sizes
+    const [cartRes, sizeRes] = await Promise.all([
+      axios.get(`${BASE_URL}/GetAllCarts`),
+      axios.get(`${BASE_URL}/sizes`)
+    ]);
 
-      const formattedData = APIlistCart.map((item: any) => {
-        let price;
+    const APIlistCart = cartRes.data.data;
+    const sizeList = sizeRes.data.data;
+    
+    console.log("listCart from API: ⭐️⭐️⭐️", APIlistCart);
+    console.log("sizeList from API: 📏📏📏", sizeList);
 
-        // Nếu có giá giảm thì dùng, không thì dùng giá gốc
-        if (item.product_id.discount_price && item.product_id.discount_price > 0) {
-          price = item.product_id.discount_price;
-        } else {
-          price = item.product_id.price;
-        }
+    const formattedData = APIlistCart.map((item: any) => {
+      // Tìm thông tin size tương ứng
+      const sizeInfo = sizeList.find((s: any) =>
+        s._id === item.size_id._id ||
+        (s.size === item.size_id.size && s.Product_id === item.product_id._id)
+      );
 
-        return {
-          id: item._id,
-          title: item.product_id.name,
-          product_id: item.product_id,
-          user_id: item.user_id,
-          Size: item.size_id.size,
-          price: price,
-          image: item.product_id.image_url,
-          quantity: item.quantity,
-        };
-      });
-
-      // Lọc ra những item có user_id khớp với user hiện tại
-      const userCartItems = formattedData.filter((item: any) => item.user_id === userId);
+      // Tính giá tăng thêm từ size
+      const priceIncrease = sizeInfo?.price_increase || 0;
       
-      console.log("👉 Dữ liệu giỏ hàng theo user:", userCartItems);
-      return userCartItems;
-    } catch (error) {
-      console.error("❌ Lỗi API giỏ hàng:", error);
-      throw new Error('Không thể tải giỏ hàng');
-    }
+      // Lấy giá cơ sở (ưu tiên giá khuyến mãi nếu có)
+      const basePrice = item.product_id.discount_price || item.product_id.price;
+      
+      // Tính giá cuối cùng (giá cơ sở + giá tăng thêm của size)
+      const finalPrice = basePrice + priceIncrease * 1000;
+
+      return {
+        id: item._id,
+        title: item.product_id.name,
+        product_id: item.product_id,
+        user_id: item.user_id,
+        Size: item.size_id.size,
+        price: finalPrice, // Sử dụng giá đã tính theo size
+        image: item.product_id.image_url,
+        quantity: item.quantity,
+      };
+    });
+
+    // Lọc ra những item có user_id khớp với user hiện tại
+    const userCartItems = formattedData.filter((item: any) => item.user_id === userId);
+    
+    console.log("👉 Dữ liệu giỏ hàng theo user (với giá theo size):", userCartItems);
+    return userCartItems;
+  } catch (error) {
+    console.error("❌ Lỗi API giỏ hàng:", error);
+    throw new Error('Không thể tải giỏ hàng');
   }
+}
 
   /**
    * Lấy danh sách địa chỉ mặc định của user
@@ -133,73 +147,73 @@ class CheckoutService {
   }
 
   /**
-   * Tạo payload cho bill
+   * Tạo payload cho bill với giá chính xác theo size
    */
   async buildBillPayload(
-    addresses: Address[],
-    listCart: CartItem[],
-    note: string,
-    selectedShippingMethod: string,
-    selectedPaymentName: string,
-    total: number,
-    total2: number
-  ): Promise<BillPayload> {
-    try {
-      const userData = await getUserData('userData');
-      const userID = typeof userData === 'string' ? userData : userData._id;
-      const defaultAddress = addresses[0];
+  addresses: Address[],
+  listCart: CartItem[],
+  note: string,
+  selectedShippingMethod: string,
+  selectedPaymentName: string,
+  total: number,
+  total2: number
+): Promise<BillPayload> {
+  try {
+    const userData = await getUserData('userData');
+    const userID = typeof userData === 'string' ? userData : userData._id;
+    const defaultAddress = addresses[0];
 
-      const billDetailsData = listCart.map((item: CartItem) => ({
-        product_id: item.product_id._id,
-        size: item.Size || '-',
-        quantity: item.quantity,
-        price: item.price,
-        total: total2,
-      }));
+    const billDetailsData = listCart.map((item: CartItem) => ({
+      product_id: item.product_id._id,
+      size: item.Size || '-',
+      quantity: item.quantity,
+      price: item.price, // Đã được tính với giá size trong fetchCartData
+      total: item.price * item.quantity, // Tính total dựa trên giá đã có size
+    }));
 
-      const payload: BillPayload = {
-        user_id: userID,
-        address_id: defaultAddress?._id ?? null,
-        note: note || '',
-        shipping_method: selectedShippingMethod,
-        payment_method: selectedPaymentName,
-        total: total,
-        items: billDetailsData,
-        status: "doing",
-      };
+    const payload: BillPayload = {
+      user_id: userID,
+      address_id: defaultAddress?._id ?? null,
+      note: note || '',
+      shipping_method: selectedShippingMethod,
+      payment_method: selectedPaymentName,
+      total: total,
+      items: billDetailsData,
+      status: "doing",
+    };
 
-      console.log("🚀 Payload gửi lên server:", payload);
-      return payload;
-    } catch (error) {
-      console.error('❌ Lỗi tạo payload:', error);
-      throw new Error('Không thể tạo dữ liệu đơn hàng');
-    }
+    console.log("🚀 Payload gửi lên server (với giá theo size):", payload);
+    return payload;
+  } catch (error) {
+    console.error('❌ Lỗi tạo payload:', error);
+    throw new Error('Không thể tạo dữ liệu đơn hàng');
   }
+}
 
   /**
-   * Gửi chi tiết bill (bill details)
+   * Gửi chi tiết bill (bill details)với giá chính xác theo size
    */
   async sendBillDetails(billId: string, items: CartItem[]): Promise<void> {
-    try {
-      for (const item of items) {
-        const payload = {
-          bill_id: billId,
-          product_id: item.product_id._id || item.product_id,
-          size: item.Size || '-',
-          quantity: item.quantity,
-          price: item.price,
-          total: item.price * item.quantity,
-        };
+  try {
+    for (const item of items) {
+      const payload = {
+        bill_id: billId,
+        product_id: item.product_id._id || item.product_id,
+        size: item.Size || '-',
+        quantity: item.quantity,
+        price: item.price, // Sử dụng giá đã tính với size
+        total: item.price * item.quantity, // Total dựa trên giá có size
+      };
 
-        console.log('📤 Gửi 1 billDetail:', payload);
-        const response = await axios.post(`${BASE_URL}/billdetails`, payload);
-        console.log('✅ Gửi billDetail thành công:', response.data);
-      }
-    } catch (error) {
-      console.error('❌ Lỗi khi gửi billDetails:', error.response?.data || error.message);
-      throw new Error('Không thể lưu chi tiết đơn hàng');
+      console.log('📤 Gửi 1 billDetail (với giá theo size):', payload);
+      const response = await axios.post(`${BASE_URL}/billdetails`, payload);
+      console.log('✅ Gửi billDetail thành công:', response.data);
     }
+  } catch (error) {
+    console.error('❌ Lỗi khi gửi billDetails:', error.response?.data || error.message);
+    throw new Error('Không thể lưu chi tiết đơn hàng');
   }
+}
 
   /**
    * Tạo đơn hàng

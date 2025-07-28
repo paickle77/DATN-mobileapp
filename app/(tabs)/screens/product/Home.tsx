@@ -99,37 +99,77 @@ export default function Home() {
   const [productRatings, setProductRatings] = useState<{ [key: string]: number }>({});
   const [loading, setLoading] = useState(true);
 
-  // Fetch products
+  // Tối ưu hóa: Tải tất cả đánh giá một lần
+  const loadAllRatings = async (products: Product[]) => {
+    try {
+      // Lấy tất cả reviews một lần duy nhất
+      const allReviewsResponse = await fetch(`${detailService.baseUrl}/GetAllReview`);
+      const allReviewsData = await allReviewsResponse.json();
+      const allReviews = allReviewsData.data || [];
+
+      // Tính toán rating cho từng sản phẩm từ dữ liệu đã có
+      const ratingsMap: { [key: string]: number } = {};
+      
+      products.forEach(product => {
+        // Lọc reviews của sản phẩm này
+        const productReviews = allReviews.filter((review: any) => {
+          const reviewProductId = typeof review.product_id === 'object' 
+            ? review.product_id._id 
+            : review.product_id;
+          return reviewProductId === product._id;
+        });
+
+        // Tính rating trung bình
+        if (productReviews.length > 0) {
+          const totalRating = productReviews.reduce((sum: number, review: any) => 
+            sum + (review.star_rating || 0), 0);
+          ratingsMap[product._id] = Math.round((totalRating / productReviews.length) * 10) / 10;
+        } else {
+          ratingsMap[product._id] = 0;
+        }
+      });
+
+      return ratingsMap;
+    } catch (error) {
+      console.error('Lỗi khi tải đánh giá:', error);
+      // Fallback: tạo ratings mặc định
+      const fallbackRatings: { [key: string]: number } = {};
+      products.forEach(product => {
+        fallbackRatings[product._id] = 0;
+      });
+      return fallbackRatings;
+    }
+  };
+
+  // Fetch products và ratings
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProductsAndRatings = async () => {
       try {
         setLoading(true);
+        
+        // Bước 1: Tải danh sách sản phẩm
+        console.log('🔄 Đang tải danh sách sản phẩm...');
         const products = await productService.getAllProducts();
         setData(products);
-
-        // Lấy rating thực từ API cho từng sản phẩm
-        const ratings: { [key: string]: number } = {};
-        await Promise.all(
-          products.map(async (product) => {
-            try {
-              const reviewSummary = await detailService.getReviewSummary(product._id);
-              ratings[product._id] = reviewSummary.averageRating || 0;
-            } catch (error) {
-              console.error(`Lỗi lấy rating cho sản phẩm ${product._id}:`, error);
-              ratings[product._id] = 0;
-            }
-          })
-        );
+        
+        // Bước 2: Tải tất cả ratings một lần
+        console.log('🔄 Đang tải đánh giá sản phẩm...');
+        const ratings = await loadAllRatings(products);
         setProductRatings(ratings);
+        
+        console.log('✅ Tải dữ liệu hoàn tất!');
+        console.log(`📊 Đã tải ${products.length} sản phẩm và ${Object.keys(ratings).length} đánh giá`);
+        
       } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu:', error);
+        console.error('❌ Lỗi khi tải dữ liệu:', error);
         setData([]);
+        setProductRatings({});
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProducts();
+    fetchProductsAndRatings();
   }, []);
 
   // User data
@@ -153,7 +193,7 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [currentBannerIndex]);
 
-  // Filter và sort products
+  // Filter và sort products - Tối ưu hóa với useMemo
   const filteredCakes = useMemo(() => {
     if (!Array.isArray(data)) return [];
 
@@ -181,8 +221,9 @@ export default function Home() {
     return filtered;
   }, [searchText, selectedFilter, data, productRatings]);
 
-  // Render product item với UI hiện đại hơn
+  // Render product item với UI hiện đại hơn - Tối ưu hóa
   const renderCakeItem = ({ item, index }: { item: Product; index: number }) => {
+    // Lấy rating từ state thay vì gọi API
     const rating = productRatings[item._id] || 0;
     const hasDiscount = item.discount_price > 0 && item.discount_price < item.price;
     const displayPrice = hasDiscount ? item.discount_price : item.price;
@@ -248,7 +289,7 @@ export default function Home() {
               <View style={styles.modernRatingContainer}>
                 <Ionicons name="star" size={14} color="#FFD700" />
                 <Text style={styles.modernRatingText}>
-                  {rating > 0 ? rating.toFixed(1) : 'Chưa có'}
+                  {rating > 0 ? rating.toFixed(1) : '0.0'}
                 </Text>
               </View>
             </View>
@@ -266,7 +307,8 @@ export default function Home() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Đang tải...</Text>
+        <Text style={styles.loadingText}>Đang tải sản phẩm và đánh giá...</Text>
+        <Text style={styles.loadingSubText}>Vui lòng chờ một chút</Text>
       </View>
     );
   }
@@ -461,6 +503,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: '500',
+  },
+
+  loadingSubText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
   },
 
   /*====== Header với glassmorphism ======*/
@@ -869,8 +917,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '600',
   },
-
-
 
   /*====== Empty State ======*/
   emptyContainer: {

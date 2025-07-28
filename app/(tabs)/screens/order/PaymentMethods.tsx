@@ -1,5 +1,5 @@
 import { AntDesign, Feather, FontAwesome5 } from '@expo/vector-icons';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, RouteProp, useRoute } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -13,6 +13,23 @@ type PaymentMethod = {
   cardNumber?: string;
   expiryDate?: string;
   isDefault: boolean;
+};
+
+type PaymentMethodsRouteParams = {
+  selectedPaymentMethod?: {
+    id: string;
+    type: string;
+    name: string;
+    accountNumber?: string;
+    cardNumber?: string;
+  };
+  onSelectPayment: (payment: {
+    id: string;
+    type: string;
+    name: string;
+    accountNumber?: string;
+    cardNumber?: string;
+  }) => void;
 };
 
 type RootStackParamList = {
@@ -45,15 +62,20 @@ const PaymentMethodsScreen = () => {
       isDefault: false,
     },
   ]);
+
+
   
-  const [selectedPaymentId, setSelectedPaymentId] = useState<string>('cod');
-  
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedType, setSelectedType] = useState<'momo' | 'VNPAY' | 'ZaloPay' | 'card'>('momo');
   const [accountNumber, setAccountNumber] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cardholderName, setCardholderName] = useState('');
+  const route = useRoute<RouteProp<Record<string, PaymentMethodsRouteParams>, string>>();
+  const initialSelectedId = route.params?.selectedPaymentMethod?.id ?? 'cod';
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string>(initialSelectedId);
+
 
   const getPaymentIcon = (type: string) => {
     switch (type) {
@@ -146,7 +168,7 @@ const PaymentMethodsScreen = () => {
 
   const handleComplete = () => {
     let selectedPaymentMethod;
-    
+
     if (selectedPaymentId === 'cod') {
       selectedPaymentMethod = {
         id: 'cod',
@@ -168,11 +190,9 @@ const PaymentMethodsScreen = () => {
       }
     }
 
-    if (selectedPaymentMethod) {
-      // Navigate back to Checkout with selected payment method
-      navigation.navigate('Checkout', {
-        selectedPaymentMethod
-      });
+    if (selectedPaymentMethod && route.params?.onSelectPayment) {
+      route.params.onSelectPayment(selectedPaymentMethod); // Gửi dữ liệu về
+      navigation.goBack(); // Quay về màn Checkout
     }
   };
 
@@ -189,11 +209,11 @@ const PaymentMethodsScreen = () => {
 
       <ScrollView style={styles.content}>
         {/* Cash on Delivery Option */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.paymentItem,
             selectedPaymentId === 'cod' && styles.selectedPaymentItem
-          ]} 
+          ]}
           onPress={() => setSelectedPaymentId('cod')}
         >
           <View style={styles.paymentInfo}>
@@ -238,8 +258,8 @@ const PaymentMethodsScreen = () => {
           /* Payment Methods List */
           <View style={styles.paymentList}>
             {paymentMethods.map((method) => (
-              <TouchableOpacity 
-                key={method.id} 
+              <TouchableOpacity
+                key={method.id}
                 style={[
                   styles.paymentItem,
                   selectedPaymentId === method.id && styles.selectedPaymentItem
@@ -259,7 +279,7 @@ const PaymentMethodsScreen = () => {
                       styles.paymentAccount,
                       selectedPaymentId === method.id && styles.selectedPaymentSubText
                     ]}>
-                      {method.accountNumber 
+                      {method.accountNumber
                         ? `•••• •••• ${method.accountNumber.slice(-4)}`
                         : `•••• •••• •••• ${method.cardNumber?.slice(-4)}`
                       }
@@ -321,7 +341,7 @@ const PaymentMethodsScreen = () => {
         cardholderName={cardholderName}
         setCardholderName={setCardholderName}
         handleAddPayment={handleAddPayment}
-        />
+      />
     </View>
   );
 };

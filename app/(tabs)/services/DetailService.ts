@@ -71,7 +71,13 @@ export interface ApiResponse<T> {
 }
 
 class DetailService {
-  private baseUrl = BASE_URL;
+  public baseUrl = BASE_URL;
+  
+  // Cache để tối ưu hóa
+  private reviewsCache: { [key: string]: Review[] } = {};
+  private allReviewsCache: Review[] | null = null;
+  private cacheTimestamp: number = 0;
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 phút
 
   /**
    * Lấy thông tin chi tiết sản phẩm theo ID
@@ -260,22 +266,109 @@ class DetailService {
   }
 
   /**
-   * Lấy tất cả đánh giá của sản phẩm
+   * ✨ TỐI ƯU HÓA: Lấy tất cả đánh giá một lần với cache
+   */
+  async getAllReviews(forceRefresh: boolean = false): Promise<Review[]> {
+    const now = Date.now();
+    
+    // Kiểm tra cache
+    if (!forceRefresh && this.allReviewsCache && (now - this.cacheTimestamp) < this.CACHE_DURATION) {
+      console.log('📱 Sử dụng cache reviews');
+      return this.allReviewsCache;
+    }
+
+    try {
+      console.log('🔄 Đang tải tất cả reviews từ API...');
+      const response = await axios.get(`${this.baseUrl}/GetAllReview`);
+      const allReviews = response.data.data || [];
+      
+      // Cập nhật cache
+      this.allReviewsCache = allReviews;
+      this.cacheTimestamp = now;
+      
+      console.log(`✅ Đã cache ${allReviews.length} reviews`);
+      return allReviews;
+    } catch (error) {
+      console.error('❌ Lỗi khi lấy tất cả đánh giá:', error);
+      // Trả về cache cũ nếu có lỗi
+      return this.allReviewsCache || [];
+    }
+  }
+
+  /**
+   * ✨ TỐI ƯU HÓA: Tính toán tất cả ratings một lần
+   */
+  async calculateAllProductRatings(productIds: string[]): Promise<{ [key: string]: number }> {
+    try {
+      const allReviews = await this.getAllReviews();
+      const ratingsMap: { [key: string]: number } = {};
+
+      // Khởi tạo tất cả products với rating 0
+      productIds.forEach(productId => {
+        ratingsMap[productId] = 0;
+      });
+
+      // Group reviews theo product_id
+      const reviewsByProduct: { [key: string]: Review[] } = {};
+      
+      allReviews.forEach(review => {
+        const productId = typeof review.product_id === 'object' 
+          ? review.product_id._id 
+          : review.product_id;
+        
+        if (productIds.includes(productId)) {
+          if (!reviewsByProduct[productId]) {
+            reviewsByProduct[productId] = [];
+          }
+          reviewsByProduct[productId].push(review);
+        }
+      });
+
+      // Tính rating trung bình cho từng sản phẩm
+      Object.keys(reviewsByProduct).forEach(productId => {
+        const reviews = reviewsByProduct[productId];
+        if (reviews.length > 0) {
+          const totalRating = reviews.reduce((sum, review) => sum + (review.star_rating || 0), 0);
+          ratingsMap[productId] = Math.round((totalRating / reviews.length) * 10) / 10;
+        }
+      });
+
+      console.log(`📊 Đã tính rating cho ${Object.keys(ratingsMap).length} sản phẩm`);
+      return ratingsMap;
+    } catch (error) {
+      console.error('❌ Lỗi khi tính toán ratings:', error);
+      // Fallback: tạo ratings mặc định
+      const fallbackRatings: { [key: string]: number } = {};
+      productIds.forEach(productId => {
+        fallbackRatings[productId] = 0;
+      });
+      return fallbackRatings;
+    }
+  }
+
+  /**
+   * Lấy tất cả đánh giá của sản phẩm (sử dụng cache)
    */
   async getProductReviews(productId: string): Promise<Review[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/GetAllReview`);
-      const allReviews = response.data.data;
+      // Kiểm tra cache riêng cho sản phẩm này
+      if (this.reviewsCache[productId]) {
+        console.log(`📱 Sử dụng cache reviews cho sản phẩm ${productId}`);
+        return this.reviewsCache[productId];
+      }
 
-      const filteredReviews = allReviews.filter((item: Review) => {
-        const itemProductId =
-          typeof item.product_id === 'object' && item.product_id._id
-            ? item.product_id._id
-            : item.product_id;
-        return itemProductId === productId;
+      const allReviews = await this.getAllReviews();
+      const productReviews = allReviews.filter(review => {
+        const reviewProductId = typeof review.product_id === 'object' 
+          ? review.product_id._id 
+          : review.product_id;
+        return reviewProductId === productId;
       });
 
-      return filteredReviews;
+      // Cache kết quả
+      this.reviewsCache[productId] = productReviews;
+      
+      return productReviews;
     } catch (error) {
       console.error('❌ Lỗi khi lấy đánh giá sản phẩm:', error);
       throw new Error('Lỗi khi tải đánh giá sản phẩm');
@@ -296,7 +389,7 @@ class DetailService {
   }
 
   /**
-   * Lấy tóm tắt đánh giá sản phẩm (điểm trung bình + tổng số đánh giá)
+   * ✨ TỐI ƯU HÓA: Lấy tóm tắt đánh giá sản phẩm (sử dụng cache)
    */
   async getReviewSummary(productId: string): Promise<ReviewSummary> {
     try {
@@ -366,6 +459,24 @@ class DetailService {
       console.error('❌ Lỗi khi lấy đánh giá với thông tin user:', error);
       throw new Error('Lỗi khi tải thông tin đánh giá');
     }
+  }
+
+  /**
+   * ✨ TÍNH NĂNG MỚI: Xóa cache khi cần
+   */
+  clearCache(): void {
+    this.reviewsCache = {};
+    this.allReviewsCache = null;
+    this.cacheTimestamp = 0;
+    console.log('🗑️ Đã xóa cache reviews');
+  }
+
+  /**
+   * ✨ TÍNH NĂNG MỚI: Refresh cache
+   */
+  async refreshCache(): Promise<void> {
+    console.log('🔄 Đang refresh cache...');
+    await this.getAllReviews(true);
   }
 }
 

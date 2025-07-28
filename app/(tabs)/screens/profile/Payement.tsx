@@ -27,7 +27,7 @@ const paymentUrl = `http://192.168.44.188:8888/order/create_payment_url?amount=$
 
       if (url.includes('vnp_ResponseCode=00')) {
         Alert.alert('✅ Thanh toán thành công!');
-        navigation.navigate('TabNavigator'); // Điều hướng
+       navigation.navigate('TabNavigator', { screen: 'Home' })// Điều hướng
       } else {
         Alert.alert('❌ Thanh toán thất bại!');
       }
