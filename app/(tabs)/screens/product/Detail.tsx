@@ -162,7 +162,7 @@ const Detail: React.FC = () => {
     let basePrice = product.discount_price || product.price;
     const sizeData = sizes.find(s => s.size === selectedSize);
     if (sizeData) {
-      basePrice += sizeData.price_increase * 1000;
+      basePrice += sizeData.price_increase ;
     }
     setTotalPrice(quantity * basePrice);
   };
@@ -390,7 +390,7 @@ const Detail: React.FC = () => {
                     styles.sizePrice,
                     selectedSize === s.size && styles.activeSizePrice
                   ]}>
-                    +{formatPrice(s.price_increase * 1000)}đ
+                    +{formatPrice(s.price_increase )}đ
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -441,7 +441,7 @@ const Detail: React.FC = () => {
               const sizeData = sizes.find(s => s.size === selectedSize);
 
               if (sizeData) {
-                adjustedPrice += sizeData.price_increase * 1000;
+                adjustedPrice += sizeData.price_increase ;
               }
               return (
                 <View style={styles.priceContainer}>
@@ -450,7 +450,7 @@ const Detail: React.FC = () => {
                       <Text style={styles.originalPrice}>
                         {(() => {
                           const sizeInfo = sizes.find(s => s.size === selectedSize);
-                          const priceIncrease = sizeInfo ? sizeInfo.price_increase * 1000 : 0;
+                          const priceIncrease = sizeInfo ? sizeInfo.price_increase : 0;
                           const fullOriginalPrice = product.price + priceIncrease;
                           return `${formatPrice(fullOriginalPrice)}đ`;
                         })()}

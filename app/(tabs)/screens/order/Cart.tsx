@@ -58,29 +58,27 @@ export default function CartScreen() {
 
       const formattedData = listCart.map((item: any) => {
         const sizeInfo = sizeList.find((s: any) =>
-          s._id === item.size_id._id ||
-          (s.size === item.size_id.size && s.Product_id === item.product_id._id)
+          item.size_id &&
+          (s._id === item.size_id._id ||
+            (s.size === item.size_id.size && s.product_id === item.product_id._id))
         );
 
         const priceIncrease = sizeInfo?.price_increase || 0;
         const basePrice = item.product_id.discount_price || item.product_id.price;
-        const finalPrice = basePrice + priceIncrease * 1000;
-
-      
-        
+        const finalPrice = basePrice + priceIncrease;
 
         return {
           id: item._id,
           title: item.product_id.name,
           user_id: item.user_id,
-          Size: item.size_id.size,
+          Size: item.size_id?.size,
           price: finalPrice,
           image: item.product_id.image_url,
           quantity: item.quantity,
         };
       });
 
-    
+
 
       const userCartItems = formattedData.filter((item: any) => item.user_id === userId);
       setList(userCartItems);
