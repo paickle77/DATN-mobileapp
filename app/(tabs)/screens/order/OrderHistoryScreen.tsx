@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { BASE_URL } from '../../services/api';
+import { Users } from '../../services/ProfileService';
 import { getUserData } from '../utils/storage';
 
 const { width } = Dimensions.get('window');

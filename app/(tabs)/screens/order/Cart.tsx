@@ -61,10 +61,14 @@ export default function CartScreen() {
           item.size_id &&
           (s._id === item.size_id._id ||
             (s.size === item.size_id.size && s.product_id === item.product_id._id))
+          item.size_id &&
+          (s._id === item.size_id._id ||
+            (s.size === item.size_id.size && s.product_id === item.product_id._id))
         );
 
         const priceIncrease = sizeInfo?.price_increase || 0;
         const basePrice = item.product_id.discount_price || item.product_id.price;
+        const finalPrice = basePrice + priceIncrease;
         const finalPrice = basePrice + priceIncrease;
 
         return {
@@ -80,6 +84,7 @@ export default function CartScreen() {
 
 
 
+
       const userCartItems = formattedData.filter((item: any) => item.user_id === userId);
       setList(userCartItems);
       console.log("✅ Dữ liệu giỏ hàng theo user:", userCartItems);
@@ -88,7 +93,6 @@ export default function CartScreen() {
       console.log("❌ Lỗi API:", error);
     }
   };
-
 
   // Format currency VND
   const formatCurrency = (amount: number) => {

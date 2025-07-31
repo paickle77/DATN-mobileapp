@@ -15,6 +15,7 @@ import Register from './screens/auth/Register';
 import Splash from './screens/auth/Splash';
 import Welcom from './screens/auth/Welcom';
 import ChatScreen from './screens/chat/Chat';
+import ShipTabNavigator from './screens/navigation/ShipTabNavigator';
 import TabNavigator from './screens/navigation/TabNavigator';
 import NotificationDemo from './screens/notification/NotificationDemo';
 import NotificationScreen from './screens/notification/NotificationScreen';
@@ -37,14 +38,15 @@ import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
 import VoucherScreen from './screens/profile/VoucherScreen';
-
-
+import DeliveredOrders from './screens/ship/DeliveredOrders';
+import ShipHome from './screens/ship/ShipHome';
+import ShipProfile from './screens/ship/ShipProfile';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="Welcom">
+    <Stack.Navigator initialRouteName="ShipTabNavigator" screenOptions={{ headerShown: false }}>
       {/* Screens không có tab bar */}
        <Stack.Screen name="VoucherCardList" component={VoucherCardList} options={{ headerShown: false }} />
       <Stack.Screen name="testPushTokenService" component={testPushTokenService} options={{ headerShown: false }} />
@@ -94,6 +96,12 @@ export default function TabLayout() {
       <Stack.Screen name="PaymentMethods" component={PaymentMethods} options={{ headerShown: false }} />
       <Stack.Screen name="AddressList" component={AddressList} options={{ headerShown: false }} />
       <Stack.Screen name="VoucherScreen" component={VoucherScreen} options={{ headerShown: false }} />
+
+      {/* Ship  Screen */}
+      <Stack.Screen name="ShipTabNavigator" component={ShipTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipHomeScreen" component={ShipHome} options={{ headerShown: false }} />
+      <Stack.Screen name="DeliveredOrdersScreen" component={DeliveredOrders} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipProfileScreen" component={ShipProfile} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

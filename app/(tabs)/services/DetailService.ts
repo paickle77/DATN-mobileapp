@@ -23,6 +23,7 @@ export interface Product {
 export interface Size {
   _id: string;
   product_id: string;
+  product_id: string;
   quantity: number;
   size: string;
   price_increase: number;
