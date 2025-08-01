@@ -22,7 +22,8 @@ import NotificationScreen from './screens/notification/NotificationScreen';
 import testPushTokenService from './screens/notification/testPushTokenService';
 import CartScreen, { default as Cart } from './screens/order/Cart';
 import Checkout from './screens/order/Checkout';
-import OderDetails from './screens/order/OrderDetails';
+import ConfirmationScreen from './screens/order/confirmationScreen';
+import { default as OderDetails, default as OrderDetails } from './screens/order/OrderDetails';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
 import CategoryScreen from './screens/product/CategoryScreen';
@@ -57,6 +58,8 @@ export default function TabLayout() {
        <Stack.Screen name="Odercomponent" component={Odercomponent} options={{ headerShown: false }} />
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ConfirmationScreen" component={ConfirmationScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="OrderDetails" component={OrderDetails} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
@@ -76,6 +79,7 @@ export default function TabLayout() {
       <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CategoryItem" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Cart" component={Cart} options={{ headerShown: false }} />
+
       
 
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}

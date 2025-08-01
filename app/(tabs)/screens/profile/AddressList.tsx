@@ -1,8 +1,8 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { useNavigation } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, } from 'react';
 import {
   Alert,
   FlatList,
@@ -16,7 +16,7 @@ import {
 import AddAddressModal from '../../component/AddAddressModal';
 import EditAddressModal from '../../component/EditAddressModal';
 import { BASE_URL } from '../../services/api';
-import { getUserData } from '../utils/storage';
+import { getUserData, saveUserData } from '../utils/storage';
 
 export interface Address {
   _id: string;
@@ -48,6 +48,10 @@ const AddressListScreen = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+
+  const route = useRoute();
+  const mode = (route.params as any)?.mode ?? 'view';
 
   const fetchAddresses = async () => {
     try {
@@ -63,8 +67,21 @@ const AddressListScreen = () => {
     }
   };
 
+
+
   useEffect(() => {
-    fetchAddresses();
+    const init = async () => {
+      await fetchAddresses();
+
+      if (mode === 'select') {
+        const selected = await getUserData('selectedAddress');
+        if (selected && selected._id) {
+          setSelectedAddressId(selected._id);
+        }
+      }
+    };
+
+    init();
   }, []);
 
   const handleSetDefault = async (id: string) => {
@@ -105,58 +122,95 @@ const AddressListScreen = () => {
     ]);
   };
 
+  const handleSelectAddress = async (address: Address) => {
+    setSelectedAddressId(address._id);
+    await saveUserData({ key: 'selectedAddress', value: address });
+    // Có thể thêm delay nhỏ để user thấy animation
+    setTimeout(() => {
+      navigation.goBack();
+    }, 200);
+  };
+
   const renderAddressItem = ({ item }: { item: Address }) => {
     const isDefault = item.isDefault === true || item.isDefault === 'true';
+    const isSelected = selectedAddressId === item._id;
 
     return (
-      <View style={styles.addressItem}>
-        <View style={styles.addressHeader}>
-          <View style={styles.namePhoneContainer}>
-            <Text style={styles.addressName}>{item.name}</Text>
-            <Text style={styles.addressPhone}>{item.phone}</Text>
-          </View>
-          {isDefault && (
-            <View style={styles.defaultBadge}>
-              <Text style={styles.defaultText}>Mặc định</Text>
+      <TouchableOpacity
+        style={[
+          styles.addressItem,
+          mode === 'select' && styles.selectModeItem,
+          mode === 'select' && isSelected && styles.selectedItem
+        ]}
+        onPress={mode === 'select' ? () => handleSelectAddress(item) : undefined}
+        activeOpacity={mode === 'select' ? 0.7 : 1}
+      >
+        <View style={styles.addressContent}>
+          {/* Radio button cho mode select */}
+          {mode === 'select' && (
+            <View style={styles.radioButtonContainer}>
+              <View style={[
+                styles.radioButton,
+                isSelected && styles.radioButtonSelected
+              ]}>
+                {isSelected && <View style={styles.radioButtonInner} />}
+              </View>
             </View>
           )}
+
+          <View style={styles.addressInfo}>
+            <View style={styles.addressHeader}>
+              <View style={styles.namePhoneContainer}>
+                <Text style={styles.addressName}>{item.name}</Text>
+                <Text style={styles.addressPhone}>{item.phone}</Text>
+              </View>
+              {isDefault && (
+                <View style={styles.defaultBadge}>
+                  <Text style={styles.defaultText}>Mặc định</Text>
+                </View>
+              )}
+            </View>
+
+            <Text style={styles.addressText}>
+              {item.detail_address}, {item.ward}, {item.district}, {item.city}
+            </Text>
+
+            {/* Actions cho mode view */}
+            {mode !== 'select' && (
+              <View style={styles.addressActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => {
+                    setSelectedAddress(item);
+                    setEditModalVisible(true);
+                  }}
+                >
+                  <Feather name="edit-3" size={16} color="#795548" />
+                  <Text style={styles.actionText}>Sửa</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleDeleteAddress(item._id)}
+                >
+                  <Feather name="trash-2" size={16} color="#F44336" />
+                  <Text style={[styles.actionText, { color: '#F44336' }]}>Xóa</Text>
+                </TouchableOpacity>
+
+                {!isDefault && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleSetDefault(item._id)}
+                  >
+                    <Feather name="check-circle" size={16} color="#4CAF50" />
+                    <Text style={[styles.actionText, { color: '#4CAF50' }]}>Đặt mặc định</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
         </View>
-
-        <Text style={styles.addressText}>
-          {item.detail_address}, {item.ward}, {item.district}, {item.city}
-        </Text>
-
-        <View style={styles.addressActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              setSelectedAddress(item);
-              setEditModalVisible(true);
-            }}
-          >
-            <Feather name="edit-3" size={16} color="#795548" />
-            <Text style={styles.actionText}>Sửa</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleDeleteAddress(item._id)}
-          >
-            <Feather name="trash-2" size={16} color="#F44336" />
-            <Text style={[styles.actionText, { color: '#F44336' }]}>Xóa</Text>
-          </TouchableOpacity>
-
-          {!isDefault && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleSetDefault(item._id)}
-            >
-              <Feather name="check-circle" size={16} color="#4CAF50" />
-              <Text style={[styles.actionText, { color: '#4CAF50' }]}>Đặt mặc định</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -166,10 +220,16 @@ const AddressListScreen = () => {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#222" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Danh sách địa chỉ</Text>
-        <TouchableOpacity style={styles.addButton} onPress={() => setAddModalVisible(true)}>
-          <Ionicons name="add" size={24} color="#795548" />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>
+          {mode === 'select' ? 'Chọn địa chỉ giao hàng' : 'Danh sách địa chỉ'}
+        </Text>
+        {mode !== 'select' ? (
+          <TouchableOpacity style={styles.addButton} onPress={() => setAddModalVisible(true)}>
+            <Ionicons name="add" size={24} color="#795548" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.addButton} />
+        )}
       </View>
 
       <FlatList
@@ -180,13 +240,15 @@ const AddressListScreen = () => {
         showsVerticalScrollIndicator={false}
       />
 
-      <TouchableOpacity
-        style={styles.addAddressButton}
-        onPress={() => setAddModalVisible(true)}
-      >
-        <Ionicons name="add" size={20} color="#fff" />
-        <Text style={styles.addAddressText}>Thêm địa chỉ mới</Text>
-      </TouchableOpacity>
+      {mode !== 'select' && (
+        <TouchableOpacity
+          style={styles.addAddressButton}
+          onPress={() => setAddModalVisible(true)}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+          <Text style={styles.addAddressText}>Thêm địa chỉ mới</Text>
+        </TouchableOpacity>
+      )}
 
       <EditAddressModal
         visible={editModalVisible}
@@ -230,6 +292,49 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  selectModeItem: {
+    borderWidth: 2,
+    borderColor: '#e8e8e8',
+  },
+  selectedItem: {
+    borderColor: '#FF6B35',
+    backgroundColor: '#FFF8F6',
+  },
+  addressContent: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minHeight: 80,
+  },
+  addressInfo: {
+    flex: 1,
+  },
+  radioButtonContainer: {
+    paddingRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    minHeight: 80,
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  radioButtonSelected: {
+    borderColor: '#FF6B35',
+    backgroundColor: '#FF6B35',
+  },
+  radioButtonInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
   },
   addressHeader: {
     flexDirection: 'row',
@@ -281,6 +386,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '500',
   },
+
+  // Styles cho radio button (thay thế cho nút select cũ)
   addAddressButton: {
     position: 'absolute',
     bottom: 30,
@@ -305,5 +412,4 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
-
 export default AddressListScreen;
