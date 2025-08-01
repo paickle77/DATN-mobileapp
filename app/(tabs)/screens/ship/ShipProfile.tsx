@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,7 +13,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
+import { clearUserData } from '../utils/storage';
+// import LinearGradient from 'react-native-linear-gradient';
+// Hoặc nếu dùng Expo:
+// import { LinearGradient } from 'expo-linear-gradient';
 
 // Types & Interfaces
 interface ShipperStats {
@@ -27,6 +30,7 @@ interface VehicleInfo {
   type: string;
   plate: string;
 }
+
 
 interface ShipperProfile {
   id: string;
@@ -112,6 +116,8 @@ const ShipProfileScreen: React.FC = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const navigation = useNavigation();
+
   // Mock data - sẽ thay thế bằng API call
   const [shipperData, setShipperData] = useState<ShipperProfile>({
     id: 'SP001',
@@ -168,6 +174,43 @@ const ShipProfileScreen: React.FC = () => {
     }));
   }, []);
 
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      'Đăng xuất',
+      'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Đăng xuất',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // TODO: Clear user data from AsyncStorage
+              await clearUserData('userData');
+
+              // await AsyncStorage.removeItem('userData');
+              
+              // TODO: Navigate to login screen
+
+                navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' as never }],
+                });
+              console.log('User logged out');
+              Alert.alert('Thành công', 'Đã đăng xuất thành công!');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại!');
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
   const handleAvatarPress = useCallback(() => {
     if (isEditing) {
       Alert.alert(
@@ -209,12 +252,7 @@ const ShipProfileScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Header Card */}
-        <LinearGradient
-          colors={['#3B82F6', '#8B5CF6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.headerCard}
-        >
+        <View style={styles.headerCard}>
           <View style={styles.headerTop}>
             <Text style={styles.headerTitle}>Thông tin cá nhân</Text>
             <TouchableOpacity
@@ -253,7 +291,7 @@ const ShipProfileScreen: React.FC = () => {
               </View>
             </View>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* Stats Grid */}
         <View style={styles.statsContainer}>
@@ -371,22 +409,18 @@ const ShipProfileScreen: React.FC = () => {
             </View>
           )}
         </View>
+        <View style={{ height: 15 }} /> 
 
-        {/* Achievement Badge */}
-        <LinearGradient
-          colors={['#F59E0B', '#EF4444']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.achievementCard}
+
+        {/* Logout Button */}
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
         >
-          <View style={styles.achievementContent}>
-            <Ionicons name="trophy-outline" size={24} color="#FFFFFF" />
-            <View style={styles.achievementText}>
-              <Text style={styles.achievementTitle}>Shipper xuất sắc</Text>
-              <Text style={styles.achievementDesc}>Top 10% shipper tháng này</Text>
-            </View>
-          </View>
-        </LinearGradient>
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <Text style={styles.logoutText}>Đăng xuất</Text>
+        </TouchableOpacity>
+        <View style={{ height: 55 }} /> 
       </ScrollView>
     </View>
   );
@@ -416,6 +450,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderRadius: 20,
     padding: 24,
+    backgroundColor: '#3B82F6',
+    // Gradient effect bằng CSS thay vì LinearGradient
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   headerTop: {
     flexDirection: 'row',
@@ -627,6 +668,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderRadius: 20,
     padding: 16,
+    backgroundColor: '#F59E0B',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   achievementContent: {
     flexDirection: 'row',
@@ -645,6 +692,29 @@ const styles = StyleSheet.create({
   achievementDesc: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
+  },
+  logoutButton: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 24,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginLeft: 8,
   },
 });
 

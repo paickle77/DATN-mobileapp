@@ -25,6 +25,7 @@ type RootStackParamList = {
   NewPassword: { email: string };
   CompleteProfile: { email: string };
   TabNavigator: undefined;
+  ShipperTabNavigator: undefined;
 };
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -43,47 +44,54 @@ export default function Login() {
   const navigation = useNavigation<LoginNavigationProp>();
 
   const handleLogin = async () => {
-    setErrors({ email: '', password: '' });
+  if (!email || !password) {
+    setSnackbarMessage('Vui lòng nhập email và mật khẩu');
+    setSnackbarType('error');
+    setSnackbarVisible(true);
+    return;
+  }
 
-    const { isValid, errors: validationErrors } = validateLoginForm(email, password);
+  setLoading(true);
+  const result = await loginAuthService.login(email, password);
 
-    if (!isValid) {
-      setErrors({
-        email: validationErrors.email || '',
-        password: validationErrors.password || '',
-      });
-      return;
-    }
+  // ✅ In toàn bộ kết quả trả về từ backend
+  console.log('🔍 Response từ backend:', result);
 
-    setLoading(true);
+  // ✅ In rõ role lấy được
+  const role = result?.data?.account?.role;
+  console.log('🔍 Role lấy được:', role);
 
-    try {
-      const result = await loginAuthService.login(email, password);
+  setLoading(false);
 
-      if (result.success) {
-        setSnackbarMessage(result.message);
-        setSnackbarType('success');
-        setSnackbarVisible(true);
+  if (result.success) {
+    setSnackbarMessage(result.message);
+    setSnackbarType('success');
+    setSnackbarVisible(true);
 
-        setTimeout(() => {
-          setSnackbarVisible(false);
-           navigation.navigate('TabNavigator', { screen: 'Home' })
-        }, 1500);
+    setTimeout(() => {
+      setSnackbarVisible(false);
+
+      if (role === 'shipper') {
+        console.log('👉 Điều hướng vào ShipTabNavigator');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'ShipTabNavigator' }],
+        });
       } else {
-        setSnackbarMessage(result.message);
-        setSnackbarType('error');
-        setSnackbarVisible(true);
-        setTimeout(() => setSnackbarVisible(false), 2000);
+        console.log('👉 Điều hướng vào TabNavigator');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'TabNavigator' }],
+        });
       }
-    } catch (error) {
-      setSnackbarMessage('Có lỗi xảy ra. Vui lòng thử lại.');
-      setSnackbarType('error');
-      setSnackbarVisible(true);
-      setTimeout(() => setSnackbarVisible(false), 2000);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, 1000);
+  } else {
+    setSnackbarMessage(result.message || 'Đăng nhập thất bại');
+    setSnackbarType('error');
+    setSnackbarVisible(true);
+    setTimeout(() => setSnackbarVisible(false), 2000);
+  }
+};
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {

@@ -30,7 +30,7 @@ export const getUserData = async (key: string): Promise<string | null> => {
 // Xóa thông tin người dùng theo key
 export const clearUserData = async (key: string) => {
   try {
-    await AsyncStorage.removeItem(key);
+    await AsyncStorage.clear();
 
   } catch (e) {
     console.error('Lỗi xóa user data:', e);
