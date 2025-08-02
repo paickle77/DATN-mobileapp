@@ -8,9 +8,7 @@ import {
     StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 
-import axios from 'axios';
-import { BASE_URL } from '../../services/api';
-import { Users } from '../../services/ProfileService';
+import { profileService, Users } from '../../services/ProfileService';
 import { clearUserData, getUserData } from '../utils/storage';
 const MenuItem = ({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -22,7 +20,7 @@ const MenuItem = ({ icon, label, onPress }: { icon: React.ReactNode; label: stri
 
 type RootStackParamList = {
     Settings: { userId: string } | undefined;
-    UserProfile: { userId: string } | undefined;
+    UserProfile: { userId: string ,accountId: String} | undefined;
     AddressList: { userId: string } | undefined;
     PaymentMethods: { userId: string } | undefined;
     OrderHistoryScreen: { userId: string } | undefined;
@@ -45,9 +43,11 @@ const ProfileScreen = () => {
                     const userData = await getUserData('userData') as Users | null;
                     if (!userData || !userData) return;
 
-                    const userId = userData;
-                    const response = await axios.get(`${BASE_URL}/users/${userId}`);
-                    const user = response.data.data;
+                    const accountId = await getUserData('userData'); // là account_id đã lưu từ login
+                   
+                    const user = await profileService.getProfileByAccountId(accountId);
+                    
+                    setUserProfile(user);
                     setUserProfile(user);
                 } catch (err) {
                     console.error('❌ Lỗi khi lấy user:', err);
@@ -132,9 +132,11 @@ const ProfileScreen = () => {
 
             <View style={styles.menu}>
                 <MenuItem icon={<Ionicons name="person-outline" size={24} color="#222" />} label="Hồ sơ của bạn"
-                    onPress={() => navigation.navigate('UserProfile',
-                        { userId: userProfile?._id ?? '' },
-                    )} />
+                    onPress={() => navigation.navigate('UserProfile', {
+                        userId: userProfile?._id ?? '',
+                        accountId: userProfile?.account_id ?? '',
+                        
+                    })} />
                 <MenuItem icon={<Ionicons name="pricetags-outline" size={24} color="#222" />} label="Kho voucher"
                     onPress={() => navigation.navigate('VoucherScreen',
                         { userId: userProfile?._id ?? '' },

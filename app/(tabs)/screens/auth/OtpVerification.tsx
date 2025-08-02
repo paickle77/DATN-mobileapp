@@ -1,7 +1,7 @@
+import { useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
-import { LinearGradient } from 'expo-linear-gradient'; // hoặc react-native-linear-gradient
-import { useNavigation } from 'expo-router';
-import React, { useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -14,10 +14,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons'; // hoặc thư viện icon khác
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { BASE_URL } from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
+
+// ✅ Thêm type cho route params
+type RouteParams = {
+  email?: string;
+};
 
 const ForgotPasswordScreen = () => {
   const [email, setEmail] = useState('');
@@ -25,29 +30,22 @@ const ForgotPasswordScreen = () => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigator = useNavigation();
   const [countdown, setCountdown] = useState(0);
 
+  const navigation = useNavigation();
+  const route = useRoute();
+  const params = route.params as RouteParams;
 
-  const sendOtp = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.post(BASE_URL + '/users/send-otp', { email });
-      Alert.alert('Thành công', 'OTP đã gửi về email');
-      setOtpSent(true);
-      setCountdown(60); // Bắt đầu đếm ngược 60 giây
-    } catch (err) {
-      let message = 'Gửi OTP thất bại';
-      if (axios.isAxiosError(err)) {
-        message = err.response?.data?.msg || message;
-      }
-      Alert.alert('Lỗi', message);
-    } finally {
-      setLoading(false);
+  // ✅ Tự động điền email từ params khi component mount
+  useEffect(() => {
+    if (params?.email) {
+      setEmail(params.email);
+      console.log('📧 Email nhận từ Login:', params.email);
     }
-  };
+  }, [params?.email]);
 
-  React.useEffect(() => {
+  // ✅ Countdown timer
+  useEffect(() => {
     if (countdown === 0) return;
 
     const interval = setInterval(() => {
@@ -63,19 +61,102 @@ const ForgotPasswordScreen = () => {
     return () => clearInterval(interval);
   }, [countdown]);
 
-  const resetPassword = async () => {
+  // ✅ Gửi OTP - sử dụng Account API
+  const sendOtp = async () => {
+    if (!email.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập email');
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await axios.post(BASE_URL+'/users/reset-password', {
-        otp,
-        newPassword,
+      // ✅ Chuyển sang Account API
+      const res = await axios.post(BASE_URL + '/send-otp', { 
+        email: email.trim() 
       });
-      Alert.alert('Thành công', 'Mật khẩu đã cập nhật');
-      navigator.navigate('Login'); // Chuyển hướng về
-    } catch (err) {
+      
+      console.log('✅ Gửi OTP thành công:', res.data);
+      
+      if (res.data.success) {
+        Alert.alert('Thành công', res.data.message || 'OTP đã gửi về email');
+        setOtpSent(true);
+        setCountdown(60); // Bắt đầu đếm ngược 60 giây
+      } else {
+        Alert.alert('Lỗi', res.data.message || 'Gửi OTP thất bại');
+      }
+    } catch (err: any) {
+      console.error('❌ Lỗi gửi OTP:', err);
+      
+      let message = 'Gửi OTP thất bại';
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.message || err.response?.data?.msg || message;
+        
+        // Xử lý các lỗi cụ thể
+        if (err.response?.status === 404) {
+          message = 'Email này chưa được đăng ký';
+        } else if (err.response?.status === 400) {
+          message = err.response.data.message || 'Dữ liệu không hợp lệ';
+        }
+      }
+      Alert.alert('Lỗi', message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Reset password - sử dụng Account API
+  const resetPassword = async () => {
+    if (!otp.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mã OTP');
+      return;
+    }
+    
+    if (!newPassword.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu mới');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // ✅ Chuyển sang Account API
+      const res = await axios.post(BASE_URL + '/reset-password', {
+        email: email.trim(),
+        otp: otp.trim(),
+        newPassword: newPassword.trim(),
+      });
+
+      console.log('✅ Reset password thành công:', res.data);
+
+      if (res.data.success) {
+        Alert.alert(
+          'Thành công', 
+          res.data.message || 'Mật khẩu đã được cập nhật',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login' as never)
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Lỗi', res.data.message || 'Không thể đặt lại mật khẩu');
+      }
+    } catch (err: any) {
+      console.error('❌ Lỗi reset password:', err);
+      
       let message = 'Không đặt lại được mật khẩu';
       if (axios.isAxiosError(err)) {
-        message = err.response?.data?.msg || message;
+        message = err.response?.data?.message || err.response?.data?.msg || message;
+        
+        // Xử lý các lỗi cụ thể
+        if (err.response?.status === 400) {
+          message = 'OTP không hợp lệ hoặc đã hết hạn';
+        }
       }
       Alert.alert('Lỗi', message);
     } finally {
@@ -116,6 +197,7 @@ const ForgotPasswordScreen = () => {
                   setOtpSent(false);
                   setOtp('');
                   setNewPassword('');
+                  setCountdown(0);
                 }}
               >
                 <Icon name="arrow-back" size={20} color="#666" />
@@ -138,8 +220,16 @@ const ForgotPasswordScreen = () => {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    editable={!loading}
                   />
                 </View>
+
+                {/* ✅ Hiển thị thông tin nếu email được truyền từ Login */}
+                {params?.email && (
+                  <Text style={styles.helperText}>
+                    📧 Email từ màn hình đăng nhập
+                  </Text>
+                )}
 
                 <TouchableOpacity
                   onPress={sendOtp}
@@ -177,13 +267,14 @@ const ForgotPasswordScreen = () => {
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Icon name="security" size={20} color="#999" style={styles.inputIcon} />
                     <TextInput
-                      placeholder="Nhập mã OTP"
+                      placeholder="Nhập mã OTP (6 số)"
                       placeholderTextColor="#999"
                       value={otp}
                       onChangeText={setOtp}
                       style={[styles.textInput, { paddingRight: 10 }]}
                       keyboardType="numeric"
                       maxLength={6}
+                      editable={!loading}
                     />
                   </View>
 
@@ -214,10 +305,11 @@ const ForgotPasswordScreen = () => {
                     onChangeText={setNewPassword}
                     style={styles.textInput}
                     secureTextEntry
+                    editable={!loading}
                   />
                 </View>
                 <Text style={styles.helperText}>
-                  Mật khẩu phải có ít nhất 8 ký tự
+                  Mật khẩu phải có ít nhất 6 ký tự
                 </Text>
 
                 <TouchableOpacity
@@ -247,7 +339,7 @@ const ForgotPasswordScreen = () => {
               Nhớ mật khẩu?{' '}
               <Text
                 style={styles.linkText}
-                onPress={() => navigator.navigate('Login')}
+                onPress={() => navigation.navigate('Login' as never)}
               >
                 Đăng nhập ngay
               </Text>
@@ -363,7 +455,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-
   helperText: {
     fontSize: 12,
     color: '#666',
@@ -399,7 +490,6 @@ const styles = StyleSheet.create({
   },
   loadingIcon: {
     marginRight: 8,
-    transform: [{ rotate: '360deg' }], // Animation sẽ cần thêm Animated API
   },
   footer: {
     marginTop: 25,

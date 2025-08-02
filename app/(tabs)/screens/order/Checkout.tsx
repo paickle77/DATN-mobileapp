@@ -198,7 +198,7 @@ const Checkout = ({
     useCallback(() => {
       const fetchInitialAddress = async () => {
         const selected = await getUserData('selectedAddress');
-
+        console.log("ádfds", selected)
         if (selected) {
           setAddresses([selected]);
         } else {
@@ -217,18 +217,6 @@ const Checkout = ({
     }, [])
   );
 
-  // Load discount percent
-  useEffect(() => {
-    const loadDiscountPercent = async () => {
-      try {
-        const discountPercent = await checkoutService.getDiscountPercent();
-        setPercent(discountPercent);
-      } catch (error) {
-        console.error('Lỗi lấy discount percent:', error);
-      }
-    };
-    loadDiscountPercent();
-  }, []);
 
   // Handle payment method selection
   useFocusEffect(
@@ -266,6 +254,7 @@ const Checkout = ({
 
     loadStoredPaymentMethod();
   }, []);
+
 
   // Handle voucher selection
   useFocusEffect(
@@ -363,10 +352,16 @@ const Checkout = ({
           setSelectedVoucher(voucher);
           setNameCode(voucher?.voucher_id?.code || '');
           setPercent(voucher?.voucher_id?.discount_percent || 0);
+
+          // ✅ THÊM DÒNG NÀY nếu vẫn muốn dùng getDiscountPercent
+          saveUserData({ key: 'discount_percent', value: voucher?.voucher_id?.discount_percent || 0 });
         } else {
           setSelectedVoucher(null);
           setNameCode('');
           setPercent(0);
+
+          // ❌ Nếu bỏ chọn thì reset discount
+          saveUserData({ key: 'discount_percent', value: 0 });
         }
       },
     });

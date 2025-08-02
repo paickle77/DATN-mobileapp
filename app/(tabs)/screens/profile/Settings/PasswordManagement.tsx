@@ -7,20 +7,18 @@ import NotificationComponent from '../../../component/NotificationComponent'; //
 import { BASE_URL } from '../../../services/api';
 import { getUserData } from '../../utils/storage';
 import { styles } from './styles';
+
 interface Props {
   goBack: () => void;
 }
 
-
-
 const PasswordManagement = ({ goBack }: Props) => {
-
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [secure, setSecure] = useState(true);
   const [loading, setLoading] = useState<boolean>(true);
-  const [userId, setUserId] = useState<string>('');
+  const [accountId, setAccountId] = useState<string>(''); // ✅ Đổi từ userId -> accountId
 
   const { notification, showError, showSuccess, hideNotification } = useNotification();
 
@@ -28,12 +26,22 @@ const PasswordManagement = ({ goBack }: Props) => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        const user = await getUserData('userData');
-        const userIdFromStorage = user || user; // Tùy theo structure của user data
-        setUserId(userIdFromStorage || '');
-        console.log("userID:", userIdFromStorage);
+        const userData = await getUserData('accountId');
+        console.log("ádf",userData)
+        // ✅ Lấy accountId từ userData
+        // Tùy theo cấu trúc userData của bạn, có thể là:
+        // userData.accountId hoặc userData.account_id hoặc userData._id
+        const userAccountId = userData
+        
+        setAccountId(userAccountId || '');
+        console.log("accountId:", userAccountId);
+        
+        if (!userAccountId) {
+          showError('Không tìm thấy thông tin tài khoản!');
+        }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        showError('Lỗi khi lấy thông tin người dùng!');
       } finally {
         setLoading(false);
       }
@@ -75,37 +83,58 @@ const PasswordManagement = ({ goBack }: Props) => {
       showError('Mật khẩu mới phải khác mật khẩu hiện tại!');
       return false;
     }
-     return true;
+
+    // ✅ Kiểm tra accountId
+    if (!accountId) {
+      showError('Không tìm thấy thông tin tài khoản!');
+      return false;
+    }
+
+    return true;
   };
 
-const handlePasswordUpdate = async () => {
-  if (!validate()) return;
-   try {
-    const res = await axios.post(BASE_URL + '/users/change-password', {
-      userId,
-      currentPassword,
-      newPassword,
-    });
+  const handlePasswordUpdate = async () => {
+    if (!validate()) return;
 
-    showSuccess('Đổi mật khẩu thành công!');
-    setCurrentPassword('');
-  } catch (err: any) {
-    const msg = err.response?.data?.message || 'Đổi mật khẩu thất bại';
+    try {
+      setLoading(true);
+      
+      // ✅ Gọi API mới với accountId thay vì userId
+      const res = await axios.post(BASE_URL + '/change-password', {
+        accountId,
+        currentPassword,
+        newPassword,
+      });
 
-    if (err.response?.status === 401) {
-      // 👇 Nếu sai mật khẩu hiện tại
-      showError('Mật khẩu hiện tại không đúng!');
-    } else {
-      showError(msg);
+      if (res.data.success) {
+        showSuccess('Đổi mật khẩu thành công!');
+        // ✅ Clear form sau khi thành công
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        showError(res.data.message || 'Đổi mật khẩu thất bại!');
+      }
+
+    } catch (err: any) {
+      console.error('Error changing password:', err);
+      
+      const errorMessage = err.response?.data?.message || 'Đổi mật khẩu thất bại';
+
+      if (err.response?.status === 401) {
+        // 👇 Nếu sai mật khẩu hiện tại
+        showError('Mật khẩu hiện tại không đúng!');
+      } else if (err.response?.status === 404) {
+        showError('Không tìm thấy tài khoản!');
+      } else if (err.response?.status === 400) {
+        showError(errorMessage);
+      } else {
+        showError('Lỗi kết nối server. Vui lòng thử lại!');
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
-
-  
-
-
+  };
 
   return (
     <View style={styles.container}>
@@ -128,6 +157,7 @@ const handlePasswordUpdate = async () => {
               secureTextEntry={secure}
               value={currentPassword}
               onChangeText={setCurrentPassword}
+              editable={!loading} // ✅ Disable khi đang loading
             />
             <TouchableOpacity
               style={styles.eyeIcon}
@@ -144,6 +174,7 @@ const handlePasswordUpdate = async () => {
               secureTextEntry={secure}
               value={newPassword}
               onChangeText={setNewPassword}
+              editable={!loading} // ✅ Disable khi đang loading
             />
             <TouchableOpacity
               style={styles.eyeIcon}
@@ -160,6 +191,7 @@ const handlePasswordUpdate = async () => {
               secureTextEntry={secure}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
+              editable={!loading} // ✅ Disable khi đang loading
             />
             <TouchableOpacity
               style={styles.eyeIcon}
@@ -169,8 +201,14 @@ const handlePasswordUpdate = async () => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handlePasswordUpdate}>
-            <Text style={styles.primaryButtonText}>Cập nhật mật khẩu</Text>
+          <TouchableOpacity 
+            style={[styles.primaryButton, loading && { opacity: 0.6 }]} // ✅ Thêm opacity khi loading
+            onPress={handlePasswordUpdate}
+            disabled={loading} // ✅ Disable button khi loading
+          >
+            <Text style={styles.primaryButtonText}>
+              {loading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+            </Text>
           </TouchableOpacity>
 
           {/* Notification hiển thị ở đây */}

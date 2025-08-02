@@ -48,7 +48,8 @@ interface Address {
 
 const UserProfileScreen = () => {
     const route = useRoute();
-    const { userId }: any = route.params || {};
+    const { userId, accountId }: any = route.params || {};
+    console.log("nhan du lieu:", userId)
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
     // State cho loading

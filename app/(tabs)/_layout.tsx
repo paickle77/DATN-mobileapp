@@ -46,7 +46,7 @@ export default function TabLayout() {
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="ShipTabNavigator" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="Welcom" screenOptions={{ headerShown: false }}>
       {/* Screens không có tab bar */}
        <Stack.Screen name="VoucherCardList" component={VoucherCardList} options={{ headerShown: false }} />
       <Stack.Screen name="testPushTokenService" component={testPushTokenService} options={{ headerShown: false }} />

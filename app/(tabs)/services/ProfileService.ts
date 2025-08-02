@@ -5,15 +5,11 @@ import { BASE_URL } from './api';
 
 export interface Users {
   _id: string;
-  email: string;
-  is_lock: boolean;
-  password: string;
-  isDefault: boolean;
-  created_at: string;
-  updated_at: string;
-  __v: number;
   name: string;
-  phone: string;
+  email: string;
+  phone?: string;
+  image?: string;
+  account_id?: string;
 }
 
 export interface GetAllResponse {
@@ -24,12 +20,23 @@ export interface GetAllResponse {
 }
 
 class ProfileService {
-  private apiUrl = `${BASE_URL}/users`;
+  
 
+  //lấy thông tin user theo account
+  async getProfileByAccountId(accountId: string): Promise<Users | null> {
+  try {
+    const response = await axios.get(`${BASE_URL}/users/account/${accountId}`);
+    return response.data?.data || null;
+    
+  } catch (error) {
+    console.error('❌ Lỗi khi lấy user theo account ID:', error);
+    return null;
+  }
+}
   // Lấy toàn bộ danh sách user (nếu cần)
   async getAll(): Promise<GetAllResponse> {
     try {
-      const response = await axios.get(this.apiUrl);
+      const response = await axios.get(`${BASE_URL}/users`);
       return response.data;
     } catch (error) {
       console.error('❌ Lỗi khi lấy danh sách người dùng:', error);

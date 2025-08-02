@@ -61,15 +61,13 @@ export default function CartScreen() {
           item.size_id &&
           (s._id === item.size_id._id ||
             (s.size === item.size_id.size && s.product_id === item.product_id._id))
-          item.size_id &&
-          (s._id === item.size_id._id ||
-            (s.size === item.size_id.size && s.product_id === item.product_id._id))
+
         );
 
         const priceIncrease = sizeInfo?.price_increase || 0;
         const basePrice = item.product_id.discount_price || item.product_id.price;
         const finalPrice = basePrice + priceIncrease;
-        const finalPrice = basePrice + priceIncrease;
+        
 
         return {
           id: item._id,
@@ -147,7 +145,7 @@ export default function CartScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' })}
+          onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' }as never)}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -188,7 +186,7 @@ export default function CartScreen() {
           <Text style={styles.emptySubtitle}>Hãy thêm sản phẩm để bắt đầu mua sắm</Text>
           <TouchableOpacity
             style={styles.shopNowButton}
-            onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' })}
+            onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' }as never)}
           >
             <Text style={styles.shopNowText}>Mua sắm ngay</Text>
           </TouchableOpacity>
