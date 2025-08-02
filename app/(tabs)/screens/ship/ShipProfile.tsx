@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,12 +13,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import { clearUserData } from '../utils/storage';
+import { BASE_URL, URL } from '../../services/api';
+import { clearUserData, getUserData } from '../utils/storage';
 // import LinearGradient from 'react-native-linear-gradient';
 // Hoặc nếu dùng Expo:
 // import { LinearGradient } from 'expo-linear-gradient';
+
+// Constants
+// Thay đổi theo domain của bạn
 
 // Types & Interfaces
 interface ShipperStats {
@@ -31,21 +37,27 @@ interface VehicleInfo {
   plate: string;
 }
 
+interface ShipperData {
+  _id: string;
+  account_id: string;
+  full_name: string;
+  phone: string;
+  license_number: string | null;
+  vehicle_type: string | null;
+  is_online: boolean;
+}
 
 interface ShipperProfile {
   id: string;
   name: string;
   phone: string;
-  email: string;
-  address: string;
-  avatar: string;
-  rating: number;
-  totalOrders: number;
-  stats: ShipperStats;
-  workingHours: string;
-  joinDate: string;
-  vehicle: VehicleInfo;
+  image: string;
+  vehicleType: string;
+  licenseNumber: string;
+  isOnline: boolean;
+  accountId: string;
 }
+
 
 interface StatCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -63,6 +75,18 @@ interface ProfileItemProps {
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
   multiline?: boolean;
 }
+
+const defaultShipperData: ShipperProfile = {
+  id: '',
+  name: '',
+  phone: '',
+  image: 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
+  vehicleType: '',
+  licenseNumber: '',
+  isOnline: false,
+  accountId: '',
+};
+
 
 // Components
 const StatCard: React.FC<StatCardProps> = ({ icon, title, value, color }) => (
@@ -111,121 +135,166 @@ const ProfileItem: React.FC<ProfileItemProps> = ({
   </View>
 );
 
+const mapToShipperProfile = (item: any): ShipperProfile => ({
+  id: item._id,
+  name: item.full_name || '',
+  phone: item.phone || '',
+  image: item.image || 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
+  vehicleType: item.vehicle_type || '',
+  licenseNumber: item.license_number || '',
+  isOnline: item.is_online || false,
+  accountId: item.account_id || '',
+});
+
+
 // Main Component
 const ShipProfileScreen: React.FC = () => {
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-
+  const [shipperData, setShipperData] = useState<ShipperProfile>(defaultShipperData);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const navigation = useNavigation();
 
-  // Mock data - sẽ thay thế bằng API call
-  const [shipperData, setShipperData] = useState<ShipperProfile>({
-    id: 'SP001',
-    name: 'Nguyễn Văn Minh',
-    phone: '0987654321',
-    email: 'minh.nguyen@email.com',
-    address: '123 Phố Huế, Hai Bà Trưng, Hà Nội',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    rating: 4.8,
-    totalOrders: 1247,
-    stats: {
-      completedOrders: 1198,
-      onTimeRate: 96.2,
-      totalEarnings: 15420000,
-      status: 'active',
-    },
-    workingHours: '6:00 - 22:00',
-    joinDate: '15/03/2023',
-    vehicle: {
-      type: 'Xe máy',
-      plate: '29A1-12345',
-    },
-  });
+  const [shipperId, setShipperId] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null);
 
-  // Event handlers
-  const handleEdit = useCallback(() => {
-    setIsEditing(!isEditing);
-  }, [isEditing]);
+  // Lấy ID người dùng 1 lần duy nhất
+  useEffect(() => {
+    const loadUserId = async () => {
+      const id = await getUserData('userData');
+      if (!id) {
+        Alert.alert('Lỗi', 'Không tìm thấy thông tin đăng nhập');
+        return;
+      }
+      setAccountId(id);
+    };
+    loadUserId();
+  }, []);
 
-  const handleSave = useCallback(async () => {
-    setIsLoading(true);
+  // Gọi API khi có shipperId
+  useEffect(() => {
+    const fetchData = async () => {
+      const Id = await getUserData('userData');
+      if (Id) {
+        fetchShipperData(Id);
+      }
+    };
+    fetchData();
+  }, [accountId]);
+
+  // Fetch API từ MongoDB
+  const fetchShipperData = async (id: string) => {
     try {
-      // TODO: API call to update profile
-      await updateShipperProfile(shipperData);
-      setIsEditing(false);
-      Alert.alert('Thành công', 'Cập nhật thông tin thành công!');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      Alert.alert('Lỗi', 'Không thể cập nhật thông tin. Vui lòng thử lại!');
+      setIsLoading(true);
+      const res = await axios.get(`${BASE_URL}/shippers`);
+      const data = res.data?.data;
+
+      if (!Array.isArray(data)) throw new Error('Dữ liệu không hợp lệ');
+
+     
+      if (!id) throw new Error('Không tìm thấy ID người dùng');
+
+
+      const found = data.find((s: any) => s.account_id === id);
+      if (!found) throw new Error('Không tìm thấy shipper phù hợp');
+
+      const transformed = mapToShipperProfile(found);
+      setShipperData(transformed);
+      setShipperId(transformed.id);
+      console.log('✅ Shipper :', transformed.id);
+      console.log('✅ Shipper data loaded:', transformed);
+    } catch (err: any) {
+      console.error('❌ fetchShipperData error:', err);
+      Alert.alert('Lỗi', err.message || 'Không thể tải thông tin shipper');
     } finally {
       setIsLoading(false);
     }
-  }, [shipperData]);
+  };
 
-  const handleCancel = useCallback(() => {
+  const updateShipperProfile = async (updated: ShipperProfile): Promise<boolean> => {
+  try {
+    const formData = new FormData();
+
+    formData.append('full_name', updated.name);
+    formData.append('phone', updated.phone);
+    formData.append('license_number', updated.licenseNumber);
+    formData.append('vehicle_type', updated.vehicleType);
+
+    if (updated.image && updated.image.startsWith('file://')) {
+      const filename = updated.image.split('/').pop() || 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      formData.append('image', {
+        uri: updated.image,
+        name: filename,
+        type: type,
+      } as any); // 👈 React Native chấp nhận ép kiểu đơn giản như này
+    }
+
+    console.log('🔼 FormData to send:', formData);
+
+    const res = await axios.put(`${BASE_URL}/shippers/${shipperId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    if (res.status === 200 || res.status === 201) {
+      Alert.alert('✅ Thành công', 'Cập nhật thành công!');
+      return true;
+    } else {
+      throw new Error('Cập nhật không thành công');
+    }
+  } catch (error: any) {
+    console.error('❌ updateShipperProfile error:', error?.message || error);
+    Alert.alert('Lỗi khi cập nhật', error?.message || 'Đã xảy ra lỗi');
+    return false;
+  }
+};
+
+
+
+  const handleEdit = () => setIsEditing(true);
+
+  const handleSave = async () => {
+    const success = await updateShipperProfile(shipperData);
+    if (success) setIsEditing(false);
+  };
+
+  const handleCancel = () => {
     setIsEditing(false);
-    // TODO: Reset to original data
-  }, []);
+    if (accountId) fetchShipperData(accountId);
+  };
 
-  const updateField = useCallback((field: keyof ShipperProfile, value: any) => {
+  const updateField = (field: keyof ShipperProfile, value: any) => {
     setShipperData(prev => ({
       ...prev,
       [field]: value,
     }));
-  }, []);
+  };
 
-  const handleLogout = useCallback(() => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?',
-      [
-        {
-          text: 'Hủy',
-          style: 'cancel',
+  const handleLogout = () => {
+    Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Đăng xuất',
+        style: 'destructive',
+        onPress: async () => {
+          await clearUserData('userData');
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' as never }],
+          });
+          Alert.alert('Thành công', 'Đã đăng xuất');
         },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // TODO: Clear user data from AsyncStorage
-              await clearUserData('userData');
+      },
+    ]);
+  };
 
-              // await AsyncStorage.removeItem('userData');
-              
-              // TODO: Navigate to login screen
+  
 
-                navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' as never }],
-                });
-              console.log('User logged out');
-              Alert.alert('Thành công', 'Đã đăng xuất thành công!');
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại!');
-            }
-          },
-        },
-      ]
-    );
-  }, []);
-
-  const handleAvatarPress = useCallback(() => {
-    if (isEditing) {
-      Alert.alert(
-        'Thay đổi ảnh đại diện',
-        'Chọn nguồn ảnh',
-        [
-          { text: 'Camera', onPress: () => console.log('Open camera') },
-          { text: 'Thư viện', onPress: () => console.log('Open gallery') },
-          { text: 'Hủy', style: 'cancel' },
-        ]
-      );
-    }
-  }, [isEditing]);
-
-  const getStatusColor = (status: string): string => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return '#10B981';
       case 'busy': return '#F59E0B';
@@ -234,7 +303,7 @@ const ShipProfileScreen: React.FC = () => {
     }
   };
 
-  const getStatusText = (status: string): string => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'active': return 'Đang hoạt động';
       case 'busy': return 'Đang bận';
@@ -242,6 +311,68 @@ const ShipProfileScreen: React.FC = () => {
       default: return 'Không xác định';
     }
   };
+
+  const pickImage = async () => {
+          const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  
+          if (permissionResult.granted === false) {
+              Alert.alert('Cần quyền truy cập', 'Ứng dụng cần quyền truy cập thư viện ảnh để thay đổi ảnh đại diện.');
+              return;
+          }
+  
+          const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.8,
+          });
+  
+          if (!result.canceled) {
+              setShipperData(prev => ({
+                  ...prev,
+                  avatar: { uri: result.assets[0].uri },
+                  image: result.assets[0].uri
+              }));
+          }
+      };
+  
+      // Hàm chụp ảnh
+      const takePhoto = async () => {
+          const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+  
+          if (permissionResult.granted === false) {
+              Alert.alert('Cần quyền truy cập', 'Ứng dụng cần quyền truy cập camera để chụp ảnh.');
+              return;
+          }
+  
+          const result = await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.8,
+          });
+  
+          if (!result.canceled) {
+              setShipperData(prev => ({
+                  ...prev,
+                  avatar: { uri: result.assets[0].uri },
+                  image: result.assets[0].uri,
+              }));
+              console.log('🟢 Chụp ảnh thành công:', result.assets[0].uri);
+          }
+      };
+  
+      // Hiển thị tùy chọn thay đổi ảnh
+      const showImageOptions = () => {
+          Alert.alert(
+              'Thay đổi ảnh đại diện',
+              'Chọn cách bạn muốn thay đổi ảnh đại diện',
+              [
+                  { text: 'Hủy', style: 'cancel' },
+                  { text: 'Chọn từ thư viện', onPress: pickImage },
+                  { text: 'Chụp ảnh mới', onPress: takePhoto },
+              ]
+          );
+      };
 
   return (
     <View style={styles.container}>
@@ -258,7 +389,7 @@ const ShipProfileScreen: React.FC = () => {
             <TouchableOpacity
               style={styles.editButton}
               onPress={handleEdit}
-              disabled={isLoading}
+              disabled={isSaving}
             >
               <Ionicons 
                 name={isEditing ? "close-outline" : "create-outline"} 
@@ -271,9 +402,9 @@ const ShipProfileScreen: React.FC = () => {
           <View style={styles.profileHeader}>
             <TouchableOpacity 
               style={styles.avatarContainer}
-              onPress={handleAvatarPress}
+              onPress={showImageOptions}
             >
-              <Image source={{ uri: shipperData.avatar }} style={styles.avatar} />
+              <Image source={{ uri: URL+shipperData.image }} style={styles.avatar} />
               {isEditing && (
                 <View style={styles.avatarEditIcon}>
                   <Ionicons name="camera-outline" size={12} color="#FFFFFF" />
@@ -284,17 +415,17 @@ const ShipProfileScreen: React.FC = () => {
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{shipperData.name}</Text>
               <Text style={styles.profileId}>ID: {shipperData.id}</Text>
-              <View style={styles.ratingContainer}>
+              {/* <View style={styles.ratingContainer}>
                 <Ionicons name="star" size={14} color="#FFC107" />
                 <Text style={styles.ratingValue}>{shipperData.rating}</Text>
                 <Text style={styles.ratingCount}>({shipperData.totalOrders} đơn)</Text>
-              </View>
+              </View> */}
             </View>
           </View>
         </View>
 
         {/* Stats Grid */}
-        <View style={styles.statsContainer}>
+        {/* <View style={styles.statsContainer}>
           <View style={styles.statsGrid}>
             <StatCard
               icon="checkmark-circle-outline"
@@ -323,7 +454,7 @@ const ShipProfileScreen: React.FC = () => {
               color={getStatusColor(shipperData.stats.status)}
             />
           </View>
-        </View>
+        </View> */}
 
         {/* Profile Details */}
         <View style={styles.detailsCard}>
@@ -343,46 +474,29 @@ const ShipProfileScreen: React.FC = () => {
             />
 
             <ProfileItem
-              icon="mail-outline"
-              label="Email"
-              value={shipperData.email}
-              isEditing={isEditing}
-              onChange={(value) => updateField('email', value)}
-              keyboardType="email-address"
-            />
-
-            <ProfileItem
-              icon="location-outline"
-              label="Địa chỉ"
-              value={shipperData.address}
-              isEditing={isEditing}
-              onChange={(value) => updateField('address', value)}
-              multiline={true}
-            />
-
-            <ProfileItem
-              icon="time-outline"
-              label="Giờ làm việc"
-              value={shipperData.workingHours}
-              isEditing={false}
-              onChange={() => {}}
-            />
-
-            <ProfileItem
               icon="bicycle-outline"
-              label="Phương tiện"
-              value={`${shipperData.vehicle.type} - ${shipperData.vehicle.plate}`}
+              label="Loại xe"
+              value={shipperData.vehicleType}
+              isEditing={isEditing}
+              onChange={(value) => updateField('vehicleType', value)}
+            />
+
+            <ProfileItem
+              icon="pricetag-outline"
+              label="Biển số"
+              value={shipperData.licenseNumber}
+              isEditing={isEditing}
+              onChange={(value) => updateField('licenseNumber', value)}
+            />
+
+            <ProfileItem
+              icon="pulse-outline"
+              label="Trạng thái"
+              value={shipperData.isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
               isEditing={false}
               onChange={() => {}}
             />
 
-            <ProfileItem
-              icon="calendar-outline"
-              label="Ngày tham gia"
-              value={shipperData.joinDate}
-              isEditing={false}
-              onChange={() => {}}
-            />
           </View>
 
           {/* Action Buttons */}
@@ -391,9 +505,9 @@ const ShipProfileScreen: React.FC = () => {
               <TouchableOpacity
                 style={[styles.button, styles.primaryButton]}
                 onPress={handleSave}
-                disabled={isLoading}
+                disabled={isSaving}
               >
-                {isLoading ? (
+                {isSaving ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.primaryButtonText}>Lưu thay đổi</Text>
@@ -402,15 +516,15 @@ const ShipProfileScreen: React.FC = () => {
               <TouchableOpacity
                 style={[styles.button, styles.secondaryButton]}
                 onPress={handleCancel}
-                disabled={isLoading}
+                disabled={isSaving}
               >
                 <Text style={styles.secondaryButtonText}>Hủy</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
-        <View style={{ height: 15 }} /> 
 
+        <View style={{height: 16}} />
 
         {/* Logout Button */}
         <TouchableOpacity
@@ -420,24 +534,34 @@ const ShipProfileScreen: React.FC = () => {
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Đăng xuất</Text>
         </TouchableOpacity>
-        <View style={{ height: 55 }} /> 
       </ScrollView>
     </View>
   );
 };
 
-// Mock API function
-const updateShipperProfile = async (profile: ShipperProfile): Promise<void> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log('Profile updated:', profile);
-      resolve();
-    }, 1000);
-  });
-};
+// Mock API function - xóa dòng này khi đã implement API thật
+// const updateShipperProfile = async (profile: ShipperProfile): Promise<void> => {
+//   return new Promise((resolve) => {
+//     setTimeout(() => {
+//       console.log('Profile updated:', profile);
+//       resolve();
+//     }, 1000);
+//   });
+// };
 
 // Styles
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
