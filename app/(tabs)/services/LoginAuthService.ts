@@ -5,6 +5,7 @@ import { saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
 export interface User {
+  role: string;
   _id: string;
   email: string;
   password: string;
@@ -16,6 +17,7 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   user?: User;
+  role?: string;
 }
 
 class LoginAuthService {

@@ -44,12 +44,16 @@ const OderDetails = () => {
       setLoading(true);
       setError(null);
       const response = await axios.get(`${BASE_URL}/GetAllBillDetails`);
-      const filteredData: BillDetailItemType[] = response.data.data.filter(
+      const allData: BillDetailItemType[] = response.data.data;
+      console.log('✅ Dữ liệu chi tiết đơn hàng:', allData);
+      const filteredData = allData.filter(
         (item: BillDetailItemType) =>
           item?.bill_id?._id === orderId &&
           item?.product_id !== null // nếu cần kiểm tra thêm
+
       );
-      // console.log('✅ Dữ liệu chi tiết đơn hàng (đã lọc):', filteredData);
+
+      console.log('✅ Dữ liệu chi tiết đơn hàng (đã lọc):', filteredData);
       setData(filteredData);
     } catch (err) {
       console.error('Lỗi khi tải chi tiết đơn hàng:', err);
