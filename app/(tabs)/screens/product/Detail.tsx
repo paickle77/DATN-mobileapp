@@ -328,16 +328,6 @@ const Detail: React.FC = () => {
             </Text>
           </View>
 
-          {/* Ingredients Card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>
-              <Ionicons name="leaf-outline" size={20} color="#4CAF50" /> Nguyên liệu
-            </Text>
-            <Text style={styles.ingredientText}>
-              {product.ingredient_id.map(i => i.name).join(", ")}
-            </Text>
-          </View>
-
           {/* Reviews Card */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
@@ -729,12 +719,7 @@ const styles = StyleSheet.create({
     color: '#546E7A',
     textAlign: 'justify',
   },
-  ingredientText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#4CAF50',
-    fontWeight: '500',
-  },
+ 
   reviewSummaryContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

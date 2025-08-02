@@ -49,7 +49,7 @@ interface Address {
 const UserProfileScreen = () => {
     const route = useRoute();
     const { userId, accountId }: any = route.params || {};
-    console.log("nhan du lieu:", userId)
+    // console.log("nhan du lieu:", userId,accountId)
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
     // State cho loading
