@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import moment from 'moment';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -17,6 +17,7 @@ import {
 // Import icons (assuming you have vector icons installed)
 // import Icon from 'react-native-vector-icons/MaterialIcons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from 'expo-router';
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
 
@@ -49,6 +50,12 @@ interface Order {
   shipper_id?: string;
 }
 
+interface Shipper{
+  _id: string;
+  account_id: string;
+  isOnline: boolean;
+}
+
 interface FilterOption {
   label: string;
   value: string;
@@ -58,14 +65,26 @@ interface FilterOption {
 const DeliveredOrders = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [IsOnline, setIsOnline] = useState(true);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
 
+
+  useFocusEffect(
+  useCallback(() => {
+    // Mỗi lần vào lại màn hình, gọi lại
+    fetchOrders();
+    fetchUserData();
+  }, [])
+);
+
   useEffect(() => {
     fetchOrders();
+    fetchUserData();
+    onRefresh();
   }, []);
 
   useEffect(() => {
@@ -86,8 +105,28 @@ const DeliveredOrders = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchOrders();
+    await fetchUserData();
     setRefreshing(false);
   };
+
+  const fetchUserData = async () => {
+    try {
+      const userId = await getUserData('userData');
+      const response = await axios.get(`${BASE_URL}/shippers`);
+      const userData = response.data.data;
+      const currentUser = userData.find((u: Shipper) => u.account_id === userId);
+      console.log('Current User:', currentUser);
+      setIsOnline(currentUser?.is_online || false);
+
+    } catch (error) {
+      console.error('Lỗi khi lấy thông tin người dùng:', error);
+      Alert.alert('Lỗi', 'Không thể lấy thông tin người dùng.');
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
 
   const filterOrders = async () => {
     const shipperID = await getUserData('shipperID');
@@ -178,6 +217,10 @@ const DeliveredOrders = () => {
   };
 
   const handleAcceptOrder = async (orderId: string) => {
+    if (IsOnline === false) {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
+      return;
+    }
     try {
       const shipperID = await getUserData('shipperID');
       
@@ -194,16 +237,15 @@ const DeliveredOrders = () => {
             onPress: async () => {
               try {
                 // Call API to accept order
-                const response = await axios.post(`${BASE_URL}/AcceptOrder`, {
-                  orderId: orderId,
-                  shipperId: shipperID
-                });
+                const res = await axios.put(`${BASE_URL}/bills/${orderId}/assign-shipper`, {
+                                shipper_id: shipperID,
+                              });
                 
-                if (response.data.success) {
+                if (res.data.success) {
                   Alert.alert('Thành công', 'Đã nhận đơn hàng thành công!');
                   fetchOrders(); // Refresh orders list
                 } else {
-                  Alert.alert('Lỗi', response.data.message || 'Không thể nhận đơn hàng');
+                  Alert.alert('Lỗi', res.data.message || 'Không thể nhận đơn hàng');
                 }
               } catch (error) {
                 console.error('Error accepting order:', error);
@@ -221,6 +263,10 @@ const DeliveredOrders = () => {
   };
 
   const handleCompleteOrder = async (orderId: string) => {
+    if (!IsOnline) {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
+      return;
+    }
     try {
       const shipperID = await getUserData('shipperID');
       
@@ -265,6 +311,10 @@ const DeliveredOrders = () => {
   };
 
   const handleCancelOrder = async (orderId: string) => {
+    if (!IsOnline) {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
+      return;
+    }
     try {
       const shipperID = await getUserData('shipperID');
       
