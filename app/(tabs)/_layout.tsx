@@ -40,13 +40,14 @@ import UserProfile from './screens/profile/UserProfile';
 import VoucherScreen from './screens/profile/VoucherScreen';
 import DeliveredOrders from './screens/ship/DeliveredOrders';
 import ShipHome from './screens/ship/ShipHome';
+import OrderDetailPage from './screens/ship/ShipOrderDetail';
 import ShipProfile from './screens/ship/ShipProfile';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="ShipTabNavigator" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="Welcom" screenOptions={{ headerShown: false }}>
       {/* Screens không có tab bar */}
        <Stack.Screen name="VoucherCardList" component={VoucherCardList} options={{ headerShown: false }} />
       <Stack.Screen name="testPushTokenService" component={testPushTokenService} options={{ headerShown: false }} />
@@ -99,9 +100,10 @@ export default function TabLayout() {
 
       {/* Ship  Screen */}
       <Stack.Screen name="ShipTabNavigator" component={ShipTabNavigator} options={{ headerShown: false }} />
-      <Stack.Screen name="ShipHomeScreen" component={ShipHome} options={{ headerShown: false }} />
-      <Stack.Screen name="DeliveredOrdersScreen" component={DeliveredOrders} options={{ headerShown: false }} />
-      <Stack.Screen name="ShipProfileScreen" component={ShipProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipHome" component={ShipHome} options={{ headerShown: false }} />
+      <Stack.Screen name="DeliveredOrders" component={DeliveredOrders} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipProfile" component={ShipProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipOrderDetail" component={OrderDetailPage} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

@@ -15,6 +15,7 @@ import {
 import CustomSnackbar from '../../../(tabs)/component/CustomSnackbar'; // ✅ ĐÃ THÊM COMPONENT SNACKBAR
 import { loginAuthService } from '../../services/LoginAuthService';
 import { validateLoginForm } from '../../utils/validation';
+import { saveUserData } from '../utils/storage';
 
 // Kiểu dữ liệu navigation
 
@@ -35,7 +36,7 @@ export default function Login() {
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({ email: '', password: '' });
-  
+
   const [snackbarVisible, setSnackbarVisible] = useState(false); // ✅ SNACKBAR STATE
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState<'success' | 'error'>('success');
@@ -43,47 +44,135 @@ export default function Login() {
   const navigation = useNavigation<LoginNavigationProp>();
 
   const handleLogin = async () => {
-    setErrors({ email: '', password: '' });
+  if (!email || !password) {
+    setSnackbarMessage('Vui lòng nhập email và mật khẩu');
+    setSnackbarType('error');
+    setSnackbarVisible(true);
+    return;
+  }
 
-    const { isValid, errors: validationErrors } = validateLoginForm(email, password);
+  setLoading(true);
+  const result = await loginAuthService.login(email, password);
 
-    if (!isValid) {
-      setErrors({
-        email: validationErrors.email || '',
-        password: validationErrors.password || '',
-      });
-      return;
-    }
+  // ✅ In toàn bộ kết quả trả về từ backend
+  console.log('🔍 Response từ backend:', result);
 
-    setLoading(true);
+  // ✅ In rõ role lấy được
+  const role = result?.data?.account?.role;
+  console.log('🔍 Role lấy được:', role);
 
+  setLoading(false);
+
+  if (result.success) {
     try {
-      const result = await loginAuthService.login(email, password);
-
-      if (result.success) {
-        setSnackbarMessage(result.message);
-        setSnackbarType('success');
-        setSnackbarVisible(true);
-
-        setTimeout(() => {
-          setSnackbarVisible(false);
-           navigation.navigate('TabNavigator', { screen: 'Home' })
-        }, 1500);
-      } else {
-        setSnackbarMessage(result.message);
-        setSnackbarType('error');
-        setSnackbarVisible(true);
-        setTimeout(() => setSnackbarVisible(false), 2000);
+      // ✅ Lưu tất cả thông tin quan trọng vào AsyncStorage
+      const userData = result.data;
+      
+      // Lưu account ID
+      if (userData?.account?._id) {
+        await saveUserData({
+          key: 'accountId',
+          value: userData.account._id.toString()
+        });
+        console.log('🆔 Account ID:', userData.account._id);
       }
-    } catch (error) {
-      setSnackbarMessage('Có lỗi xảy ra. Vui lòng thử lại.');
-      setSnackbarType('error');
-      setSnackbarVisible(true);
-      setTimeout(() => setSnackbarVisible(false), 2000);
-    } finally {
-      setLoading(false);
+
+      // Lưu profile ID (thay vì user ID)
+      if (userData?.profile?._id) {
+        await saveUserData({
+          key: 'profileId', 
+          value: userData.profile._id.toString()
+        });
+        console.log('🆔 Profile ID:', userData.profile._id);
+      }
+
+      // Lưu address ID từ profile
+      if (userData?.profile?.address_id) {
+        await saveUserData({
+          key: 'addressId',
+          value: userData.profile.address_id.toString()
+        });
+        console.log('🆔 Address ID:', userData.profile.address_id);
+      }
+
+      // Lưu role
+      if (userData?.account?.role) {
+        await saveUserData({
+          key: 'userRole',
+          value: userData.account.role
+        });
+      }
+
+      // Lưu email
+      if (userData?.account?.email) {
+        await saveUserData({
+          key: 'userEmail',
+          value: userData.account.email
+        });
+      }
+
+      // Lưu thông tin profile
+      if (userData?.profile?.name) {
+        await saveUserData({
+          key: 'userName',
+          value: userData.profile.name
+        });
+      }
+
+      if (userData?.profile?.phone) {
+        await saveUserData({
+          key: 'userPhone',
+          value: userData.profile.phone
+        });
+      }
+
+      // Lưu token
+      if (userData?.token) {
+        await saveUserData({
+          key: 'authToken',
+          value: userData.token
+        });
+        console.log('🔑 Auth Token:', userData.token);
+      }
+
+      // Lưu toàn bộ user data để backup
+      await saveUserData({
+        key: 'fullUserData',
+        value: JSON.stringify(userData)
+      });
+
+    } catch (storageError) {
+      console.error('❌ Lỗi khi lưu data vào storage:', storageError);
     }
-  };
+
+    setSnackbarMessage(result.message);
+    setSnackbarType('success');
+    setSnackbarVisible(true);
+
+    setTimeout(() => {
+      setSnackbarVisible(false);
+
+      if (role === 'shipper') {
+        console.log('👉 Điều hướng vào ShipTabNavigator');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'ShipTabNavigator' }],
+        });
+      } else {
+        console.log('👉 Điều hướng vào TabNavigator');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'TabNavigator' }],
+        });
+      }
+    }, 1000);
+  } else {
+    setSnackbarMessage(result.message || 'Đăng nhập thất bại');
+    setSnackbarType('error');
+    setSnackbarVisible(true);
+    setTimeout(() => setSnackbarVisible(false), 2000);
+  }
+};
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -187,7 +276,7 @@ export default function Login() {
       <View style={styles.socialContainer}>
         <TouchableOpacity
           style={[styles.socialButton, loading && styles.buttonDisabled]}
-          onPress={() => {}}
+          onPress={() => { }}
           disabled={loading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
@@ -195,7 +284,7 @@ export default function Login() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.socialButton, loading && styles.buttonDisabled]}
-          onPress={() => {}}
+          onPress={() => { }}
           disabled={loading}
         >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />

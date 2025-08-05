@@ -5,6 +5,7 @@ import { saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
 export interface User {
+  role: string;
   _id: string;
   email: string;
   password: string;
@@ -16,6 +17,7 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   user?: User;
+  role?: string;
 }
 
 class LoginAuthService {
@@ -63,40 +65,40 @@ class LoginAuthService {
 
   // Xử lý login với BCrypt
   // services/LoginAuthService.ts
-async login(email: string, password: string): Promise<LoginResponse> {
+async login(email: string, password: string): Promise<any> {
   try {
     const response = await axios.post(`${BASE_URL}/login`, { email, password });
-    console.log('Response:', response.data);
+    console.log('📥 FULL RESPONSE:', response.data);
 
-    if (response.data.success && response.data.data?.user) {
-      const { token, user } = response.data.data;
-      console.log('Token:', token);
-      console.log('User:', user._id);
+    const { success, message, data } = response.data;
 
+    if (success && data?.token && data?.account) {
+      const { token, account } = data;
 
+      // ✅ Lưu token và account ID vào AsyncStorage
       await saveUserData({ key: 'token', value: token });
-      await saveUserData({ key: 'userData', value: user._id });
-      console.log('Lưu token và user thành công:', user);
-      
+      await saveUserData({ key: 'userData', value: account._id });
+
       return {
-        success: true,
-        message: 'Đăng nhập thành công!',
-        user: user._id
+        success,
+        message,
+        data // ✅ Trả lại toàn bộ data để lấy account.role, profile...
       };
     } else {
       return {
         success: false,
-        message: response.data.message || 'Sai thông tin đăng nhập',
+        message: message || 'Sai thông tin đăng nhập',
       };
     }
   } catch (error: any) {
-    console.error('Lỗi đăng nhập:', error);
+    // console.error('❌ Lỗi đăng nhập:', error);
     return {
       success: false,
       message: 'Đăng nhập thất bại. Vui lòng kiểm tra tài khoản và mật khẩu.',
     };
   }
 }
+
 
 
   // Phương thức kiểm tra mật khẩu mà không cần đăng nhập

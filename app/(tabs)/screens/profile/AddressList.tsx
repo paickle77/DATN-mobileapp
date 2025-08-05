@@ -2,8 +2,9 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { NavigationProp, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { useNavigation } from 'expo-router';
-import React, { useEffect, useState, } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   SafeAreaView,
@@ -15,6 +16,7 @@ import {
 
 import AddAddressModal from '../../component/AddAddressModal';
 import EditAddressModal from '../../component/EditAddressModal';
+import { AddressService } from '../../services/AddressService';
 import { BASE_URL } from '../../services/api';
 import { getUserData, saveUserData } from '../utils/storage';
 
@@ -43,35 +45,64 @@ type RootStackParamList = {
 };
 
 const AddressListScreen = () => {
+  const route = useRoute();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { userId, }: any = route.params || {};
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const route = useRoute();
+
   const mode = (route.params as any)?.mode ?? 'view';
 
-  const fetchAddresses = async () => {
+  const fetchAddresses = async (userId: string) => {
     try {
-      const user = await getUserData('userData');
-      const userID = user;
+      setIsLoading(true);
+
+
       const response = await axios.get(`${BASE_URL}/GetAllAddress`);
       const allData = response.data?.data ?? [];
-      const filtered = allData.filter((item: Address) => item.user_id?._id === userID);
+      const filtered = allData.filter((item: Address) => item.user_id?._id === userId);
+
       setAddresses(filtered);
     } catch (error) {
       console.error('❌ Lỗi lấy địa chỉ:', error);
       Alert.alert('Lỗi', 'Không thể tải địa chỉ. Vui lòng thử lại sau.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-
+  const onRefresh = async () => {
+  if (!currentUserId) return;
+  setRefreshing(true);
+  await fetchAddresses(currentUserId);
+  setRefreshing(false);
+};
 
   useEffect(() => {
     const init = async () => {
-      await fetchAddresses();
+      let uid = userId;
+
+      if (!uid) {
+        const storedUser = await getUserData('profileId');
+        uid = storedUser;
+        console.log("ádfgfds",uid)
+      }
+      console.log("ádfgfds",uid)
+
+      if (!uid) {
+        Alert.alert('Lỗi', 'Không tìm thấy người dùng');
+        return;
+      }
+
+      setCurrentUserId(uid); // ✅ Lưu vào state
+      await fetchAddresses(uid);
 
       if (mode === 'select') {
         const selected = await getUserData('selectedAddress');
@@ -85,42 +116,46 @@ const AddressListScreen = () => {
   }, []);
 
   const handleSetDefault = async (id: string) => {
-    try {
-      await axios.put(`${BASE_URL}/set-default/${id}`);
-      fetchAddresses();
-      Alert.alert('Thành công', 'Đã đặt địa chỉ mặc định');
-    } catch (error) {
-      console.error('❌ Lỗi cập nhật địa chỉ mặc định:', error);
-      Alert.alert('Lỗi', 'Không thể cập nhật địa chỉ mặc định');
+  try {
+    await axios.put(`${BASE_URL}/set-default/${id}`);
+    if (currentUserId) {
+      await fetchAddresses(currentUserId);
     }
-  };
+    Alert.alert('Thành công', 'Đã đặt địa chỉ mặc định');
+  } catch (error) {
+    console.error('❌ Lỗi cập nhật địa chỉ mặc định:', error);
+    Alert.alert('Lỗi', 'Không thể cập nhật địa chỉ mặc định');
+  }
+};
 
-  const handleDeleteAddress = (id: string) => {
-    const addressToDelete = addresses.find(addr => addr._id === id);
+const handleDeleteAddress = (id: string) => {
+  const addressToDelete = addresses.find(addr => addr._id === id);
 
-    if (addressToDelete?.isDefault === true || addressToDelete?.isDefault === 'true') {
-      Alert.alert('Không thể xóa', 'Đây là địa chỉ mặc định. Vui lòng đặt địa chỉ khác làm mặc định trước khi xóa.');
-      return;
-    }
+  if (addressToDelete?.isDefault === true || addressToDelete?.isDefault === 'true') {
+    Alert.alert('Không thể xóa', 'Đây là địa chỉ mặc định. Vui lòng đặt địa chỉ khác làm mặc định trước khi xóa.');
+    return;
+  }
 
-    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa địa chỉ này?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await axios.delete(`${BASE_URL}/addresses/${id}`);
-            setAddresses(prev => prev.filter(addr => addr._id !== id));
-            Alert.alert('Thành công', 'Đã xóa địa chỉ');
-          } catch (error) {
-            console.error('❌ Lỗi xóa địa chỉ:', error);
-            Alert.alert('Lỗi', 'Không thể xóa địa chỉ. Vui lòng thử lại.');
+  Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa địa chỉ này?', [
+    { text: 'Hủy', style: 'cancel' },
+    {
+      text: 'Xóa',
+      style: 'destructive',
+      onPress: async () => {
+        try {
+          await AddressService.deleteAddress(id);
+          if (currentUserId) {
+            await fetchAddresses(currentUserId);
           }
+          Alert.alert('Thành công', 'Đã xóa địa chỉ');
+        } catch (error: any) {
+          console.error('❌ Lỗi xóa địa chỉ:', error);
+          Alert.alert('Lỗi', error.message || 'Không thể xóa địa chỉ. Vui lòng thử lại.');
         }
       }
-    ]);
-  };
+    }
+  ]);
+};
 
   const handleSelectAddress = async (address: Address) => {
     setSelectedAddressId(address._id);
@@ -129,6 +164,16 @@ const AddressListScreen = () => {
     setTimeout(() => {
       navigation.goBack();
     }, 200);
+  };
+
+  const formatDisplayAddress = (item: Address) => {
+    // Sử dụng logic từ AddressService để format địa chỉ
+    if (item.detail_address && item.ward && item.district && item.city) {
+      return `${item.detail_address}, ${item.ward}, ${item.district}, ${item.city}`;
+    } else if (item.latitude && item.longitude) {
+      return `Tọa độ: ${item.latitude}, ${item.longitude}`;
+    }
+    return 'Địa chỉ không xác định';
   };
 
   const renderAddressItem = ({ item }: { item: Address }) => {
@@ -172,7 +217,7 @@ const AddressListScreen = () => {
             </View>
 
             <Text style={styles.addressText}>
-              {item.detail_address}, {item.ward}, {item.district}, {item.city}
+              {formatDisplayAddress(item)}
             </Text>
 
             {/* Actions cho mode view */}
@@ -214,6 +259,47 @@ const AddressListScreen = () => {
     );
   };
 
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name="location-outline" size={64} color="#ccc" />
+      <Text style={styles.emptyTitle}>Chưa có địa chỉ nào</Text>
+      <Text style={styles.emptySubtitle}>
+        {mode === 'select'
+          ? 'Vui lòng thêm địa chỉ để tiếp tục'
+          : 'Thêm địa chỉ đầu tiên của bạn'
+        }
+      </Text>
+      {mode !== 'select' && (
+        <TouchableOpacity
+          style={styles.emptyButton}
+          onPress={() => setAddModalVisible(true)}
+        >
+          <Text style={styles.emptyButtonText}>Thêm địa chỉ ngay</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
+  if (isLoading && addresses.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#222" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {mode === 'select' ? 'Chọn địa chỉ giao hàng' : 'Danh sách địa chỉ'}
+          </Text>
+          <View style={styles.addButton} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#795548" />
+          <Text style={styles.loadingText}>Đang tải địa chỉ...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -236,11 +322,17 @@ const AddressListScreen = () => {
         data={addresses}
         renderItem={renderAddressItem}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[
+          styles.listContainer,
+          addresses.length === 0 && styles.emptyListContainer
+        ]}
         showsVerticalScrollIndicator={false}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        ListEmptyComponent={renderEmptyState}
       />
 
-      {mode !== 'select' && (
+      {mode !== 'select' && addresses.length > 0 && (
         <TouchableOpacity
           style={styles.addAddressButton}
           onPress={() => setAddModalVisible(true)}
@@ -254,13 +346,13 @@ const AddressListScreen = () => {
         visible={editModalVisible}
         address={selectedAddress}
         onClose={() => setEditModalVisible(false)}
-        onSaved={fetchAddresses}
+        onSaved={() => fetchAddresses}
       />
 
       <AddAddressModal
         visible={addModalVisible}
         onClose={() => setAddModalVisible(false)}
-        onSaved={fetchAddresses}
+        onSaved={onRefresh}
       />
     </SafeAreaView>
   );
@@ -281,7 +373,53 @@ const styles = StyleSheet.create({
   backButton: { padding: 8 },
   headerTitle: { fontSize: 18, fontWeight: '600', color: '#222' },
   addButton: { padding: 8 },
-  listContainer: { padding: 16, paddingBottom: 100 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  listContainer: {
+    padding: 16,
+    paddingBottom: 100
+  },
+  emptyListContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: '#795548',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  emptyButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   addressItem: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -379,6 +517,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 20,
+    paddingVertical: 4,
   },
   actionText: {
     fontSize: 14,
@@ -386,8 +525,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '500',
   },
-
-  // Styles cho radio button (thay thế cho nút select cũ)
   addAddressButton: {
     position: 'absolute',
     bottom: 30,
@@ -412,4 +549,5 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
+
 export default AddressListScreen;

@@ -16,7 +16,6 @@ import {
   View,
 } from 'react-native';
 import { BASE_URL } from '../../services/api';
-import { Users } from '../../services/ProfileService';
 import { getUserData } from '../utils/storage';
 
 const { width } = Dimensions.get('window');
@@ -140,10 +139,7 @@ const UserOrderHistoryScreen = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${BASE_URL}/GetAllBills`);
-      const userData = await getUserData('userData') as Users | null;
-                          if (!userData || !userData) return;
-      
-                          const userId = userData;
+      const userId = await getUserData('userData');
 
       const allOrders: OrderType[] = response.data.data;
 
@@ -155,8 +151,8 @@ const UserOrderHistoryScreen = () => {
         } else if (typeof order.user_id === 'string') {
           orderUserId = order.user_id;
         }
-        console.log('So sánh:', orderUserId, 'vs', userData);
-        return orderUserId === userData?._id;
+
+        return orderUserId === userId;
       });
 
       // Sắp xếp theo thời gian tạo mới nhất

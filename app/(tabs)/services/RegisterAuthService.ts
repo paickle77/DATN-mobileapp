@@ -4,11 +4,9 @@ import { BASE_URL } from './api';
 
 // Types cho API responses
 interface User {
-  data: any;
-  message: string;
-  success: any;
   _id: string;
-  email: string;
+  account_id?: string;
+  email?: string;
   name?: string;
   phone?: string;
   gender?: string;
@@ -19,6 +17,12 @@ interface User {
   provider?: 'local' | 'google' | 'facebook';
 }
 
+interface Account {
+  _id: string;
+  email: string;
+  role: string;
+}
+
 interface ApiResponse<T> {
   data: T;
   message?: string;
@@ -27,7 +31,7 @@ interface ApiResponse<T> {
 
 interface RegisterData {
   email: string;
-  password?: string; // password không bắt buộc (Google/Facebook không cần)
+  password?: string;
   name?: string;
   image?: string;
   google_id?: string;
@@ -41,10 +45,7 @@ interface CompleteProfileData {
   avatar?: string;
 }
 
-
-
 export class RegisterAuthService {
-  
   private static readonly DEFAULT_AVATAR = 'avatarmacdinh.png';
 
   static async getAllUsers(): Promise<User[]> {
@@ -68,102 +69,140 @@ export class RegisterAuthService {
   }
 
   /**
-   * Đăng ký user local hoặc social (Google/Facebook)
+   * ✅ SỬA: Đăng ký user - trả về account thay vì user
    */
-static async registerUser(data: RegisterData): Promise<User> {
-  try {
-    const emailExists = await this.checkEmailExists(data.email);
-    if (emailExists) {
-      throw new Error('Email đã tồn tại. Vui lòng dùng tài khoản khác hoặc đăng nhập.');
-    }
-
-    // ✅ Gọi đúng route để đăng ký (đã mã hóa mật khẩu)
-    const response = await axios.post<ApiResponse<User>>(`${BASE_URL}/register`, data);
-
-    if (!response.data.data) {
-      throw new Error('Không nhận được thông tin user sau khi đăng ký');
-    }
-
-    const user = response.data.data;
-
-    // ✅ Lưu user._id vào AsyncStorage
-    await saveUserData({ key: 'userData', value: user._id });
-    console.log(`Đăng ký thành công với user ID: ${user._id}`);
-
-    return user;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Lỗi API khi đăng ký:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Không thể đăng ký. Vui lòng thử lại sau.');
-    }
-    throw error;
-  }
-}
-
-
-//   static async registerWithSocial(data: {
-//   email: string;
-//   name?: string;
-//   image?: string;
-//   provider: 'google' | 'facebook';
-//   google_id?: string;
-//   facebook_id?: string;
-// }): Promise<User> {
-//   try {
-//     const response = await axios.post<ApiResponse<User>>(`${BASE_URL}/users/social`, data);
-
-//     if (!response.data.data) {
-//       throw new Error('Không nhận được thông tin user sau khi đăng ký mạng xã hội');
-//     }
-
-//     const user = response.data.data;
-
-//     // ✅ Lưu user._id vào AsyncStorage
-//     await saveUserData({ key: 'userId', value: user._id });
-
-//     return user;
-//   } catch (error) {
-//     if (axios.isAxiosError(error)) {
-//       console.error('Lỗi API khi đăng ký mạng xã hội:', error.response?.data || error.message);
-//       throw new Error(error.response?.data?.message || 'Không thể đăng ký bằng mạng xã hội. Vui lòng thử lại sau.');
-//     }
-//     throw error;
-//   }
-// }
-
-  static async getUserById(id: string): Promise<User> {
+  static async registerUser(data: RegisterData): Promise<Account> {
     try {
-      const response = await axios.get<ApiResponse<User>>(`${BASE_URL}/users/${id}`);
+      console.log('📝 Đăng ký với data:', data);
+
+      // ✅ Gọi đúng route để đăng ký
+      const response = await axios.post<ApiResponse<Account>>(`${BASE_URL}/register`, data);
+
       if (!response.data.data) {
-        throw new Error('Không tìm thấy thông tin người dùng');
+        throw new Error('Không nhận được thông tin account sau khi đăng ký');
       }
+
+      const account = response.data.data;
+
+      // ✅ Lưu account._id vào AsyncStorage
+      await saveUserData({ key: 'userData', value: account._id });
+      console.log(`✅ Đăng ký thành công với account ID: ${account._id}`);
+
+      return account;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('❌ Lỗi API khi đăng ký:', error.response?.data || error.message);
+        throw new Error(error.response?.data?.message || 'Không thể đăng ký. Vui lòng thử lại sau.');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ SỬA: Lấy thông tin user bằng account_id
+   */
+  static async getUserByAccountId(account_id: string): Promise<User | null> {
+    try {
+      console.log('🔍 Tìm user với account_id:', account_id);
+      
+      const response = await axios.get<ApiResponse<User>>(`${BASE_URL}/users/account/${account_id}`);
+      
+      if (!response.data.success || !response.data.data) {
+        console.log('❌ Không tìm thấy user với account_id:', account_id);
+        return null;
+      }
+      
+      console.log('✅ Tìm thấy user:', response.data.data._id);
       return response.data.data;
     } catch (error) {
-      console.error('Lỗi khi lấy thông tin user:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        console.log('ℹ️ User chưa tạo profile');
+        return null;
+      }
+      console.error('❌ Lỗi khi lấy thông tin user:', error);
       throw new Error('Không thể lấy thông tin người dùng');
     }
   }
 
-  static async updateUserProfile(id: string, profileData: CompleteProfileData): Promise<User> {
+  /**
+   * ✅ SỬA: Tạo hồ sơ user profile
+   */
+  static async createUserProfile(account_id: string, profile: CompleteProfileData): Promise<User> {
     try {
+      console.log('📝 Tạo profile với:', { account_id, ...profile });
+
+      const body = {
+        account_id,
+        ...profile,
+        avatar: profile.avatar || this.DEFAULT_AVATAR
+      };
+
+      const response = await axios.post<ApiResponse<User>>(`${BASE_URL}/users/profile`, body);
+      
+      if (!response.data.success || !response.data.data) {
+        throw new Error(response.data.message || 'Không thể tạo hồ sơ người dùng');
+      }
+
+      console.log('✅ Tạo profile thành công:', response.data.data._id);
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('❌ Lỗi API khi tạo profile:', error.response?.data || error.message);
+        throw new Error(error.response?.data?.message || 'Không thể tạo hồ sơ người dùng');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ SỬA: Cập nhật hồ sơ user (dùng user_id)
+   */
+  static async updateUserProfile(user_id: string, profileData: Partial<CompleteProfileData>): Promise<User> {
+    try {
+      console.log('📝 Cập nhật profile user_id:', user_id, 'với data:', profileData);
+
       const finalData = {
         ...profileData,
         avatar: profileData.avatar || this.DEFAULT_AVATAR
       };
 
-      const response = await axios.put<ApiResponse<User>>(`${BASE_URL}/users/${id}`, finalData);
+      const response = await axios.put<ApiResponse<User>>(`${BASE_URL}/users/${user_id}`, finalData);
+      
       if (!response.data.data) {
         throw new Error('Không nhận được thông tin user sau khi cập nhật');
       }
 
+      console.log('✅ Cập nhật profile thành công');
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.error('Lỗi API khi cập nhật hồ sơ:', error.response?.data || error.message);
+        console.error('❌ Lỗi API khi cập nhật hồ sơ:', error.response?.data || error.message);
         throw new Error(error.response?.data?.message || 'Không thể cập nhật hồ sơ');
       }
       throw error;
     }
+  }
+
+  /**
+   * ✅ THÊM: Lấy URL avatar
+   */
+  static getAvatarUrl(avatar: string): string {
+    if (!avatar || avatar === this.DEFAULT_AVATAR) {
+      return this.DEFAULT_AVATAR;
+    }
+    
+    // Nếu là base64 hoặc local URI
+    if (avatar.startsWith('data:') || avatar.startsWith('file:')) {
+      return avatar;
+    }
+    
+    // Nếu là URL đầy đủ
+    if (avatar.startsWith('http')) {
+      return avatar;
+    }
+    
+    // Nếu là filename, tạo URL từ server
+    return `${BASE_URL}/uploads/avatars/${avatar}`;
   }
 
   static processAvatarImage(imageUri: string | null): string {
@@ -217,6 +256,5 @@ static async registerUser(data: RegisterData): Promise<User> {
   }
 }
 
-// Export types để sử dụng ở component khác
-export type { ApiResponse, CompleteProfileData, RegisterData, User };
-
+// Export types
+export type { Account, ApiResponse, CompleteProfileData, RegisterData, User };
