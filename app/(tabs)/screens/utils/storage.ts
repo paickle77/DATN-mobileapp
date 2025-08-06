@@ -10,9 +10,18 @@ export const saveUserData = async (data: UserData) => {
   try {
     const jsonValue = JSON.stringify(data.value);
     await AsyncStorage.setItem(data.key, jsonValue);
-    
   } catch (e) {
-    console.error('Lỗi lưu user data:', e);
+    console.error('❌ Lỗi khi lưu user data:', e);
+  }
+};
+
+// ✅ Hàm xóa toàn bộ dữ liệu trong AsyncStorage
+export const clearAllStorage = async () => {
+  try {
+    await AsyncStorage.clear();
+    console.log('✅ Đã xóa toàn bộ AsyncStorage');
+  } catch (e) {
+    console.error('❌ Lỗi khi xóa toàn bộ AsyncStorage:', e);
   }
 };
 
@@ -27,13 +36,13 @@ export const getUserData = async (key: string): Promise<any | null> => {
   }
 };
 
-// Xóa thông tin người dùng theo key
-export const clearUserData = async (key: string) => {
+// ✅ Hàm xóa dữ liệu theo key cụ thể
+export const removeUserDataByKey = async (key: string) => {
   try {
-    await AsyncStorage.removeItem(key); 
-      console.log(`Đã xoá key: ${key}`);// Sửa: chỉ xóa key cụ thể thay vì clear all
+    await AsyncStorage.removeItem(key);
+    console.log(`✅ Đã xóa key: ${key}`);
   } catch (e) {
-    console.error('Lỗi xóa user data:', e);
+    console.error(`❌ Lỗi khi xóa key ${key}:`, e);
   }
 };
 
@@ -79,25 +88,35 @@ export const getAllUserData = async () => {
   }
 };
 
-// ✅ THÊM: Xóa tất cả thông tin user
-export const clearAllUserData = async () => {
-  try {
-    await Promise.all([
-      clearUserData('accountId'),
-      clearUserData('profileId'),
-      clearUserData('addressId'),
-      clearUserData('userRole'),
-      clearUserData('userEmail'),
-      clearUserData('userName'),
-      clearUserData('userPhone'),
-      clearUserData('authToken'),
-      clearUserData('fullUserData')
-    ]);
-    console.log('✅ Đã xóa tất cả user data');
-  } catch (e) {
-    console.error('Lỗi xóa all user data:', e);
-  }
-};
+// // ✅ THÊM: Xóa tất cả thông tin user
+// export const clearAllUserData = async () => {
+//   try {
+//     await Promise.all([
+//       clearUserData('accountId'),
+//       clearUserData('profileId'),
+//       clearUserData('addressId'),
+//       clearUserData('userRole'),
+//       clearUserData('userEmail'),
+//       clearUserData('userName'),
+//       clearUserData('userPhone'),
+//       clearUserData('authToken'),
+//       clearUserData('fullUserData'),
+
+//       // 💥 THÊM các key liên quan đến giỏ hàng, voucher
+//       clearUserData('selectedVoucher'),
+//       clearUserData('selectedAddress'),
+//       clearUserData('selectedPaymentMethod'),
+//       clearUserData('discount_percent'),
+//       clearUserData('userData'), // nếu bạn dùng key này cho _id
+//       clearUserData('code'),     // key 'code' dùng trong loadVoucher()
+//     ]);
+
+//     console.log('✅ Đã xóa toàn bộ dữ liệu người dùng (bao gồm cả dữ liệu giỏ hàng & thanh toán)');
+//   } catch (e) {
+//     console.error('❌ Lỗi xóa all user data:', e);
+//   }
+// };
+
 
 // ✅ THÊM: Kiểm tra user có đăng nhập không
 export const isUserLoggedIn = async (): Promise<boolean> => {

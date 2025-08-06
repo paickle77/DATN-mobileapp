@@ -1,0 +1,60 @@
+import { useMemo } from 'react';
+import { getDistrictType, getShippingMethods } from '../constants/shipping-zones';
+
+export interface Address {
+  _id: string;
+  district: string;
+  ward: string;
+  city: string;
+  detail_address: string;
+  name: string;
+  phone: string;
+}
+
+export const useShipping = (addresses: Address[]) => {
+  // Tính toán district type dựa trên địa chỉ đầu tiên
+  const districtType = useMemo(() => {
+    if (addresses.length > 0 && addresses[0].district) {
+      return getDistrictType(addresses[0].district);
+    }
+    return 'unknown';
+  }, [addresses]);
+
+  // Lấy shipping methods phù hợp
+  const shippingMethods = useMemo(() => {
+    return getShippingMethods(districtType);
+  }, [districtType]);
+
+  // Lấy thông tin địa chỉ hiện tại
+  const currentAddress = addresses.length > 0 ? addresses[0] : null;
+
+  // Kiểm tra xem một shipping method có hợp lệ không
+  const isValidShippingMethod = (methodId: string) => {
+    return shippingMethods.some(method => method.id === methodId);
+  };
+
+  // Lấy shipping method mặc định (luôn là store pickup)
+  const getDefaultShippingMethod = () => {
+    return shippingMethods.find(method => method.id === 'store_pickup')?.id || null;
+  };
+
+  // Lấy thông tin chi tiết khu vực
+  const getAreaInfo = () => {
+    if (!currentAddress) return null;
+    
+    return {
+      districtName: currentAddress.district,
+      districtType,
+      fullAddress: `${currentAddress.detail_address}, ${currentAddress.ward}, ${currentAddress.district}, ${currentAddress.city}`
+    };
+  };
+
+  return {
+    districtType,
+    shippingMethods,
+    currentAddress,
+    isValidShippingMethod,
+    getDefaultShippingMethod,
+    getAreaInfo
+  };
+};

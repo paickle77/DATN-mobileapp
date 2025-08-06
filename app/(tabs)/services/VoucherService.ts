@@ -22,7 +22,7 @@ export interface Voucher {
 
 export interface UserVoucher {
   _id: string;
-  user_id: string;
+  Account_id: string;
   voucher_id: string | Voucher;
   is_used: boolean;
   used_date?: string;
@@ -59,14 +59,14 @@ export interface ValidationResponse {
 // --- MAIN CLASS ---
 
 class VoucherService {
-  // Helper: Lấy userId từ local storage
-  private async getUserId(): Promise<string> {
+  // Helper: Lấy accountId từ local storage
+  private async getAccountId(): Promise<string> {
     const userData = await getUserData('userData');
     if (typeof userData === 'string') return userData;
     if (typeof userData === 'object' && userData !== null) {
-      return userData._id || userData.id || userData.userId;
+      return userData._id || userData.id || userData.accountId;
     }
-    throw new Error('Không tìm thấy thông tin user');
+    throw new Error('Không tìm thấy thông tin tài khoản');
   }
 
   // Helper: Populate thông tin voucher nếu chỉ là ID
@@ -103,43 +103,26 @@ class VoucherService {
       return response.data;
     } catch (error: any) {
       console.error('❌ Lỗi khi lấy danh sách voucher:', error);
-      if (error.response) {
-        const message = error.response.data?.message || 'Lỗi từ server';
-        throw new Error(`${error.response.status}: ${message}`);
-      } else if (error.request) {
-        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-      } else {
-        throw new Error(error.message || 'Đã xảy ra lỗi không xác định');
-      }
+      throw error;
     }
   }
 
-  // Lấy danh sách voucher mà user đã thu thập
+  // Lấy danh sách voucher đã lưu theo account
   async getUserVouchers(): Promise<UserVoucherResponse> {
     try {
-      const userId = await this.getUserId();
-      console.log('🔍 Đang lấy danh sách voucher đã save của user:', userId);
-      const response = await axios.get(`${BASE_URL}/voucher_users/user/${userId}`);
-      console.log('✅ Đã lấy danh sách voucher user:', response.data);
+      const accountId = await this.getAccountId();
+      console.log('🔍 Đang lấy danh sách voucher đã save của account:', accountId);
+      const response = await axios.get(`${BASE_URL}/voucher_users/account/${accountId}`);
       return response.data;
     } catch (error: any) {
-      console.error('❌ Lỗi khi lấy danh sách voucher user:', error);
-      if (error.response) {
-        const message = error.response.data?.message || 'Lỗi từ server';
-        throw new Error(`${error.response.status}: ${message}`);
-      } else if (error.request) {
-        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-      } else {
-        throw new Error(error.message || 'Đã xảy ra lỗi không xác định');
-      }
+      console.error('❌ Lỗi khi lấy danh sách voucher account:', error);
+      throw error;
     }
   }
 
   // Lấy voucher chưa lưu
   async getAvailableVouchers(): Promise<VoucherResponse> {
     try {
-      const userId = await this.getUserId();
-
       const allVouchersResponse = await this.getAllVouchers();
       if (!allVouchersResponse.success) {
         throw new Error(allVouchersResponse.message);
@@ -167,40 +150,25 @@ class VoucherService {
     }
   }
 
-  // Save voucher vào danh sách của user
+  // Lưu voucher vào danh sách
   async saveVoucherToList(voucher_id: string): Promise<any> {
     try {
-      const user_id = await this.getUserId();
+      const accountId = await this.getAccountId();
 
       const payload = {
-        user_id,
+        Account_id: accountId,
         voucher_id,
         status: 'active',
         start_date: new Date().toISOString(),
         is_used: false
       };
 
-      console.log('💾 Đang save voucher vào danh sách:', payload);
+      console.log('💾 Đang lưu voucher:', payload);
       const response = await axios.post(`${BASE_URL}/voucher_users`, payload);
-      console.log('✅ Đã save voucher vào danh sách:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ Lỗi khi save voucher:', error);
-      if (error.response) {
-        const status = error.response.status;
-        const message = error.response.data?.message || 'Lỗi từ server';
-        if (status === 400) {
-          throw new Error('Dữ liệu gửi không hợp lệ: ' + message);
-        } else if (status === 409) {
-          throw new Error('Bạn đã có voucher này trong danh sách rồi!');
-        } else {
-          throw new Error(`${status}: ${message}`);
-        }
-      } else if (error.request) {
-        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-      } else {
-        throw new Error(error.message || 'Đã xảy ra lỗi không xác định');
-      }
+      console.error('❌ Lỗi khi lưu voucher:', error);
+      throw error;
     }
   }
 
@@ -208,25 +176,19 @@ class VoucherService {
   async removeVoucherFromList(userVoucherId: string): Promise<any> {
     try {
       const response = await axios.delete(`${BASE_URL}/voucher_users/${userVoucherId}`);
-      console.log('✅ Đã xóa voucher khỏi danh sách:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('❌ Lỗi khi xóa voucher:', error);
-      if (error.response) {
-        throw new Error(error.response.data?.message || 'Không thể xóa voucher');
-      } else {
-        throw new Error('Không thể kết nối đến server');
-      }
+      throw error;
     }
   }
 
   // Lấy chi tiết một voucher theo ID
-  async getVoucherById(id: string): Promise<{ success: boolean, message: string, data?: Voucher }> {
+  async getVoucherById(id: string): Promise<{ success: boolean; message: string; data?: Voucher }> {
     try {
       const response = await axios.get(`${BASE_URL}/vouchers/${id}`);
       return response.data;
     } catch (error: any) {
-      console.error('❌ Lỗi khi lấy chi tiết voucher:', error);
       return {
         success: false,
         message: error?.response?.data?.message || 'Không tìm thấy voucher'

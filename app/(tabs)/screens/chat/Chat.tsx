@@ -54,7 +54,7 @@ const ChatScreen = () => {
   }, [loadingMessageId]);
 
 
-  
+
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
@@ -86,8 +86,20 @@ const ChatScreen = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama3',
-          prompt: `Bạn là chatbot của hệ thống APP CakeShop. Trả lời ngắn gọn, thân thiện, liên quan đến bánh ngọt, sử dụng 1 loại ngôn ngữ: tiếng Việt. Người dùng hỏi: "${userMsg.text}"`,
+          model: 'mistral',
+          prompt: `
+      Bạn là trợ lý thông minh và thân thiện của tiệm bánh ngọt CakeShop.  
+      Bạn **chỉ được trả lời các câu hỏi liên quan đến bánh ngọt, đặt bánh, menu, giá, thanh toán, hướng dẫn mua hàng, chương trình khuyến mãi** của cửa hàng.  
+      Nếu người dùng hỏi linh tinh, bạn lịch sự từ chối.
+      - Trả lời bằng tiếng Việt.
+- Nội dung trả lời ngắn gọn, đúng chủ đề bánh ngọt: thực đơn, cách đặt, giao hàng, khuyến mãi.
+- Nếu người dùng hỏi ngoài chủ đề, hãy từ chối lịch sự: "Xin lỗi, tôi chỉ hỗ trợ thông tin về tiệm bánh CakeShop."
+      Luôn trả lời bằng **tiếng Việt**, ngắn gọn, thân thiện.
+
+     âu hỏi của người dùng: "${inputText.trim()}"
+
+      Hãy phản hồi đúng và chuyên nghiệp.
+    `,
           stream: false
         })
       });
@@ -215,7 +227,7 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
-  
+
 
   const MessageBubble = ({ message }: { message: Message }) => (
     <View style={[
@@ -252,94 +264,94 @@ Bước 3: Ở màn hình này bạn có thể thay đổi phương thức thanh
     </View>
   );
   const QuickActions = () => (
-  <View style={styles.quickActions}>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      {[
-        'Hướng dẫn đặt bánh',
-        'Hướng dẫn thay đổi thông tin tài khoản',
-        'Hướng dẫn thay đổi địa chỉ giao hàng',
-        'Hướng dẫn theo dõi đơn hàng',
-        'Hướng dẫn thay đổi phương thức thanh toán',
-        'Bảng xếp hạng các loại bánh bán chạy'
-      ].map((text, idx) => (
-        <TouchableOpacity key={idx} style={styles.quickButton} onPress={() => sendQuickMessage(text)}>
-          <Ionicons name="help-circle-outline" size={16} color="#FF6B6B" />
-          <Text style={styles.quickButtonText}>{text}</Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  </View>
-);
+    <View style={styles.quickActions}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {[
+          'Hướng dẫn đặt bánh',
+          'Hướng dẫn thay đổi thông tin tài khoản',
+          'Hướng dẫn thay đổi địa chỉ giao hàng',
+          'Hướng dẫn theo dõi đơn hàng',
+          'Hướng dẫn thay đổi phương thức thanh toán',
+          'Bảng xếp hạng các loại bánh bán chạy'
+        ].map((text, idx) => (
+          <TouchableOpacity key={idx} style={styles.quickButton} onPress={() => sendQuickMessage(text)}>
+            <Ionicons name="help-circle-outline" size={16} color="#FF6B6B" />
+            <Text style={styles.quickButtonText}>{text}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
 
   return (
-  <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
 
-    >
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <View style={styles.headerAvatar}>
-            <MaterialIcons name="cake" size={24} color="#FF6B6B" />
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>CakeShop Bot</Text>
-            <Text style={styles.headerSubtitle}>Trợ lý tìm bánh ngọt</Text>
-          </View>
-        </View>
-      </View>
-
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={{ paddingBottom: 12 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-        
-        {isTyping && (
-          <View style={styles.typingIndicator}>
-            <MaterialIcons name="cake" size={18} color="#FF6B6B" />
-            <Text style={styles.typingText}>Đang trả lời...</Text>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <View style={styles.headerAvatar}>
+              <MaterialIcons name="cake" size={24} color="#FF6B6B" />
+            </View>
+            <View>
+              <Text style={styles.headerTitle}>CakeShop Bot</Text>
+              <Text style={styles.headerSubtitle}>Trợ lý tìm bánh ngọt</Text>
+            </View>
           </View>
-        )}
-      </ScrollView>
-        <QuickActions />
-      {/* Input */}
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.textInput}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Nhập tin nhắn..."
-            placeholderTextColor="#999"
-            multiline
-            maxLength={500}
-          />
         </View>
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            inputText.trim() ? styles.sendButtonActive : styles.sendButtonInactive
-          ]}
-          onPress={sendMessage}
-          disabled={!inputText.trim()}
+
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={{ paddingBottom: 12 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Ionicons name="send" size={18} color={inputText.trim() ? "#fff" : "#999"} />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  </SafeAreaView>
-);
+          {messages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))}
+
+          {isTyping && (
+            <View style={styles.typingIndicator}>
+              <MaterialIcons name="cake" size={18} color="#FF6B6B" />
+              <Text style={styles.typingText}>Đang trả lời...</Text>
+            </View>
+          )}
+        </ScrollView>
+        <QuickActions />
+        {/* Input */}
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.textInput}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Nhập tin nhắn..."
+              placeholderTextColor="#999"
+              multiline
+              maxLength={500}
+            />
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              inputText.trim() ? styles.sendButtonActive : styles.sendButtonInactive
+            ]}
+            onPress={sendMessage}
+            disabled={!inputText.trim()}
+          >
+            <Ionicons name="send" size={18} color={inputText.trim() ? "#fff" : "#999"} />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 
 };
 

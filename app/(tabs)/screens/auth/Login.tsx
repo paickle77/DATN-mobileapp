@@ -15,7 +15,7 @@ import {
 import CustomSnackbar from '../../../(tabs)/component/CustomSnackbar'; // ✅ ĐÃ THÊM COMPONENT SNACKBAR
 import { loginAuthService } from '../../services/LoginAuthService';
 import { validateLoginForm } from '../../utils/validation';
-import { saveUserData } from '../utils/storage';
+import { clearAllStorage, saveUserData } from '../utils/storage';
 
 // Kiểu dữ liệu navigation
 
@@ -44,6 +44,7 @@ export default function Login() {
   const navigation = useNavigation<LoginNavigationProp>();
 
   const handleLogin = async () => {
+   await clearAllStorage();
   if (!email || !password) {
     setSnackbarMessage('Vui lòng nhập email và mật khẩu');
     setSnackbarType('error');
@@ -53,10 +54,7 @@ export default function Login() {
 
   setLoading(true);
   const result = await loginAuthService.login(email, password);
-
-  // ✅ In toàn bộ kết quả trả về từ backend
-  console.log('🔍 Response từ backend:', result);
-
+   
   // ✅ In rõ role lấy được
   const role = result?.data?.account?.role;
   console.log('🔍 Role lấy được:', role);

@@ -18,7 +18,8 @@ import AddAddressModal from '../../component/AddAddressModal';
 import EditAddressModal from '../../component/EditAddressModal';
 import { AddressService } from '../../services/AddressService';
 import { BASE_URL } from '../../services/api';
-import { getUserData, saveUserData } from '../utils/storage';
+import { getUserData, removeUserDataByKey, saveUserData } from '../utils/storage';
+import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 
 export interface Address {
   _id: string;
@@ -79,11 +80,11 @@ const AddressListScreen = () => {
   };
 
   const onRefresh = async () => {
-  if (!currentUserId) return;
-  setRefreshing(true);
-  await fetchAddresses(currentUserId);
-  setRefreshing(false);
-};
+    if (!currentUserId) return;
+    setRefreshing(true);
+    await fetchAddresses(currentUserId);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -92,9 +93,9 @@ const AddressListScreen = () => {
       if (!uid) {
         const storedUser = await getUserData('profileId');
         uid = storedUser;
-        console.log("ádfgfds",uid)
+        console.log("ádfgfds", uid)
       }
-      console.log("ádfgfds",uid)
+      console.log("ádfgfds", uid)
 
       if (!uid) {
         Alert.alert('Lỗi', 'Không tìm thấy người dùng');
@@ -116,46 +117,52 @@ const AddressListScreen = () => {
   }, []);
 
   const handleSetDefault = async (id: string) => {
-  try {
-    await axios.put(`${BASE_URL}/set-default/${id}`);
-    if (currentUserId) {
-      await fetchAddresses(currentUserId);
+    try {
+      await axios.put(`${BASE_URL}/set-default/${id}`);
+      if (currentUserId) {
+        await fetchAddresses(currentUserId);
+      }
+      Alert.alert('Thành công', 'Đã đặt địa chỉ mặc định');
+    } catch (error) {
+      console.error('❌ Lỗi cập nhật địa chỉ mặc định:', error);
+      Alert.alert('Lỗi', 'Không thể cập nhật địa chỉ mặc định');
     }
-    Alert.alert('Thành công', 'Đã đặt địa chỉ mặc định');
-  } catch (error) {
-    console.error('❌ Lỗi cập nhật địa chỉ mặc định:', error);
-    Alert.alert('Lỗi', 'Không thể cập nhật địa chỉ mặc định');
-  }
-};
+  };
 
-const handleDeleteAddress = (id: string) => {
-  const addressToDelete = addresses.find(addr => addr._id === id);
+  const handleDeleteAddress = async (id: string) => {
+    const addressToDelete = addresses.find(addr => addr._id === id);
 
-  if (addressToDelete?.isDefault === true || addressToDelete?.isDefault === 'true') {
-    Alert.alert('Không thể xóa', 'Đây là địa chỉ mặc định. Vui lòng đặt địa chỉ khác làm mặc định trước khi xóa.');
-    return;
-  }
+    const addressId = await getUserData('selectedAddress');
+    if (addressToDelete?.isDefault === true || addressToDelete?.isDefault === 'true') {
+      Alert.alert('Không thể xóa', 'Đây là địa chỉ mặc định. Vui lòng đặt địa chỉ khác làm mặc định trước khi xóa.');
+      return;
+    }
 
-  Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa địa chỉ này?', [
-    { text: 'Hủy', style: 'cancel' },
-    {
-      text: 'Xóa',
-      style: 'destructive',
-      onPress: async () => {
-        try {
-          await AddressService.deleteAddress(id);
-          if (currentUserId) {
-            await fetchAddresses(currentUserId);
+    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa địa chỉ này?', [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await AddressService.deleteAddress(id);
+            if (currentUserId) {
+              await fetchAddresses(currentUserId);
+            }
+            if (addressId === id) {
+              await removeUserDataByKey('selectedAddress');
+              setSelectedAddressId(null);
+              console.log('Đã xóa địa chỉ đã chọn ở local storage', addressId);
+            }
+            Alert.alert('Thành công', 'Đã xóa địa chỉ');
+          } catch (error: any) {
+            console.error('❌ Lỗi xóa địa chỉ:', error);
+            Alert.alert('Lỗi', error.message || 'Không thể xóa địa chỉ. Vui lòng thử lại.');
           }
-          Alert.alert('Thành công', 'Đã xóa địa chỉ');
-        } catch (error: any) {
-          console.error('❌ Lỗi xóa địa chỉ:', error);
-          Alert.alert('Lỗi', error.message || 'Không thể xóa địa chỉ. Vui lòng thử lại.');
         }
       }
-    }
-  ]);
-};
+    ]);
+  };
 
   const handleSelectAddress = async (address: Address) => {
     setSelectedAddressId(address._id);
@@ -346,7 +353,7 @@ const handleDeleteAddress = (id: string) => {
         visible={editModalVisible}
         address={selectedAddress}
         onClose={() => setEditModalVisible(false)}
-        onSaved={() => fetchAddresses}
+        onSaved={onRefresh}
       />
 
       <AddAddressModal
