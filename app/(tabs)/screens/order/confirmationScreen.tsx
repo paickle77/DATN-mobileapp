@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -29,12 +29,13 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
 }) => {
   const { pendingOrder } = route.params;
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(10); // 5 phút
+  const [countdown, setCountdown] = useState(300); // 5 phút
   const [isTimeoutHandled, setIsTimeoutHandled] = useState(false);
+  const timerRef = useRef<number | null>(null);
 
 
 
-  
+
   useEffect(() => {
     const backAction = () => {
       Alert.alert(
@@ -48,7 +49,7 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
             onPress: handleCancelOrder,
           }
         ]
-        
+
       );
       setIsTimeoutHandled(false)
       return true;
@@ -57,14 +58,15 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
 
     // Countdown timer
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           if (!isTimeoutHandled) {
             setIsTimeoutHandled(true);
+            clearInterval(timerRef.current!); // dừng timer khi hết giờ
             handleTimeout();
           }
-          return 0; // Dừng ở 0, không giảm tiếp
+          return 0;
         }
         return prev - 1;
       });
@@ -72,15 +74,15 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
 
     return () => {
       backHandler.remove();
-      clearInterval(timer);
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isTimeoutHandled]);
 
   const formatTime = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('vi-VN') + 'đ';
@@ -102,50 +104,51 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
   };
 
   const handleCancelOrder = async () => {
-    try {
-       setIsTimeoutHandled(true); 
-      await checkoutService.cancelPendingBill(pendingOrder.billId);
-      setLoading(true);
-      navigation.navigate('TabNavigator', { screen: 'Home' });
-    } catch (error) {
-      Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (timerRef.current !== null) clearInterval(timerRef.current);
+  setIsTimeoutHandled(true);
+
+  try {
+    setLoading(true);
+    await checkoutService.cancelPendingBill(pendingOrder.billId);
+    navigation.navigate('TabNavigator', { screen: 'Home' });
+  } catch (error) {
+    Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleConfirmPayment = async () => {
-    try {
-       setIsTimeoutHandled(true); 
-      setLoading(true);
+  if (timerRef.current !== null) clearInterval(timerRef.current);
+  setIsTimeoutHandled(true);
 
+  try {
+    setLoading(true);
+    await checkoutService.confirmPayment(
+      pendingOrder.billId,
+      pendingOrder.orderData.items
+    );
 
-      // Xác nhận thanh toán và tạo bill details
-      await checkoutService.confirmPayment(
-        pendingOrder.billId,
-        pendingOrder.orderData.items
-      );
-
-      Alert.alert(
-        'Thành công!',
-        'Đơn hàng đã được xác nhận thành công.',
-        [
-          {
-            text: 'Xem đơn hàng',
-            onPress: () => navigation.navigate('OrderHistoryScreen')
-          },
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('TabNavigator', { screen: 'Home' })
-          }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Lỗi', error.message || 'Không thể xác nhận đơn hàng');
-    } finally {
-      setLoading(false);
-    }
-  };
+    Alert.alert(
+      'Thành công!',
+      'Đơn hàng đã được xác nhận thành công.',
+      [
+        {
+          text: 'Xem đơn hàng',
+          onPress: () => navigation.navigate('OrderHistoryScreen')
+        },
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('TabNavigator', { screen: 'Home' })
+        }
+      ]
+    );
+  } catch (error) {
+    Alert.alert('Lỗi', error.message || 'Không thể xác nhận đơn hàng');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handlePaymentMethod = () => {
     const { paymentMethod } = pendingOrder.orderData;

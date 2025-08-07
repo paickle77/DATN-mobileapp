@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Address } from '../screens/order/Checkout';
+import { Address, CheckoutAddress } from '../screens/order/Checkout';
 import { getUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
@@ -12,21 +12,21 @@ export interface CartItem {
   quantity: number;
   Size: string;
   product_id: any;
-  user_id: string;
+  Account_id: string;
+  selected?: boolean;
 }
 
 export interface BillPayload {
-  user_id: string;
+  Account_id: string;
   address_id: string | null;
   note: string;
   shipping_method: string;
   payment_method: string;
   total: number;
-  original_total: number; // Tổng tiền trước giảm giá
-  discount_amount: number; // Số tiền giảm giá
-  voucher_code?: string; // Mã voucher đã sử dụng
+  original_total: number;
+  discount_amount: number;
+  voucher_code?: string;
   items: BillDetailItem[];
-  status: string;
 }
 
 export interface BillDetailItem {
@@ -57,17 +57,11 @@ export interface VoucherData {
 }
 
 class CheckoutService {
-  /**
-   * Lấy danh sách voucher của user
-   */
   async fetchVouchers(): Promise<{ vouchers: VoucherData; nameCode: string }> {
     try {
-      const userData = await getUserData('userData');
+      const accountId = await getUserData('accountId');
       const nameVoucher = await getUserData('code');
-
-      console.log("nameVoucher", nameVoucher);
-
-      const response = await axios.get(`${BASE_URL}/voucher_users/user/${userData}`);
+      const response = await axios.get(`${BASE_URL}/voucher_users/account/${accountId}`);
 
       return {
         vouchers: response.data.data,
@@ -79,15 +73,9 @@ class CheckoutService {
     }
   }
 
-  /**
-   * Lấy danh sách giỏ hàng của user với giá chính xác theo size
-   */
-  async fetchCartData(): Promise<CartItem[]> {
+  async fetchCartData(selectedItemIds?: string[]): Promise<CartItem[]> {
     try {
-      const user = await getUserData('userData');
-      const userId = user;
-      console.log("userID:", userId);
-
+      const accountId = await getUserData('accountId');
       const [cartRes, sizeRes] = await Promise.all([
         axios.get(`${BASE_URL}/GetAllCarts`),
         axios.get(`${BASE_URL}/Sizes`)
@@ -96,14 +84,8 @@ class CheckoutService {
       const APIlistCart = cartRes.data.data;
       const sizeList = sizeRes.data.data;
 
-      console.log("listCart from API: ⭐️⭐️⭐️", APIlistCart);
-      console.log("sizeList from API: 📏📏📏", sizeList);
-
       const formattedData = APIlistCart.map((item: any) => {
-        if (!item.product_id || !item.size_id) {
-          console.warn("⚠️ Bỏ qua sản phẩm bị thiếu dữ liệu:", item);
-          return null;
-        }
+        if (!item.product_id || !item.size_id) return null;
 
         const sizeInfo = sizeList.find((s: any) =>
           s._id === item.size_id._id ||
@@ -118,7 +100,7 @@ class CheckoutService {
           id: item._id,
           title: item.product_id.name,
           product_id: item.product_id,
-          user_id: item.user_id,
+          Account_id: item.Account_id,
           Size: item.size_id.size,
           price: finalPrice,
           image: item.product_id.image_url,
@@ -126,9 +108,12 @@ class CheckoutService {
         };
       }).filter(Boolean);
 
-      const userCartItems = formattedData.filter((item: any) => item.user_id === userId);
+      const userCartItems = formattedData.filter((item: any) => item.Account_id === accountId);
 
-      console.log("👉 Dữ liệu giỏ hàng theo user (với giá theo size):", userCartItems);
+      if (selectedItemIds && selectedItemIds.length > 0) {
+        return userCartItems.filter((item: any) => selectedItemIds.includes(item.id));
+      }
+
       return userCartItems;
     } catch (error) {
       console.error("❌ Lỗi API giỏ hàng:", error);
@@ -136,32 +121,22 @@ class CheckoutService {
     }
   }
 
-  /**
-   * Lấy danh sách địa chỉ mặc định của user
-   */
-  async fetchAddresses(): Promise<Address[]> {
-    try {
-      const userData = await getUserData('userData');
-      const userID = typeof userData === 'string' ? userData : userData._id;
-
-      const response = await axios.get(`${BASE_URL}/GetAllAddress`);
-      const allData = response.data?.data ?? [];
-
-      const filtered = allData.filter((item: Address) =>
-        item.user_id?._id === userID && (item.isDefault === true || item.isDefault === 'true')
-      );
-
-      console.log('⭐️ Địa chỉ mặc định của user:', filtered);
-      return filtered;
-    } catch (error) {
-      console.error('❌ Lỗi lấy địa chỉ:', error);
-      throw new Error('Không thể tải địa chỉ');
-    }
+  async fetchAllAddresses() {
+    const response = await axios.get(`${BASE_URL}/GetAllAddress`);
+    return response.data?.data ?? [];
   }
 
-  /**
-   * Tạo bill đầu tiên với trạng thái pending
-   */
+  async fetchDefaultAddress(): Promise<CheckoutAddress> {
+    const userId = await getUserData('profileId');
+    const response = await axios.get(`${BASE_URL}/addresses/default/${userId}`);
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Không lấy được địa chỉ mặc định');
+    }
+
+    return response.data.data;
+  }
+
   async createPendingBill(
     addresses: Address[],
     listCart: CartItem[],
@@ -174,40 +149,40 @@ class CheckoutService {
     voucherCode?: string
   ): Promise<PendingOrder> {
     try {
-      const userData = await getUserData('userData');
-      const userID = typeof userData === 'string' ? userData : userData._id;
+      const accountId = await getUserData('accountId');
+      console.log("Account ID:", accountId);
       const defaultAddress = addresses[0];
 
-      const billDetailsData = listCart.map((item: CartItem) => ({
-        product_id: item.product_id._id,
-        size: item.Size || '-',
+      // ✅ SỬA: Đảm bảo gửi đầy đủ thông tin bao gồm size
+      const items = listCart.map((item: CartItem) => ({
+        product_id: item.product_id._id || item.product_id,
+        size: item.Size || 'M', // ✅ Thêm size từ CartItem.Size
         quantity: item.quantity,
-        price: item.price,
-        total: item.price * item.quantity,
+        unit_price: item.price,
+        total: item.price * item.quantity // ✅ Tính total ngay ở frontend
       }));
 
-      const payload: BillPayload = {
-        user_id: userID,
+      const payload = {
+        Account_id: accountId,
         address_id: defaultAddress?._id ?? null,
-        note: note || '',
         shipping_method: selectedShippingMethod,
         payment_method: selectedPaymentName,
-        total: finalTotal,
         original_total: originalTotal,
+        total: finalTotal,
         discount_amount: discountAmount,
         voucher_code: voucherCode,
-        items: billDetailsData,
-        status: "doing", // Trạng thái chờ thanh toán
+        note: note || '',
+        items
       };
 
-      console.log("🚀 Payload tạo bill pending:", payload);
-      
-      const response = await axios.post(`${BASE_URL}/bills`, payload);
-      
-      if (response.status === 200 && response.data.data._id) {
-        const billId = response.data.data._id;
-        
-        // Trả về thông tin đơn hàng pending
+      console.log('📤 Payload gửi đi:', JSON.stringify(payload, null, 2));
+      console.log('📦 Items detail:', items);
+
+      // Đổi endpoint như đã sửa trước đó
+      const response = await axios.post(`${BASE_URL}/bills/CreatePending`, payload);
+
+      if (response.status === 200 && response.data.billId) {
+        const billId = response.data.billId;
         return {
           billId,
           orderData: {
@@ -226,52 +201,38 @@ class CheckoutService {
         throw new Error(response.data.message || 'Không thể tạo đơn hàng');
       }
     } catch (error) {
-      console.error('❌ Lỗi tạo bill pending:', error);
+      console.error('❌ Lỗi tạo pending bill:', error);
+      if (error.response) {
+        console.error('❌ Response data:', error.response.data);
+        console.error('❌ Response status:', error.response.status);
+      }
       throw new Error('Không thể tạo đơn hàng');
     }
   }
 
-  /**
-   * Xác nhận thanh toán và tạo bill details
-   */
+
   async confirmPayment(billId: string, items: CartItem[]): Promise<void> {
     try {
-      // 1. Cập nhật trạng thái bill thành "confirmed"
-      await axios.put(`${BASE_URL}/bills/${billId}`, {
-        status: "doing"
-      });
-
-      // 2. Tạo bill details
+      // Không đổi trạng thái tại đây, vì đơn hàng đã là "pending"
       await this.sendBillDetails(billId, items);
-
-      // 3. Xóa giỏ hàng
-      await this.clearCart();
-
-      console.log('✅ Xác nhận thanh toán thành công');
+      await this.clearSelectedCartItems(items.map(item => item.id));
     } catch (error) {
       console.error('❌ Lỗi xác nhận thanh toán:', error);
       throw new Error('Không thể xác nhận thanh toán');
     }
   }
 
-  /**
-   * Hủy đơn hàng pending
-   */
   async cancelPendingBill(billId: string): Promise<void> {
     try {
       await axios.put(`${BASE_URL}/bills/${billId}`, {
         status: "cancelled"
       });
-      console.log('✅ Đã hủy đơn hàng pending');
     } catch (error) {
       console.error('❌ Lỗi hủy đơn hàng:', error);
       throw new Error('Không thể hủy đơn hàng');
     }
   }
 
-  /**
-   * Gửi chi tiết bill (bill details)
-   */
   async sendBillDetails(billId: string, items: CartItem[]): Promise<void> {
     try {
       for (const item of items) {
@@ -283,33 +244,41 @@ class CheckoutService {
           price: item.price,
           total: item.price * item.quantity,
         };
-
-        console.log('📤 Gửi 1 billDetail:', payload);
-        const response = await axios.post(`${BASE_URL}/billdetails`, payload);
-        console.log('✅ Gửi billDetail thành công:', response.data);
+        await axios.post(`${BASE_URL}/billdetails`, payload);
       }
     } catch (error) {
-      console.error('❌ Lỗi khi gửi billDetails:', error.response?.data || error.message);
+      console.error('❌ Lỗi khi gửi billDetails:', error);
       throw new Error('Không thể lưu chi tiết đơn hàng');
     }
   }
 
-  /**
-   * Xóa giỏ hàng sau khi đặt hàng thành công
-   */
   async clearCart(): Promise<void> {
     try {
-      const userData = await getUserData('userData');
-      await axios.delete(`${BASE_URL}/carts/user/${userData}`);
-      console.log('✅ Đã xóa giỏ hàng');
+      const userData = await getUserData('accountId');
+      const accountId = userData
+      await axios.delete(`${BASE_URL}/carts/user/${accountId}`);
     } catch (error) {
       console.error('❌ Lỗi khi xóa giỏ hàng:', error);
     }
   }
 
-  /**
-   * Lấy discount percent từ storage
-   */
+  async clearSelectedCartItems(itemIds: string[]): Promise<void> {
+    try {
+      console.log('🔄 Đang xóa các sản phẩm đã mua:', itemIds);
+      const deletePromises = itemIds.map(itemId =>
+        axios.delete(`${BASE_URL}/carts/${itemId}`)
+          .catch(error => {
+            console.error(`❌ Lỗi khi xóa sản phẩm ${itemId}:`, error);
+            return null;
+          })
+      );
+      await Promise.all(deletePromises);
+      console.log('✅ Đã xóa các sản phẩm đã mua khỏi giỏ hàng');
+    } catch (error) {
+      console.error('❌ Lỗi khi xóa các sản phẩm đã chọn:', error);
+    }
+  }
+
   async getDiscountPercent(): Promise<number> {
     try {
       const discount_percent = await getUserData('discount_percent');
@@ -321,9 +290,6 @@ class CheckoutService {
     }
   }
 
-  /**
-   * Lấy thông tin bill theo ID
-   */
   async getBillById(billId: string): Promise<any> {
     try {
       const response = await axios.get(`${BASE_URL}/bills/${billId}`);
@@ -334,13 +300,9 @@ class CheckoutService {
     }
   }
 
-  /**
-   * Cập nhật trạng thái đơn hàng
-   */
   async updateBillStatus(billId: string, status: string): Promise<void> {
     try {
       await axios.put(`${BASE_URL}/bills/${billId}`, { status });
-      console.log(`✅ Cập nhật trạng thái đơn hàng ${billId} thành ${status}`);
     } catch (error) {
       console.error('❌ Lỗi cập nhật trạng thái:', error);
       throw new Error('Không thể cập nhật trạng thái đơn hàng');
@@ -348,6 +310,5 @@ class CheckoutService {
   }
 }
 
-// Export singleton instance
 export const checkoutService = new CheckoutService();
 export default checkoutService;

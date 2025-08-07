@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { profileService, Users } from '../../services/ProfileService';
-import { clearUserData, getUserData } from '../utils/storage';
+import { clearAllStorage, getUserData } from '../utils/storage';
 const MenuItem = ({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
         <View style={styles.menuIcon}>{icon}</View>
@@ -20,7 +20,7 @@ const MenuItem = ({ icon, label, onPress }: { icon: React.ReactNode; label: stri
 
 type RootStackParamList = {
     Settings: { userId: string } | undefined;
-    UserProfile: { userId: string ,accountId: String} | undefined;
+    UserProfile: { userId: string, accountId: String } | undefined;
     AddressList: { userId: string } | undefined;
     PaymentMethods: { userId: string } | undefined;
     OrderHistoryScreen: { userId: string } | undefined;
@@ -40,15 +40,12 @@ const ProfileScreen = () => {
             const fetchUserFromStorage = async () => {
                 setLoading(true);
                 try {
-                    const userData = await getUserData('userData') as Users | null;
+                    const userData = await getUserData('userData');
                     if (!userData || !userData) return;
-
-                    const accountId = await getUserData('userData'); // là account_id đã lưu từ login
-                   
-                    const user = await profileService.getProfileByAccountId(accountId);
+                    const accountId = userData 
+                    const user = await profileService.getProfileByAccountId(accountId)
+                    setUserProfile(user);
                     
-                    setUserProfile(user);
-                    setUserProfile(user);
                 } catch (err) {
                     console.error('❌ Lỗi khi lấy user:', err);
                 }
@@ -64,7 +61,8 @@ const ProfileScreen = () => {
     const handleLogout = async () => {
         try {
             setLogoutVisible(false);
-            await clearUserData('userData'); // ✅ Xoá dữ liệu người dùng
+            await clearAllStorage();
+            // ✅ Xoá dữ liệu người dùng
             console.log('🟢 Đã xoá dữ liệu người dùng');
             // await clearUserData('token');    // ✅ Nếu bạn lưu token cũng xoá luôn
             navigation.dispatch(
@@ -135,7 +133,7 @@ const ProfileScreen = () => {
                     onPress={() => navigation.navigate('UserProfile', {
                         userId: userProfile?._id ?? '',
                         accountId: userProfile?.account_id ?? '',
-                        
+
                     })} />
                 <MenuItem icon={<Ionicons name="pricetags-outline" size={24} color="#222" />} label="Kho voucher"
                     onPress={() => navigation.navigate('VoucherScreen',

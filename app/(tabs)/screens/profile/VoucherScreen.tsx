@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -15,7 +16,6 @@ import voucherService, {
   UserVoucher,
   Voucher,
 } from '../../services/VoucherService';
-import { Feather } from '@expo/vector-icons';
 
 const VoucherScreen = () => {
   const navigation = useNavigation();

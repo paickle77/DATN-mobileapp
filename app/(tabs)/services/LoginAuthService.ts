@@ -68,7 +68,7 @@ class LoginAuthService {
 async login(email: string, password: string): Promise<any> {
   try {
     const response = await axios.post(`${BASE_URL}/login`, { email, password });
-    console.log('📥 FULL RESPONSE:', response.data);
+    
 
     const { success, message, data } = response.data;
 

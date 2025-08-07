@@ -192,7 +192,7 @@ const Detail: React.FC = () => {
     }
 
     try {
-      const userId = await getUserData('userData');
+      const userId = await getUserData('accountId');
       const sizeData = sizes.find(s => s.size === selectedSize);
       
       if (!sizeData) {

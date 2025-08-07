@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -23,6 +24,7 @@ const { width } = Dimensions.get('window');
 type OrderType = {
   __v: number;
   _id: string;
+  Account_id: string | { _id: string };
   address_id: {
     __v: number;
     _id: string;
@@ -42,11 +44,11 @@ type OrderType = {
   note: string;
   payment_method: string;
   shipping_method: string;
-  status: string;
+  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed';
   total: number;
-  original_total?: number; // Tổng tiền trước giảm giá
-  discount_amount?: number; // Số tiền giảm giá
-  voucher_code?: string; // Mã voucher đã sử dụng
+  original_total?: number;
+  discount_amount?: number;
+  voucher_code?: string;
   payment_confirmed_at?: string;
   delivered_at?: string;
   updatedAt: string;
@@ -69,122 +71,152 @@ type OrderType = {
   };
 };
 
-const UserOrderHistoryScreen = () => {
+type TabType = 'all' | 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed';
+
+const OrderHistoryScreen = () => {
   const navigation = useNavigation();
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'doing' | 'shipping' | 'done'>('doing');
+  const [activeTab, setActiveTab] = useState<TabType>('all');
 
-
+  // Tabs được tối ưu cho mobile - chỉ giữ những tab quan trọng
   const tabs = [
-    { key: 'doing', title: 'Đang xử lý', icon: 'time-outline' },
-    { key: 'shipping', title: 'Đang giao', icon: 'car-outline' },
-    { key: 'done', title: 'Hoàn thành', icon: 'checkmark-done-circle-outline' },
+    { key: 'all', title: 'Tất cả', icon: 'apps' },
+    { key: 'pending', title: 'Chờ xác nhận', icon: 'time' },
+    { key: 'shipping', title: 'Đang giao', icon: 'car' },
+    { key: 'done', title: 'Hoàn thành', icon: 'checkmark-done-circle' },
+    { key: 'cancelled', title: 'Đã hủy', icon: 'close-circle' },
   ];
 
-  const getStatusColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending_payment':
-        return '#FF9500';
+      case 'pending':
+        return {
+          text: 'Chờ xác nhận',
+          color: '#FF9500',
+          bgColor: '#FFF5E6',
+          icon: 'time',
+          description: 'Đơn hàng đang chờ xác nhận'
+        };
       case 'confirmed':
-      case 'processing':
-        return '#007AFF';
+        return {
+          text: 'Đang chuẩn bị',
+          color: '#007AFF',
+          bgColor: '#E6F3FF',
+          icon: 'cube',
+          description: 'Đang đóng gói và chuẩn bị hàng'
+        };
+      case 'ready':
+        return {
+          text: 'Chờ shipper',
+          color: '#5856D6',
+          bgColor: '#F0F0FF',
+          icon: 'hand-left',
+          description: 'Chờ shipper nhận đơn hàng'
+        };
       case 'shipping':
-        return '#5856D6';
-      case 'delivered':
-        return '#34C759';
+        return {
+          text: 'Đang giao',
+          color: '#34C759',
+          bgColor: '#E6FFE6',
+          icon: 'car',
+          description: 'Shipper đang giao hàng'
+        };
+      case 'done':
+        return {
+          text: 'Hoàn thành',
+          color: '#28A745',
+          bgColor: '#E6F7E6',
+          icon: 'checkmark-done-circle',
+          description: 'Giao hàng thành công'
+        };
       case 'cancelled':
-        return '#FF3B30';
+        return {
+          text: 'Đã hủy',
+          color: '#FF3B30',
+          bgColor: '#FFE6E6',
+          icon: 'close-circle',
+          description: 'Đơn hàng đã bị hủy'
+        };
+      case 'failed':
+        return {
+          text: 'Hoàn trả',
+          color: '#DC3545',
+          bgColor: '#FFE6E6',
+          icon: 'return-up-back',
+          description: 'Khách không nhận, đã hoàn trả'
+        };
       default:
-        return '#8E8E93';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending_payment':
-        return 'time-outline';
-      case 'confirmed':
-      case 'processing':
-        return 'checkmark-circle-outline';
-      case 'shipping':
-        return 'car-outline';
-      case 'delivered':
-        return 'checkmark-done-circle-outline';
-      case 'cancelled':
-        return 'close-circle-outline';
-      default:
-        return 'help-circle-outline';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending_payment':
-      case 'confirmed':
-      case 'processing':
-        return 'Đang xử lý';
-      case 'shipping':
-        return 'Đang giao';
-      case 'delivered':
-        return 'Hoàn thành';
-      case 'cancelled':
-        return 'Đã hủy';
-      default:
-        return status;
+        return {
+          text: status,
+          color: '#8E8E93',
+          bgColor: '#F5F5F5',
+          icon: 'help-circle',
+          description: ''
+        };
     }
   };
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BASE_URL}/GetAllBills`);
-      const userId = await getUserData('userData');
+      const accountId = await getUserData('accountId');
+      console.log('🔄 Đang tải đơn hàng cho accountId:', accountId);
 
+      const response = await axios.get(`${BASE_URL}/bills`);
       const allOrders: OrderType[] = response.data.data;
 
       const filteredOrders = allOrders.filter((order: OrderType) => {
-        let orderUserId: string | undefined;
-
-        if (order.user_id && typeof order.user_id === 'object') {
-          orderUserId = order.user_id._id ?? undefined;
-        } else if (typeof order.user_id === 'string') {
-          orderUserId = order.user_id;
+        let orderAccountId: string | undefined;
+        if (order.Account_id && typeof order.Account_id === 'object') {
+          orderAccountId = order.Account_id._id ?? undefined;
+        } else if (typeof order.Account_id === 'string') {
+          orderAccountId = order.Account_id;
         }
-
-        return orderUserId === userId;
+        return orderAccountId === accountId;
       });
 
-      // Sắp xếp theo thời gian tạo mới nhất
       filteredOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      console.log('Số đơn hàng:', filteredOrders.length);
       setOrders(filteredOrders);
     } catch (error) {
       console.error('Lỗi khi gọi API đơn hàng:', error);
-      Alert.alert('Lỗi', 'Lỗi khi tải đơn hàng. Vui lòng thử lại sau.');
+      Alert.alert('Lỗi', 'Không thể tải đơn hàng');
     } finally {
       setLoading(false);
     }
   };
 
   const getFilteredOrders = () => {
-    switch (activeTab) {
-      case 'doing':
-        return orders.filter(order =>
-          ['pending_payment', 'doing', 'processing'].includes(order.status.toLowerCase())
-        );
-      case 'shipping':
-        return orders.filter(order =>
-          order.status.toLowerCase() === 'shipping'
-        );
-      case 'done':
-        return orders.filter(order =>
-          ['delivered', 'cancelled'].includes(order.status.toLowerCase())
-        );
-      default:
-        return [];
+    if (activeTab === 'all') return orders;
+
+    // Nhóm các trạng thái liên quan
+    if (activeTab === 'shipping') {
+      return orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase()));
     }
+    if (activeTab === 'cancelled') {
+      return orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase()));
+    }
+
+    return orders.filter(order => order.status.toLowerCase() === activeTab);
+  };
+
+  const getOrderCount = (status: TabType) => {
+    if (status === 'all') return orders.length;
+    if (status === 'shipping') {
+      return orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase())).length;
+    }
+    if (status === 'cancelled') {
+      return orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase())).length;
+    }
+    return orders.filter(order => order.status.toLowerCase() === status).length;
+  };
+
+  const canCancelOrder = (status: string) => {
+    return ['pending', 'confirmed'].includes(status.toLowerCase());
+  };
+
+  const canReview = (status: string) => {
+    return status.toLowerCase() === 'done';
   };
 
   useEffect(() => {
@@ -192,31 +224,13 @@ const UserOrderHistoryScreen = () => {
   }, []);
 
   const handleOrderPress = (orderId: string) => {
-    console.log('Chi tiết đơn hàng:', orderId);
     navigation.navigate('OrderDetails', { orderId });
-  };
-
-  const handleReorder = (order: OrderType) => {
-    Alert.alert(
-      'Mua lại',
-      'Bạn có muốn mua lại đơn hàng này không?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Mua lại',
-          onPress: () => {
-            console.log('Reorder:', order._id);
-            // TODO: Implement reorder logic
-          }
-        }
-      ]
-    );
   };
 
   const handleCancelOrder = (orderId: string) => {
     Alert.alert(
       'Hủy đơn hàng',
-      'Bạn có chắc chắn muốn hủy đơn hàng này không?',
+      'Bạn có chắc chắn muốn hủy đơn hàng này?',
       [
         { text: 'Không', style: 'cancel' },
         {
@@ -240,179 +254,110 @@ const UserOrderHistoryScreen = () => {
     return price.toLocaleString('vi-VN') + 'đ';
   };
 
-  const renderOrderCard = ({ item: order }: { item: OrderType }) => (
-    <TouchableOpacity
-      style={styles.orderCard}
-      onPress={() => handleOrderPress(order._id)}
-      activeOpacity={0.95}
-    >
-      {/* Order Header */}
-      <View style={styles.orderHeader}>
-        <View style={styles.orderIdSection}>
-          <Ionicons name="receipt" size={18} color="#5C4033" />
-          <Text style={styles.orderId}>#{order._id.slice(-8).toUpperCase()}</Text>
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const renderOrderCard = ({ item: order }: { item: OrderType }) => {
+    const statusConfig = getStatusConfig(order.status);
+
+    return (
+      <TouchableOpacity
+        style={styles.orderCard}
+        onPress={() => handleOrderPress(order._id)}
+        activeOpacity={0.98}
+      >
+        {/* Header với ID và trạng thái */}
+        <View style={styles.orderHeader}>
+          <View style={styles.orderIdSection}>
+            <Ionicons name="receipt" size={16} color="#5C4033" />
+            <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+            <Ionicons name={statusConfig.icon} size={12} color={statusConfig.color} />
+            <Text style={[styles.statusText, { color: statusConfig.color }]}>
+              {statusConfig.text}
+            </Text>
+          </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '15' }]}>
-          <Ionicons
-            name={getStatusIcon(order.status)}
-            size={14}
-            color={getStatusColor(order.status)}
-          />
-          <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
-            {getStatusText(order.status)}
+
+        {/* Thông tin cơ bản */}
+        <View style={styles.orderInfo}>
+          <Text style={styles.statusDescription}>{statusConfig.description}</Text>
+          <Text style={styles.dateText}>{formatDate(order.created_at)}</Text>
+        </View>
+
+        {/* Địa chỉ giao hàng (rút gọn) */}
+        <View style={styles.addressSection}>
+          <Ionicons name="location" size={14} color="#666" />
+          <Text style={styles.addressText} numberOfLines={1}>
+            {order.address_id?.name} | {order.address_id?.district}, {order.address_id?.city}
           </Text>
         </View>
-      </View>
 
-      {/* Order Date & Time */}
-      <View style={styles.dateSection}>
-        <Ionicons name="calendar-outline" size={14} color="#666" />
-        <Text style={styles.dateText}>
-          Đặt ngày {new Date(order.created_at).toLocaleDateString('vi-VN', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
-        </Text>
-      </View>
-
-      {/* Delivery Address */}
-      <View style={styles.addressSection}>
-        <View style={styles.addressHeader}>
-          <Ionicons name="location-outline" size={16} color="#5C4033" />
-          <Text style={styles.addressLabel}>Giao đến</Text>
-        </View>
-        <Text style={styles.addressText} numberOfLines={2}>
-          {order.address_id?.detail_address}, {order.address_id?.ward}, {order.address_id?.district}, {order.address_id?.city}
-        </Text>
-      </View>
-
-      {/* Payment & Shipping Info */}
-      <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <Ionicons name="card-outline" size={14} color="#666" />
-          <Text style={styles.infoText}>{order.payment_method || 'COD'}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Ionicons name="speedometer-outline" size={14} color="#666" />
-          <Text style={styles.infoText}>{order.shipping_method || 'Tiêu chuẩn'}</Text>
-        </View>
-      </View>
-
-      {/* Voucher Info */}
-      {order.voucher_code && (
-        <View style={styles.voucherSection}>
-          <Ionicons name="pricetag" size={14} color="#34C759" />
-          <Text style={styles.voucherText}>Đã sử dụng mã: {order.voucher_code}</Text>
-          {order.discount_amount && order.discount_amount > 0 && (
-            <Text style={styles.discountText}>
-              (Tiết kiệm {formatPrice(order.discount_amount)})
-            </Text>
-          )}
-        </View>
-      )}
-
-      {/* Note */}
-      {order.note && (
-        <View style={styles.noteSection}>
-          <Ionicons name="chatbubble-outline" size={14} color="#666" />
-          <Text style={styles.noteText} numberOfLines={2}>"{order.note}"</Text>
-        </View>
-      )}
-
-      {/* Total Amount */}
-      <View style={styles.totalSection}>
-        <View>
-          <Text style={styles.totalLabel}>Tổng thanh toán</Text>
-          {order.original_total && order.original_total !== order.total && (
-            <Text style={styles.originalPrice}>
-              {formatPrice(order.original_total)}
-            </Text>
-          )}
-        </View>
-        <Text style={styles.totalAmount}>
-          {formatPrice(order.total)}
-        </Text>
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.actionSection}>
-        <TouchableOpacity
-          style={styles.detailButton}
-          onPress={() => handleOrderPress(order._id)}
-        >
-          <Ionicons name="eye-outline" size={16} color="#5C4033" />
-          <Text style={styles.detailButtonText}>Chi tiết</Text>
-        </TouchableOpacity>
-
-        {/* Conditional Action Buttons */}
-        {(order.status === 'pending_payment' || order.status === 'confirmed') && (
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => handleCancelOrder(order._id)}
-          >
-            <Ionicons name="close-circle-outline" size={16} color="#FF3B30" />
-            <Text style={styles.cancelButtonText}>Hủy đơn</Text>
-          </TouchableOpacity>
-        )}
-
-        {order.status === 'delivered' && (
-          <TouchableOpacity
-            style={styles.reviewButton}
-            onPress={() => navigation.navigate('ReviewScreen', { orderId: order._id })}
-          >
-            <Ionicons name="star-outline" size={16} color="#FFD700" />
-            <Text style={styles.reviewButtonText}>Đánh giá</Text>
-          </TouchableOpacity>
-        )}
-
-        {order.status === 'delivered' && (
-          <TouchableOpacity
-            style={styles.reorderButton}
-            onPress={() => handleReorder(order)}
-          >
-            <Ionicons name="refresh-outline" size={16} color="#FFFFFF" />
-            <Text style={styles.reorderButtonText}>Mua lại</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Progress Indicator for shipping orders */}
-      {order.status === 'shipping' && (
-        <View style={styles.progressSection}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '70%' }]} />
+        {/* Tổng tiền */}
+        <View style={styles.totalSection}>
+          <View>
+            <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+            <Text style={styles.paymentMethod}>{order.payment_method === 'COD' ? 'COD' : 'Chuyển khoản'}</Text>
           </View>
-          <Text style={styles.progressText}>Đang trên đường giao đến bạn</Text>
+          <Text style={styles.totalAmount}>{formatPrice(order.total)}</Text>
         </View>
-      )}
-    </TouchableOpacity>
-  );
+
+        {/* Action buttons */}
+        <View style={styles.actionSection}>
+          <TouchableOpacity
+            style={styles.detailButton}
+            onPress={() => handleOrderPress(order._id)}
+          >
+            <Text style={styles.detailButtonText}>Chi tiết</Text>
+          </TouchableOpacity>
+
+          {canReview(order.status) && (
+            <TouchableOpacity
+              style={styles.reviewButton}
+              onPress={() => handleOrderPress(order._id)}
+            >
+              <Ionicons name="star" size={14} color="#FFD700" />
+              <Text style={styles.reviewButtonText}>Đánh giá</Text>
+            </TouchableOpacity>
+          )}
+
+          {canCancelOrder(order.status) && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => handleCancelOrder(order._id)}
+            >
+              <Text style={styles.cancelButtonText}>Hủy</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons
-        name={activeTab === 'processing' ? 'hourglass-outline' :
-          activeTab === 'shipping' ? 'car-outline' :
-            'checkmark-done-circle-outline'}
-        size={80}
-        color="#C7C7CC"
-      />
-      <Text style={styles.emptyTitle}>
-        {activeTab === 'processing' ? 'Chưa có đơn hàng đang xử lý' :
-          activeTab === 'shipping' ? 'Chưa có đơn hàng đang giao' :
-            'Chưa có đơn hàng hoàn thành'}
-      </Text>
+      <Ionicons name="bag-outline" size={64} color="#CCC" />
+      <Text style={styles.emptyTitle}>Chưa có đơn hàng nào</Text>
       <Text style={styles.emptyText}>
-        {activeTab === 'processing' ? 'Hãy đặt hàng để theo dõi đơn hàng tại đây' :
-          activeTab === 'shipping' ? 'Các đơn hàng đang giao sẽ hiển thị tại đây' :
-            'Lịch sử các đơn hàng đã hoàn thành sẽ hiển thị tại đây'}
+        {activeTab === 'all' ? 'Hãy bắt đầu mua sắm ngay!' : `Không có đơn hàng ${tabs.find(t => t.key === activeTab)?.title.toLowerCase()}`}
       </Text>
-      <TouchableOpacity style={styles.shopNowButton} onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' })}>
-        <Text style={styles.shopNowText}>Mua sắm ngay</Text>
-      </TouchableOpacity>
+      {activeTab === 'all' && (
+        <TouchableOpacity
+          style={styles.shopButton}
+          onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' })}
+        >
+          <Text style={styles.shopButtonText}>Mua sắm ngay</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -420,7 +365,7 @@ const UserOrderHistoryScreen = () => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#5C4033" />
-        <Text style={styles.loadingText}>Đang tải đơn hàng...</Text>
+        <Text style={styles.loadingText}>Đang tải...</Text>
       </View>
     );
   }
@@ -430,64 +375,54 @@ const UserOrderHistoryScreen = () => {
       <StatusBar barStyle="light-content" backgroundColor="#5C4033" />
 
       {/* Header */}
-      <LinearGradient
-        colors={['#5C4033', '#7A5A47']}
-        style={styles.header}
-      >
+      <LinearGradient colors={['#5C4033', '#7A5A47']} style={styles.header}>
         <TouchableOpacity
-          onPress={() => {
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [
-                  {
-                    name: 'TabNavigator',
-                    params: { screen: 'Profile' },
-                  },
-                ],
-              })
-            );
-          }}
+          onPress={() => navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'TabNavigator', params: { screen: 'Profile' } }],
+            })
+          )}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>Đơn hàng của tôi</Text>
+        <Text style={styles.headerTitle}>Đơn hàng của tôi</Text>
         <TouchableOpacity onPress={fetchOrders} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={24} color="#FFFFFF" />
+          <Ionicons name="refresh" size={22} color="#FFF" />
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* Tab Navigation */}
+      {/* Tabs */}
       <View style={styles.tabContainer}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={[
-              styles.tabItem,
-              activeTab === tab.key && styles.activeTabItem
-            ]}
-            onPress={() => setActiveTab(tab.key as 'processing' | 'shipping' | 'completed')}
-          >
-            <Ionicons
-              name={tab.icon}
-              size={20}
-              color={activeTab === tab.key ? '#5C4033' : '#999'}
-            />
-            <Text style={[
-              styles.tabText,
-              activeTab === tab.key && styles.activeTabText
-            ]}>
-              {tab.title}
-            </Text>
-            {getFilteredOrders().length > 0 && (
-              <View style={styles.badgeCount}>
-                <Text style={styles.badgeText}>{getFilteredOrders().length}</Text>
-              </View>
-            )}
-            {activeTab === tab.key && <View style={styles.tabIndicator} />}
-          </TouchableOpacity>
-        ))}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {tabs.map((tab) => {
+            const count = getOrderCount(tab.key as TabType);
+            const isActive = activeTab === tab.key;
+
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tabItem, isActive && styles.activeTab]}
+                onPress={() => setActiveTab(tab.key as TabType)}
+              >
+                <Ionicons
+                  name={tab.icon}
+                  size={16}
+                  color={isActive ? '#5C4033' : '#999'}
+                />
+                <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+                  {tab.title}
+                </Text>
+                {count > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{count}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Orders List */}
@@ -505,239 +440,150 @@ const UserOrderHistoryScreen = () => {
   );
 };
 
-export default UserOrderHistoryScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: StatusBar.currentHeight || 44,
-    paddingBottom: 16,
+    paddingBottom: 12,
     paddingHorizontal: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  refreshButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  screenTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginHorizontal: 16,
-  },
-  loaderContainer: {
-    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  refreshButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
   },
   tabItem: {
-    flex: 1,
-    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    marginVertical: 8,
     position: 'relative',
   },
-  activeTabItem: {
+  activeTab: {
     backgroundColor: '#F8F6F3',
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
     color: '#999',
-    marginTop: 4,
+    marginLeft: 6,
+    fontWeight: '500',
   },
   activeTabText: {
     color: '#5C4033',
+    fontWeight: '600',
   },
-  badgeCount: {
+  badge: {
     position: 'absolute',
-    top: 8,
-    right: '30%',
+    top: 4,
+    right: 8,
     backgroundColor: '#FF3B30',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: '#FFF',
+    fontSize: 10,
     fontWeight: '700',
   },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: '#5C4033',
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
-  },
   listContainer: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: 12,
   },
   orderCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 3,
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   orderIdSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   orderId: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#5C4033',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     marginLeft: 4,
   },
-  dateSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+  orderInfo: {
+    marginBottom: 12,
+  },
+  statusDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 4,
   },
   dateText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 6,
+    fontSize: 12,
+    color: '#999',
   },
   addressSection: {
-    marginBottom: 12,
-  },
-  addressHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
-  },
-  addressLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#5C4033',
-    marginLeft: 6,
+    marginBottom: 12,
+    backgroundColor: '#F8F9FA',
+    padding: 8,
+    borderRadius: 6,
   },
   addressText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-    paddingLeft: 22,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#666',
-    marginLeft: 6,
-  },
-  // Thêm các styles bị thiếu
-  voucherSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    backgroundColor: '#F0FDF4',
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-  },
-  voucherText: {
-    fontSize: 13,
-    color: '#166534',
-    fontWeight: '600',
-    marginLeft: 6,
-    flex: 1,
-  },
-  discountText: {
     fontSize: 12,
-    color: '#15803D',
-    fontWeight: '500',
-    marginLeft: 4,
-  },
-  noteSection: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-    backgroundColor: '#F8F6F3',
-    padding: 12,
-    borderRadius: 8,
-  },
-  noteText: {
-    fontSize: 13,
     color: '#666',
-    fontStyle: 'italic',
     marginLeft: 6,
     flex: 1,
   },
@@ -745,152 +591,113 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingTop: 12,
+    marginBottom: 12,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
+    borderTopColor: '#F0F0F0',
   },
   totalLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#333',
     fontWeight: '500',
   },
-  originalPrice: {
-    fontSize: 12,
+  paymentMethod: {
+    fontSize: 11,
     color: '#999',
-    textDecorationLine: 'line-through',
     marginTop: 2,
   },
   totalAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#5C4033',
   },
   actionSection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
   detailButton: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#F8F6F3',
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#5C4033',
+    borderColor: '#E0D5C7',
   },
   detailButtonText: {
+    fontSize: 13,
     color: '#5C4033',
-    fontSize: 14,
     fontWeight: '600',
-    marginLeft: 6,
-  },
-  cancelButton: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFF5F5',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FF3B30',
-  },
-  cancelButtonText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
   },
   reviewButton: {
-    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: '#FFF9C4',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#FFD700',
+    borderColor: '#FDE047',
   },
   reviewButtonText: {
-    color: '#B45309',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  reorderButton: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#5C4033',
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  reorderButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  progressSection: {
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E5E5E5',
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#5856D6',
-    borderRadius: 2,
-  },
-  progressText: {
     fontSize: 13,
-    color: '#5856D6',
-    fontWeight: '500',
-    textAlign: 'center',
+    color: '#B45309',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  cancelButton: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  cancelButtonText: {
+    fontSize: 13,
+    color: '#DC2626',
+    fontWeight: '600',
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 80,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#333',
-    marginTop: 24,
+    marginTop: 16,
     marginBottom: 8,
-    textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
-    paddingHorizontal: 32,
     marginBottom: 24,
   },
-  shopNowButton: {
+  shopButton: {
     backgroundColor: '#5C4033',
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 25,
+    borderRadius: 20,
   },
-  shopNowText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  shopButtonText: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '600',
   },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
 });
+export default OrderHistoryScreen;
