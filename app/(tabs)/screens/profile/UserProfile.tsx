@@ -57,7 +57,7 @@ const UserProfileScreen = () => {
     const [user, setUser] = useState<User | null>(null);
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
-
+    const [email,SetEmail]=useState('');
     // State cho các thông tin hiển thị
     const [profileData, setProfileData] = useState({
         _id: '',
@@ -80,6 +80,10 @@ const UserProfileScreen = () => {
             const response = await axios.get(`${BASE_URL}/users/${userId}`);
             if (response.data && response.data.success !== false) {
                 setUser(response.data.data); // ✅ cập nhật user
+                console.log("User",response.data.data)
+                const FectEmail= await axios.get(`${BASE_URL}/account/${response.data.data.account_id}`)
+                console.log("Email trả về:", FectEmail.data.data.email);
+                SetEmail(FectEmail.data.data.email)
                 return response.data.data;
             } else {
                 console.error('❌ Error loading user:', response.data.message);
@@ -444,7 +448,7 @@ const UserProfileScreen = () => {
 
                     <InfoItem
                         label="Email"
-                        value={user?.email || ''}
+                        value={email}
                         editable={false}
                     />
 

@@ -28,6 +28,13 @@ const UserVoucherList = ({ data }: { data: UserVoucher[] }) => {
     );
   });
 
+  // Ghi log danh sách voucher đã được lọc
+  console.log('Voucher được render ra màn hình:', validVouchers.map(v => ({
+    id: v._id,
+    code: typeof v.voucher_id === 'object' ? v.voucher_id.code : v.voucher_id,
+    status: v.status
+  })));
+
   if (validVouchers.length === 0) {
     return (
       <View style={styles.emptyContainer}>

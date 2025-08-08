@@ -1,4 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,29 +14,70 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { BASE_URL } from '../../services/api';
 import checkoutService, { PendingOrder } from '../../services/checkoutService';
+import { registerForPushNotificationsAsync } from '../notification/PushTokenService';
+import { getUserData } from '../utils/storage';
 
 interface PaymentConfirmationProps {
   navigation: any;
   route: {
     params: {
       pendingOrder: PendingOrder;
+      selectedItemIds: string[]; // nếu đang truyền thêm selectedItemIds
+      sizeQuantityList:[];         // thêm dòng này để nhận sizeIds
+      voucher_User: string;
     };
   };
 }
+
+
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+     shouldShowBanner: true,     // Thay thế shouldShowAlert
+                shouldShowList: true,       // Hiển thị trong Notification Center
+                shouldPlaySound: true,
+                shouldSetBadge: true,
+  }),
+});
+
+
 
 const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
   navigation,
   route
 }) => {
   const { pendingOrder } = route.params;
+  const { sizeQuantityList } = route.params;
+    const { voucher_User } = route.params;
+
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(300); // 5 phút
   const [isTimeoutHandled, setIsTimeoutHandled] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const [pushToken,setPushToken]=useState('')
+  
+  useEffect(() => {
+    console.log("pendingOrder:", pendingOrder); // pendingOrder cần được định nghĩa bên ngoài
+    console.log("sizeQuantityList:", sizeQuantityList);
+    console.log("voucher_User:", voucher_User);
+    fetchDatatoken();
+  }, []);
 
 
-
+  const fetchDatatoken = async () => {
+    try {
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        setPushToken(token);
+        console.log('🔐 Token:', token);
+        // Gửi token này về server nếu cần
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi lấy push token:', error);
+    }
+  };
 
   useEffect(() => {
     const backAction = () => {
@@ -124,10 +167,54 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
 
   try {
     setLoading(true);
-    await checkoutService.confirmPayment(
-      pendingOrder.billId,
-      pendingOrder.orderData.items
-    );
+    // await checkoutService.confirmPayment(
+    //   pendingOrder.billId,
+    //   pendingOrder.orderData.items
+    // );
+    await checkoutService.clearSelectedCartItems(pendingOrder.orderData.items.map(item => item.id));
+    console.log("Dữ liệu data: ",pendingOrder.orderData.items)
+ const userId = await getUserData('profileId');
+ console.log("userid :",userId)
+await axios.put(`${BASE_URL}/voucher_user/by-voucher/${userId}/status`, {
+  status: 'inactive',
+});
+
+
+
+
+
+for (const item of sizeQuantityList) {
+  const payload = {
+    sizeId: item.sizeId,
+    quantityToDecrease: item.quantity,
+  };
+
+  try {
+    const res = await axios.post(`${BASE_URL}/decrease-quantity`, payload);
+    console.log("✔️ Giảm thành công:", res.data);
+  } catch (err) {
+    console.error("❌ Giảm thất bại:", err.response?.data || err.message);
+  }
+}
+      await Notifications.scheduleNotificationAsync({
+        content: {
+  to: `${pushToken}`,
+  sound: "custom",
+  title: "Đặt hàng thành công !",
+  body: "Vui lòng chờ Admin xác nhận đơn hàng",
+  data: { "foo": "bar" },
+   android: {
+    channelId: "orders",
+    icon: "notification-icon", 
+    color: "#5C4033",
+  }
+},
+
+
+
+        trigger: null, // Gửi ngay lập tức
+      });
+
 
     Alert.alert(
       'Thành công!',
@@ -154,10 +241,13 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
     const { paymentMethod } = pendingOrder.orderData;
 
     if (paymentMethod === 'VNPAY') {
+      
       // Redirect to VNPAY payment
       navigation.navigate('payment', {
         total: pendingOrder.orderData.total,
-        billId: pendingOrder.billId
+        billId: pendingOrder.billId,
+        sizeQuantityList,
+        pendingOrder
       });
     } else {
       // COD or other methods - confirm directly

@@ -2,6 +2,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,7 +17,6 @@ import CustomSnackbar from '../../../(tabs)/component/CustomSnackbar'; // ✅ Đ
 import { loginAuthService } from '../../services/LoginAuthService';
 import { validateLoginForm } from '../../utils/validation';
 import { clearAllStorage, saveUserData } from '../utils/storage';
-
 // Kiểu dữ liệu navigation
 
 type RootStackParamList = {
@@ -54,7 +54,14 @@ export default function Login() {
 
   setLoading(true);
   const result = await loginAuthService.login(email, password);
-   
+        await Notifications.scheduleNotificationAsync({
+           content: {
+             title: ' Đăng nhập thành công!',
+             body: `Đơn hàng của bạn đã được đặt, vui lòng chờ Admin xác nhận`,
+             sound: 'default',
+           },
+           trigger: null, // Gửi ngay lập tức
+         });
   // ✅ In rõ role lấy được
   const role = result?.data?.account?.role;
   console.log('🔍 Role lấy được:', role);
@@ -157,6 +164,7 @@ export default function Login() {
           routes: [{ name: 'ShipTabNavigator' }],
         });
       } else {
+        
         console.log('👉 Điều hướng vào TabNavigator');
         navigation.reset({
           index: 0,

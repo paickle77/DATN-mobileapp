@@ -101,6 +101,7 @@ class CheckoutService {
           title: item.product_id.name,
           product_id: item.product_id,
           Account_id: item.Account_id,
+          Size_id:item.size_id,
           Size: item.size_id.size,
           price: finalPrice,
           image: item.product_id.image_url,
@@ -138,16 +139,7 @@ class CheckoutService {
   }
 
   async createPendingBill(
-    addresses: Address[],
-    listCart: CartItem[],
-    note: string,
-    selectedShippingMethod: string,
-    selectedPaymentName: string,
-    originalTotal: number,
-    finalTotal: number,
-    discountAmount: number,
-    voucherCode?: string
-  ): Promise<PendingOrder> {
+addresses: Address[], listCart: CartItem[], note: string, selectedShippingMethod: string, selectedPaymentName: string, originalTotal: number, finalTotal: number, discountAmount: number, voucherCode?: string, sizeID?: never[]  ): Promise<PendingOrder> {
     try {
       const accountId = await getUserData('accountId');
       console.log("Account ID:", accountId);
