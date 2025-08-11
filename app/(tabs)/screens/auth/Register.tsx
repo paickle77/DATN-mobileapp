@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateRegisterForm } from '../../utils/validation';
+import { clearAllStorage } from '../utils/storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -36,6 +37,7 @@ export default function Register() {
   // ✅ SỬA: Xử lý đăng ký
   const handleRegister = async () => {
     // Reset errors
+     await clearAllStorage();
     setErrors({
       email: '',
       password: '',

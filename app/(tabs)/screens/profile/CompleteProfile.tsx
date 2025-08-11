@@ -24,6 +24,7 @@ type RootStackParamList = {
     phone?: string;
     gender?: string;
     avatar?: string;
+    profile_id?: string; // ✅ THÊM: Thêm profile_id vào params
   };
 };
 
@@ -179,6 +180,7 @@ export default function CompleteProfile() {
               // ✅ Chuyển đến màn hình tiếp theo với account_id
               navigation.navigate('Address', {
                 account_id: account_id,
+                profile_id: user._id,
                 fullName,
                 phone: formattedPhone,
                 gender,

@@ -24,25 +24,21 @@ interface PaymentConfirmationProps {
   route: {
     params: {
       pendingOrder: PendingOrder;
-      selectedItemIds: string[]; // nếu đang truyền thêm selectedItemIds
-      sizeQuantityList:[];         // thêm dòng này để nhận sizeIds
+      selectedItemIds: string[];
+      sizeQuantityList: [];
       voucher_User: string;
     };
   };
 }
 
-
-
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-     shouldShowBanner: true,     // Thay thế shouldShowAlert
-                shouldShowList: true,       // Hiển thị trong Notification Center
-                shouldPlaySound: true,
-                shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
   }),
 });
-
-
 
 const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
   navigation,
@@ -50,21 +46,20 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
 }) => {
   const { pendingOrder } = route.params;
   const { sizeQuantityList } = route.params;
-    const { voucher_User } = route.params;
+  const { voucher_User } = route.params;
 
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(300); // 5 phút
   const [isTimeoutHandled, setIsTimeoutHandled] = useState(false);
   const timerRef = useRef<number | null>(null);
-  const [pushToken,setPushToken]=useState('')
-  
+  const [pushToken, setPushToken] = useState('')
+
   useEffect(() => {
-    console.log("pendingOrder:", pendingOrder); // pendingOrder cần được định nghĩa bên ngoài
+    console.log("pendingOrder:", pendingOrder);
     console.log("sizeQuantityList:", sizeQuantityList);
     console.log("voucher_User:", voucher_User);
     fetchDatatoken();
   }, []);
-
 
   const fetchDatatoken = async () => {
     try {
@@ -72,7 +67,6 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
       if (token) {
         setPushToken(token);
         console.log('🔐 Token:', token);
-        // Gửi token này về server nếu cần
       }
     } catch (error) {
       console.error('❌ Lỗi khi lấy push token:', error);
@@ -92,7 +86,6 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
             onPress: handleCancelOrder,
           }
         ]
-
       );
       setIsTimeoutHandled(false)
       return true;
@@ -106,7 +99,7 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
         if (prev <= 1) {
           if (!isTimeoutHandled) {
             setIsTimeoutHandled(true);
-            clearInterval(timerRef.current!); // dừng timer khi hết giờ
+            clearInterval(timerRef.current!);
             handleTimeout();
           }
           return 0;
@@ -127,7 +120,11 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatPrice = (price: number) => {
+  // ✅ FIX: Xử lý safe cho formatPrice
+  const formatPrice = (price: number | null | undefined) => {
+    if (price === null || price === undefined || isNaN(price)) {
+      return '0đ';
+    }
     return price.toLocaleString('vi-VN') + 'đ';
   };
 
@@ -147,101 +144,104 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
   };
 
   const handleCancelOrder = async () => {
-  if (timerRef.current !== null) clearInterval(timerRef.current);
-  setIsTimeoutHandled(true);
+    if (timerRef.current !== null) clearInterval(timerRef.current);
+    setIsTimeoutHandled(true);
 
-  try {
-    setLoading(true);
-    await checkoutService.cancelPendingBill(pendingOrder.billId);
-    navigation.navigate('TabNavigator', { screen: 'Home' });
-  } catch (error) {
-    Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const handleConfirmPayment = async () => {
-  if (timerRef.current !== null) clearInterval(timerRef.current);
-  setIsTimeoutHandled(true);
-
-  try {
-    setLoading(true);
-    // await checkoutService.confirmPayment(
-    //   pendingOrder.billId,
-    //   pendingOrder.orderData.items
-    // );
-    await checkoutService.clearSelectedCartItems(pendingOrder.orderData.items.map(item => item.id));
-    console.log("Dữ liệu data: ",pendingOrder.orderData.items)
- const userId = await getUserData('profileId');
- console.log("userid :",userId)
-await axios.put(`${BASE_URL}/voucher_user/by-voucher/${userId}/status`, {
-  status: 'inactive',
-});
-
-
-
-
-
-for (const item of sizeQuantityList) {
-  const payload = {
-    sizeId: item.sizeId,
-    quantityToDecrease: item.quantity,
+    try {
+      setLoading(true);
+      await checkoutService.cancelPendingBill(pendingOrder.billId);
+      navigation.navigate('TabNavigator', { screen: 'Home' });
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  try {
-    const res = await axios.post(`${BASE_URL}/decrease-quantity`, payload);
-    console.log("✔️ Giảm thành công:", res.data);
-  } catch (err) {
-    console.error("❌ Giảm thất bại:", err.response?.data || err.message);
-  }
-}
+  const handleConfirmPayment = async () => {
+    if (timerRef.current !== null) clearInterval(timerRef.current);
+    setIsTimeoutHandled(true);
+
+    try {
+      setLoading(true);
+      
+      await checkoutService.clearSelectedCartItems(pendingOrder.orderData.items.map(item => item.id));
+      console.log("Dữ liệu data: ", pendingOrder.orderData.items);
+      
+      const userId = await getUserData('profileId');
+      console.log("userid :", userId);
+
+      // ✅ CHỈ GỌI API UPDATE VOUCHER KHI THỰC SỰ CÓ SỬ DỤNG VOUCHER
+      if (pendingOrder.orderData.voucherCode || voucher_User) {
+        try {
+          await axios.put(`${BASE_URL}/voucher_user/by-voucher/${userId}/status`, {
+            status: 'inactive',
+          });
+          console.log("✅ Đã cập nhật trạng thái voucher");
+        } catch (voucherError) {
+          console.error("❌ Lỗi khi cập nhật voucher:", voucherError);
+        }
+      } else {
+        console.log("ℹ️ Không có voucher được sử dụng, bỏ qua việc cập nhật trạng thái");
+      }
+
+      // Giảm số lượng sản phẩm trong kho
+      for (const item of sizeQuantityList) {
+        const payload = {
+          sizeId: item.sizeId,
+          quantityToDecrease: item.quantity,
+        };
+
+        try {
+          const res = await axios.post(`${BASE_URL}/decrease-quantity`, payload);
+          console.log("✔️ Giảm thành công:", res.data);
+        } catch (err) {
+          console.error("❌ Giảm thất bại:", err.response?.data || err.message);
+        }
+      }
+
+      // Gửi thông báo push notification
       await Notifications.scheduleNotificationAsync({
         content: {
-  to: `${pushToken}`,
-  sound: "custom",
-  title: "Đặt hàng thành công !",
-  body: "Vui lòng chờ Admin xác nhận đơn hàng",
-  data: { "foo": "bar" },
-   android: {
-    channelId: "orders",
-    icon: "notification-icon", 
-    color: "#5C4033",
-  }
-},
-
-
-
-        trigger: null, // Gửi ngay lập tức
+          to: `${pushToken}`,
+          sound: "custom",
+          title: "Đặt hàng thành công !",
+          body: "Vui lòng chờ Admin xác nhận đơn hàng",
+          data: { "foo": "bar" },
+          android: {
+            channelId: "orders",
+            icon: "notification-icon", 
+            color: "#5C4033",
+          }
+        },
+        trigger: null,
       });
 
-
-    Alert.alert(
-      'Thành công!',
-      'Đơn hàng đã được xác nhận thành công.',
-      [
-        {
-          text: 'Xem đơn hàng',
-          onPress: () => navigation.navigate('OrderHistoryScreen')
-        },
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('TabNavigator', { screen: 'Home' })
-        }
-      ]
-    );
-  } catch (error) {
-    Alert.alert('Lỗi', error.message || 'Không thể xác nhận đơn hàng');
-  } finally {
-    setLoading(false);
-  }
-};
+      Alert.alert(
+        'Thành công!',
+        'Đơn hàng đã được xác nhận thành công.',
+        [
+          {
+            text: 'Xem đơn hàng',
+            onPress: () => navigation.navigate('OrderHistoryScreen')
+          },
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('TabNavigator', { screen: 'Home' })
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Lỗi', error.message || 'Không thể xác nhận đơn hàng');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePaymentMethod = () => {
     const { paymentMethod } = pendingOrder.orderData;
 
     if (paymentMethod === 'VNPAY') {
-      
       // Redirect to VNPAY payment
       navigation.navigate('payment', {
         total: pendingOrder.orderData.total,
@@ -253,6 +253,32 @@ for (const item of sizeQuantityList) {
       // COD or other methods - confirm directly
       handleConfirmPayment();
     }
+  };
+
+  // ✅ FIX: Tính phí ship chính xác từ orderData
+  const shippingFee = pendingOrder.orderData.shippingFee || 0;
+
+  // ✅ FIX: Chuẩn hóa hiển thị phương thức thanh toán
+  const getDisplayPaymentMethod = (paymentMethod: string) => {
+    const method = paymentMethod?.toLowerCase() || '';
+    
+    if (method.includes('cod') || method.includes('tiền mặt') || method.includes('khi nhận')) {
+      return 'Thanh toán khi nhận hàng (COD)';
+    }
+    if (method.includes('momo')) {
+      return 'Ví MoMo';
+    }
+    if (method.includes('vnpay')) {
+      return 'VNPAY';
+    }
+    if (method.includes('zalopay')) {
+      return 'ZaloPay';
+    }
+    if (method.includes('chuyển khoản')) {
+      return 'Chuyển khoản ngân hàng';
+    }
+    
+    return paymentMethod;
   };
 
   if (loading) {
@@ -270,11 +296,11 @@ for (const item of sizeQuantityList) {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.iconContainer}>
-            <Ionicons name="card-outline" size={60} color="#5C4033" />
+            <Ionicons name="storefront-outline" size={60} color="#5C4033" />
           </View>
-          <Text style={styles.title}>Đang chờ thanh toán</Text>
+          <Text style={styles.title}>Xác nhận đơn hàng</Text>
           <Text style={styles.subtitle}>
-            Vui lòng hoàn tất thanh toán trong thời gian quy định
+            🧁 Cảm ơn bạn đã đặt bánh! Vui lòng xác nhận đơn hàng
           </Text>
 
           {/* Countdown */}
@@ -288,7 +314,7 @@ for (const item of sizeQuantityList) {
 
         {/* Order Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin đơn hàng</Text>
+          <Text style={styles.sectionTitle}>🧾 Thông tin đơn hàng</Text>
 
           <View style={styles.orderInfo}>
             <View style={styles.infoRow}>
@@ -297,12 +323,14 @@ for (const item of sizeQuantityList) {
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Phương thức thanh toán:</Text>
-              <Text style={styles.infoValue}>{pendingOrder.orderData.paymentMethod}</Text>
+              <Text style={styles.infoLabel}>Thanh toán:</Text>
+              <Text style={styles.infoValue}>
+                {getDisplayPaymentMethod(pendingOrder.orderData.paymentMethod)}
+              </Text>
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Phương thức vận chuyển:</Text>
+              <Text style={styles.infoLabel}>Vận chuyển:</Text>
               <Text style={styles.infoValue}>{pendingOrder.orderData.shippingMethod}</Text>
             </View>
           </View>
@@ -310,29 +338,43 @@ for (const item of sizeQuantityList) {
 
         {/* Address */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
+          <Text style={styles.sectionTitle}>📍 Địa chỉ giao hàng</Text>
           <View style={styles.addressCard}>
-            <Text style={styles.addressName}>{pendingOrder.orderData.address?.name}</Text>
-            <Text style={styles.addressPhone}>{pendingOrder.orderData.address?.phone}</Text>
-            <Text style={styles.addressText}>
-              {`${pendingOrder.orderData.address?.detail_address}, ${pendingOrder.orderData.address?.ward}, ${pendingOrder.orderData.address?.district}, ${pendingOrder.orderData.address?.city}`}
-            </Text>
+            <View style={styles.addressHeader}>
+              <Ionicons name="person" size={16} color="#5C4033" />
+              <Text style={styles.addressName}>{pendingOrder.orderData.address?.name}</Text>
+            </View>
+            <View style={styles.addressRow}>
+              <Ionicons name="call" size={14} color="#666" />
+              <Text style={styles.addressPhone}>{pendingOrder.orderData.address?.phone}</Text>
+            </View>
+            <View style={styles.addressRow}>
+              <Ionicons name="location" size={14} color="#666" />
+              <Text style={styles.addressText}>
+                {`${pendingOrder.orderData.address?.detail_address}, ${pendingOrder.orderData.address?.ward}, ${pendingOrder.orderData.address?.district}, ${pendingOrder.orderData.address?.city}`}
+              </Text>
+            </View>
           </View>
         </View>
 
         {/* Products */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sản phẩm ({pendingOrder.orderData.items.length})</Text>
+          <Text style={styles.sectionTitle}>🧁 Sản phẩm đã đặt ({pendingOrder.orderData.items.length})</Text>
           {pendingOrder.orderData.items.map((item) => (
             <View key={item.id} style={styles.productCard}>
               <Image source={{ uri: item.image }} style={styles.productImage} />
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{item.title}</Text>
-                <Text style={styles.productVariant}>{item.Size}</Text>
-                <View style={styles.productBottom}>
-                  <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
-                  <Text style={styles.productQuantity}>x{item.quantity}</Text>
+                <View style={styles.productDetails}>
+                  <Text style={styles.productVariant}>Size: {item.Size}</Text>
+                  <Text style={styles.productQuantity}>SL: {item.quantity}</Text>
                 </View>
+                <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
+              </View>
+              <View style={styles.productTotal}>
+                <Text style={styles.productTotalText}>
+                  {formatPrice(item.price * item.quantity)}
+                </Text>
               </View>
             </View>
           ))}
@@ -340,27 +382,34 @@ for (const item of sizeQuantityList) {
 
         {/* Payment Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
+          <Text style={styles.sectionTitle}>💰 Chi tiết thanh toán</Text>
 
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tổng tiền hàng:</Text>
+            <Text style={styles.summaryLabel}>Tạm tính:</Text>
             <Text style={styles.summaryValue}>
               {formatPrice(pendingOrder.orderData.originalTotal)}
             </Text>
           </View>
 
-          {pendingOrder.orderData.discountAmount > 0 && (
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Phí giao hàng:</Text>
+            <Text style={styles.summaryValue}>
+              {shippingFee > 0 ? formatPrice(shippingFee) : 'Miễn phí'}
+            </Text>
+          </View>
+
+          {(pendingOrder.orderData.discountAmount || 0) > 0 && (
             <>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Giảm giá:</Text>
                 <Text style={[styles.summaryValue, { color: '#34C759' }]}>
-                  -{formatPrice(pendingOrder.orderData.discountAmount)}
+                  -{formatPrice(pendingOrder.orderData.discountAmount || 0)}
                 </Text>
               </View>
 
               {pendingOrder.orderData.voucherCode && (
                 <View style={styles.voucherRow}>
-                  <Ionicons name="pricetag" size={16} color="#5C4033" />
+                  <Ionicons name="ticket" size={16} color="#5C4033" />
                   <Text style={styles.voucherCode}>
                     Mã: {pendingOrder.orderData.voucherCode}
                   </Text>
@@ -368,6 +417,8 @@ for (const item of sizeQuantityList) {
               )}
             </>
           )}
+
+          <View style={styles.divider} />
 
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
@@ -380,8 +431,11 @@ for (const item of sizeQuantityList) {
         {/* Note */}
         {pendingOrder.orderData.note && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Ghi chú</Text>
-            <Text style={styles.noteText}>"{pendingOrder.orderData.note}"</Text>
+            <Text style={styles.sectionTitle}>📝 Ghi chú</Text>
+            <View style={styles.noteContainer}>
+              <Ionicons name="chatbubble-outline" size={16} color="#5C4033" />
+              <Text style={styles.noteText}>"{pendingOrder.orderData.note}"</Text>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -404,7 +458,7 @@ for (const item of sizeQuantityList) {
         >
           <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
           <Text style={styles.confirmButtonText}>
-            {pendingOrder.orderData.paymentMethod === 'VNPAY' ? 'Thanh toán' : 'Xác nhận'}
+            {pendingOrder.orderData.paymentMethod === 'VNPAY' ? 'Thanh toán' : 'Xác nhận đặt bánh'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -415,13 +469,13 @@ for (const item of sizeQuantityList) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FFF8F3',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FFF8F3',
   },
   loadingText: {
     marginTop: 16,
@@ -437,26 +491,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: '#F0E6D6',
   },
   iconContainer: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#F8F6F3',
+    backgroundColor: '#FFF8F3',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#F0E6D6',
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#333',
+    color: '#5C4033',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#8B6914',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -464,17 +520,17 @@ const styles = StyleSheet.create({
   countdownContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FF6B35',
+    borderColor: '#F59E0B',
   },
   countdownText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF6B35',
+    color: '#D97706',
     marginLeft: 8,
   },
   section: {
@@ -482,17 +538,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 20,
     paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F0E6D6',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: '#5C4033',
     marginBottom: 16,
   },
   orderInfo: {
-    backgroundColor: '#F8F6F3',
+    backgroundColor: '#FFF8F3',
     borderRadius: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0E6D6',
   },
   infoRow: {
     flexDirection: 'row',
@@ -502,48 +563,63 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#8B5A2B',
     flex: 1,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#5C4033',
     flex: 1,
     textAlign: 'right',
   },
   addressCard: {
-    backgroundColor: '#F8F6F3',
+    backgroundColor: '#FFF8F3',
     borderRadius: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0E6D6',
+  },
+  addressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   addressName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    color: '#5C4033',
+    marginLeft: 8,
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
   },
   addressPhone: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
+    color: '#8B5A2B',
+    marginLeft: 6,
   },
   addressText: {
     fontSize: 14,
-    color: '#333',
+    color: '#8B5A2B',
     lineHeight: 20,
+    marginLeft: 6,
+    flex: 1,
   },
   productCard: {
     flexDirection: 'row',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#F0E6D6',
   },
   productImage: {
     width: 60,
     height: 60,
     borderRadius: 8,
     marginRight: 12,
+    backgroundColor: '#F9F9F9',
   },
   productInfo: {
     flex: 1,
@@ -551,27 +627,35 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#5C4033',
     marginBottom: 4,
+  },
+  productDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   productVariant: {
     fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  productBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  productPrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#5C4033',
+    color: '#8B5A2B',
   },
   productQuantity: {
     fontSize: 12,
-    color: '#666',
+    color: '#8B5A2B',
+  },
+  productPrice: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#D97706',
+  },
+  productTotal: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  productTotalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5C4033',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -581,12 +665,12 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#8B5A2B',
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: '#5C4033',
   },
   voucherRow: {
     flexDirection: 'row',
@@ -598,33 +682,66 @@ const styles = StyleSheet.create({
   },
   voucherCode: {
     fontSize: 12,
-    color: '#5C4033',
+    color: '#15803D',
     marginLeft: 6,
     fontWeight: '500',
   },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0E6D6',
+    marginVertical: 12,
+  },
   totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopWidth: 2,
+    borderTopColor: '#D97706',
     paddingTop: 12,
     marginTop: 8,
+    backgroundColor: '#FEF3C7',
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#5C4033',
   },
   totalValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#5C4033',
+    color: '#D97706',
+  },
+  noteContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF8F3',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F0E6D6',
   },
   noteText: {
     fontSize: 14,
-    color: '#666',
+    color: '#8B5A2B',
     fontStyle: 'italic',
-    backgroundColor: '#F8F6F3',
-    padding: 12,
-    borderRadius: 8,
+    lineHeight: 20,
+    marginLeft: 8,
+    flex: 1,
+  },
+  sweetMessage: {
+    margin: 16,
+    backgroundColor: '#FEF3C7',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    alignItems: 'center',
+  },
+  sweetMessageText: {
+    fontSize: 14,
+    color: '#D97706',
+    textAlign: 'center',
+    fontWeight: '500',
     lineHeight: 20,
   },
   bottomBar: {
@@ -633,7 +750,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopColor: '#F0E6D6',
     gap: 12,
   },
   cancelButton: {
@@ -641,16 +758,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#FEF2F2',
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FF3B30',
+    borderColor: '#FECACA',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF3B30',
+    color: '#DC2626',
     marginLeft: 8,
   },
   confirmButton: {

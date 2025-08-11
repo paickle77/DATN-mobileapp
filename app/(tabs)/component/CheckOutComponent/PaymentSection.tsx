@@ -16,13 +16,72 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
   const getPaymentIcon = () => {
     if (!selectedPaymentMethod) return null;
 
-    if (selectedPaymentMethod === 'cod') return 'cash-outline';
-    if (selectedPaymentMethod.includes('momo')) return 'wallet-outline';
-    if (selectedPaymentMethod.includes('zalopay')) return 'wallet-outline';
-    if (selectedPaymentMethod.includes('vnpay')) return 'wallet-outline';
-    if (selectedPaymentMethod.includes('card')) return 'card-outline';
+    // ✅ FIX: Cập nhật logic hiển thị phương thức thanh toán
+    if (selectedPaymentMethod === 'cod' || selectedPaymentName?.toLowerCase().includes('tiền mặt') || selectedPaymentName?.toLowerCase().includes('khi nhận')) {
+      return 'cash-outline';
+    }
+    if (selectedPaymentMethod.includes('momo') || selectedPaymentName?.toLowerCase().includes('momo')) {
+      return 'wallet-outline';
+    }
+    if (selectedPaymentMethod.includes('zalopay') || selectedPaymentName?.toLowerCase().includes('zalopay')) {
+      return 'wallet-outline';
+    }
+    if (selectedPaymentMethod.includes('vnpay') || selectedPaymentName?.toLowerCase().includes('vnpay')) {
+      return 'wallet-outline';
+    }
+    if (selectedPaymentMethod.includes('card') || selectedPaymentName?.toLowerCase().includes('chuyển khoản')) {
+      return 'card-outline';
+    }
 
     return 'wallet-outline';
+  };
+
+  // ✅ FIX: Chuẩn hóa tên hiển thị
+  const getDisplayPaymentName = () => {
+    if (!selectedPaymentName) return 'Chọn phương thức thanh toán';
+
+    // Chuẩn hóa tên hiển thị
+    const name = selectedPaymentName.toLowerCase();
+    
+    if (name.includes('cod') || name.includes('tiền mặt') || name.includes('khi nhận')) {
+      return 'Thanh toán khi nhận hàng (COD)';
+    }
+    if (name.includes('momo')) {
+      return 'Ví MoMo';
+    }
+    if (name.includes('vnpay')) {
+      return 'VNPAY';
+    }
+    if (name.includes('zalopay')) {
+      return 'ZaloPay';
+    }
+    if (name.includes('chuyển khoản')) {
+      return 'Chuyển khoản ngân hàng';
+    }
+
+    return selectedPaymentName;
+  };
+
+  const getPaymentColor = () => {
+    if (!selectedPaymentMethod) return '#999';
+
+    const method = selectedPaymentMethod.toLowerCase();
+    const name = selectedPaymentName?.toLowerCase() || '';
+
+    if (method === 'cod' || name.includes('tiền mặt') || name.includes('khi nhận')) {
+      return '#34C759'; // Xanh lá cho COD
+    }
+    if (method.includes('momo') || name.includes('momo')) {
+      return '#A50064'; // Màu MoMo
+    }
+    if (method.includes('vnpay') || name.includes('vnpay')) {
+      return '#1E88E5'; // Màu VNPAY
+    }
+    if (method.includes('zalopay') || name.includes('zalopay')) {
+      return '#0068FF'; // Màu ZaloPay
+    }
+
+    return '#007AFF'; // Màu mặc định
   };
 
   return (
@@ -38,10 +97,10 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
               <Ionicons
                 name={getPaymentIcon() as keyof typeof Ionicons.glyphMap}
                 size={20}
-                color="#007AFF"
+                color={getPaymentColor()}
               />
-              <Text style={styles.paymentText}>
-                {selectedPaymentName}
+              <Text style={[styles.paymentText, { color: getPaymentColor() }]}>
+                {getDisplayPaymentName()}
               </Text>
             </>
           ) : (
@@ -97,7 +156,7 @@ const styles = StyleSheet.create({
   },
   paymentText: {
     fontSize: 14,
-    color: '#000',
+    fontWeight: '500',
     marginLeft: 8,
   },
   paymentPlaceholder: {

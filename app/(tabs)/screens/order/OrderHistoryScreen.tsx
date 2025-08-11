@@ -19,25 +19,20 @@ import {
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
 
-const { width } = Dimensions.get('window');
+// const { width } = Dimensions.get('window');
 
 type OrderType = {
   __v: number;
   _id: string;
   Account_id: string | { _id: string };
-  address_id: {
-    __v: number;
-    _id: string;
-    city: string;
-    detail_address: string;
-    district: string;
-    isDefault: boolean;
-    latitude: string;
-    longitude: string;
+  address_id: string | null;
+  address_snapshot?: {
     name: string;
     phone: string;
-    user_id: string;
+    detail: string;
     ward: string;
+    district: string;
+    city: string;
   };
   createdAt: string;
   created_at: string;
@@ -49,6 +44,7 @@ type OrderType = {
   original_total?: number;
   discount_amount?: number;
   voucher_code?: string;
+  shipping_fee?: number;
   payment_confirmed_at?: string;
   delivered_at?: string;
   updatedAt: string;
@@ -79,63 +75,65 @@ const OrderHistoryScreen = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('all');
 
-  // Tabs được tối ưu cho mobile - chỉ giữ những tab quan trọng
+  // Tabs được tối ưu cho shop bánh
   const tabs = [
-    { key: 'all', title: 'Tất cả', icon: 'apps' },
-    { key: 'pending', title: 'Chờ xác nhận', icon: 'time' },
-    { key: 'shipping', title: 'Đang giao', icon: 'car' },
-    { key: 'done', title: 'Hoàn thành', icon: 'checkmark-done-circle' },
-    { key: 'cancelled', title: 'Đã hủy', icon: 'close-circle' },
+    { key: 'all', title: 'Tất cả', icon: 'apps', color: '#5C4033' },
+    { key: 'pending', title: 'Chờ xác nhận', icon: 'time', color: '#FF9500' },
+    { key: 'shipping', title: 'Đang làm', icon: 'cafe', color: '#007AFF' },
+    { key: 'done', title: 'Hoàn thành', icon: 'checkmark-done-circle', color: '#34C759' },
+    { key: 'cancelled', title: 'Đã hủy', icon: 'close-circle', color: '#FF3B30' },
   ];
 
   const getStatusConfig = (status: string) => {
-    switch (status.toLowerCase()) {
+    const normalizedStatus = status ? status.toLowerCase() : '';
+
+    switch (normalizedStatus) {
       case 'pending':
         return {
           text: 'Chờ xác nhận',
           color: '#FF9500',
           bgColor: '#FFF5E6',
-          icon: 'time',
-          description: 'Đơn hàng đang chờ xác nhận'
+          icon: 'hourglass-outline',
+          description: 'Đơn bánh đang chờ xác nhận'
         };
       case 'confirmed':
         return {
           text: 'Đang chuẩn bị',
           color: '#007AFF',
           bgColor: '#E6F3FF',
-          icon: 'cube',
-          description: 'Đang đóng gói và chuẩn bị hàng'
+          icon: 'restaurant-outline',
+          description: 'Thầy bánh đang chuẩn bị nguyên liệu'
         };
       case 'ready':
         return {
-          text: 'Chờ shipper',
+          text: 'Sẵn sàng giao',
           color: '#5856D6',
           bgColor: '#F0F0FF',
-          icon: 'hand-left',
-          description: 'Chờ shipper nhận đơn hàng'
+          icon: 'checkmark-circle-outline',
+          description: 'Bánh đã hoàn thành, chờ shipper'
         };
       case 'shipping':
         return {
           text: 'Đang giao',
           color: '#34C759',
           bgColor: '#E6FFE6',
-          icon: 'car',
-          description: 'Shipper đang giao hàng'
+          icon: 'bicycle-outline',
+          description: 'Shipper đang giao bánh đến bạn'
         };
       case 'done':
         return {
           text: 'Hoàn thành',
           color: '#28A745',
           bgColor: '#E6F7E6',
-          icon: 'checkmark-done-circle',
-          description: 'Giao hàng thành công'
+          icon: 'heart-outline',
+          description: 'Giao hàng thành công, cảm ơn bạn!'
         };
       case 'cancelled':
         return {
           text: 'Đã hủy',
           color: '#FF3B30',
           bgColor: '#FFE6E6',
-          icon: 'close-circle',
+          icon: 'sad-outline',
           description: 'Đơn hàng đã bị hủy'
         };
       case 'failed':
@@ -143,15 +141,15 @@ const OrderHistoryScreen = () => {
           text: 'Hoàn trả',
           color: '#DC3545',
           bgColor: '#FFE6E6',
-          icon: 'return-up-back',
+          icon: 'return-up-back-outline',
           description: 'Khách không nhận, đã hoàn trả'
         };
       default:
         return {
-          text: status,
+          text: status || 'N/A',
           color: '#8E8E93',
           bgColor: '#F5F5F5',
-          icon: 'help-circle',
+          icon: 'help-circle-outline',
           description: ''
         };
     }
@@ -189,7 +187,7 @@ const OrderHistoryScreen = () => {
   const getFilteredOrders = () => {
     if (activeTab === 'all') return orders;
 
-    // Nhóm các trạng thái liên quan
+    // Nhóm các trạng thái liên quan cho shop bánh
     if (activeTab === 'shipping') {
       return orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase()));
     }
@@ -229,10 +227,10 @@ const OrderHistoryScreen = () => {
 
   const handleCancelOrder = (orderId: string) => {
     Alert.alert(
-      'Hủy đơn hàng',
-      'Bạn có chắc chắn muốn hủy đơn hàng này?',
+      'Hủy đơn bánh?',
+      'Bạn có chắc chắn muốn hủy đơn bánh này không? Chúng tôi sẽ rất tiếc!',
       [
-        { text: 'Không', style: 'cancel' },
+        { text: 'Không hủy', style: 'cancel' },
         {
           text: 'Hủy đơn',
           style: 'destructive',
@@ -240,7 +238,7 @@ const OrderHistoryScreen = () => {
             try {
               await axios.put(`${BASE_URL}/bills/${orderId}`, { status: 'cancelled' });
               fetchOrders();
-              Alert.alert('Thành công', 'Đơn hàng đã được hủy');
+              Alert.alert('Đã hủy', 'Đơn bánh đã được hủy. Hẹn gặp lại bạn!');
             } catch (error) {
               Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
             }
@@ -250,12 +248,27 @@ const OrderHistoryScreen = () => {
     );
   };
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + 'đ';
+  // ✅ FIX: Kiểm tra null/undefined và số an toàn cho formatPrice
+  const formatPrice = (price?: number | null) => {
+    // Kiểm tra tất cả trường hợp không hợp lệ
+    if (price === null || price === undefined || isNaN(Number(price))) {
+      return '0đ';
+    }
+
+    // Chuyển về số và format
+    const numPrice = Number(price);
+    if (isNaN(numPrice)) {
+      return '0đ';
+    }
+
+    return numPrice.toLocaleString('vi-VN') + 'đ';
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
+
     return date.toLocaleDateString('vi-VN', {
       day: '2-digit',
       month: '2-digit',
@@ -263,6 +276,49 @@ const OrderHistoryScreen = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // ✅ FIX: Chuẩn hóa hiển thị phương thức thanh toán
+  const getDisplayPaymentMethod = (paymentMethod: string) => {
+    if (!paymentMethod) return 'N/A';
+
+    const method = String(paymentMethod).toLowerCase();
+
+    if (method.includes('cod') || method.includes('tiền mặt') || method.includes('khi nhận')) {
+      return 'Tiền mặt';
+    }
+    if (method.includes('momo')) {
+      return 'MoMo';
+    }
+    if (method.includes('vnpay')) {
+      return 'VNPAY';
+    }
+    if (method.includes('zalopay')) {
+      return 'ZaloPay';
+    }
+    if (method.includes('chuyển khoản') || method.includes('banking')) {
+      return 'Chuyển khoản';
+    }
+
+    return paymentMethod;
+  };
+
+  const getPaymentIcon = (paymentMethod: string) => {
+    if (!paymentMethod) return 'help-circle-outline';
+
+    const method = String(paymentMethod).toLowerCase();
+
+    if (method.includes('cod') || method.includes('tiền mặt') || method.includes('khi nhận')) {
+      return 'cash-outline';
+    }
+    if (method.includes('momo') || method.includes('vnpay') || method.includes('zalopay')) {
+      return 'wallet-outline';
+    }
+    if (method.includes('chuyển khoản') || method.includes('banking')) {
+      return 'card-outline';
+    }
+
+    return 'wallet-outline';
   };
 
   const renderOrderCard = ({ item: order }: { item: OrderType }) => {
@@ -278,10 +334,10 @@ const OrderHistoryScreen = () => {
         <View style={styles.orderHeader}>
           <View style={styles.orderIdSection}>
             <Ionicons name="receipt" size={16} color="#5C4033" />
-            <Text style={styles.orderId}>#{order._id.slice(-6).toUpperCase()}</Text>
+            <Text style={styles.orderId}>#{order._id?.slice(-6)?.toUpperCase() || 'N/A'}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-            <Ionicons name={statusConfig.icon} size={12} color={statusConfig.color} />
+            <Ionicons name={statusConfig.icon as any} size={12} color={statusConfig.color} />
             <Text style={[styles.statusText, { color: statusConfig.color }]}>
               {statusConfig.text}
             </Text>
@@ -291,25 +347,68 @@ const OrderHistoryScreen = () => {
         {/* Thông tin cơ bản */}
         <View style={styles.orderInfo}>
           <Text style={styles.statusDescription}>{statusConfig.description}</Text>
-          <Text style={styles.dateText}>{formatDate(order.created_at)}</Text>
+          <Text style={styles.dateText}>Đặt lúc: {formatDate(order.created_at)}</Text>
         </View>
 
-        {/* Địa chỉ giao hàng (rút gọn) */}
+        {/* Địa chỉ giao hàng sử dụng address_snapshot */}
         <View style={styles.addressSection}>
-          <Ionicons name="location" size={14} color="#666" />
-          <Text style={styles.addressText} numberOfLines={1}>
-            {order.address_id?.name} | {order.address_id?.district}, {order.address_id?.city}
-          </Text>
+          <Ionicons name="location-outline" size={14} color="#D97706" />
+          {order.address_snapshot ? (
+            <Text style={styles.addressText} numberOfLines={1}>
+              {order.address_snapshot.name} | {order.address_snapshot.district}, {order.address_snapshot.city}
+            </Text>
+          ) : (
+            <Text style={styles.addressText} numberOfLines={1}>
+              Địa chỉ không khả dụng
+            </Text>
+          )}
         </View>
 
-        {/* Tổng tiền */}
-        <View style={styles.totalSection}>
-          <View>
-            <Text style={styles.totalLabel}>Tổng thanh toán</Text>
-            <Text style={styles.paymentMethod}>{order.payment_method === 'COD' ? 'COD' : 'Chuyển khoản'}</Text>
+        {/* Chi tiết thanh toán */}
+        <View style={styles.paymentDetails}>
+          <View style={styles.priceBreakdown}>
+            {order.original_total && order.original_total > 0 && (
+              <Text style={styles.priceItem}>
+                Tiền bánh: {formatPrice(order.original_total)}
+              </Text>
+            )}
+            {order.shipping_fee && order.shipping_fee > 0 && (
+              <Text style={styles.priceItem}>
+                Phí giao: {formatPrice(order.shipping_fee)}
+              </Text>
+            )}
+            {order.discount_amount && order.discount_amount > 0 && (
+              <Text style={[styles.priceItem, { color: '#34C759' }]}>
+                Giảm giá: -{formatPrice(order.discount_amount)}
+              </Text>
+            )}
           </View>
-          <Text style={styles.totalAmount}>{formatPrice(order.total)}</Text>
+
+          <View style={styles.totalSection}>
+            <View>
+              <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+              <View style={styles.paymentMethodContainer}>
+                <Ionicons
+                  name={getPaymentIcon(order.payment_method) as any}
+                  size={12}
+                  color="#8B5A2B"
+                />
+                <Text style={styles.paymentMethod}>
+                  {getDisplayPaymentMethod(order.payment_method)}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.totalAmount}>{formatPrice(order.total)}</Text>
+          </View>
         </View>
+
+        {/* Voucher info */}
+        {order.voucher_code && (
+          <View style={styles.voucherInfo}>
+            <Ionicons name="ticket-outline" size={12} color="#15803D" />
+            <Text style={styles.voucherText}>Đã dùng mã: {order.voucher_code}</Text>
+          </View>
+        )}
 
         {/* Action buttons */}
         <View style={styles.actionSection}>
@@ -317,6 +416,7 @@ const OrderHistoryScreen = () => {
             style={styles.detailButton}
             onPress={() => handleOrderPress(order._id)}
           >
+            <Ionicons name="eye-outline" size={14} color="#5C4033" />
             <Text style={styles.detailButtonText}>Chi tiết</Text>
           </TouchableOpacity>
 
@@ -325,7 +425,7 @@ const OrderHistoryScreen = () => {
               style={styles.reviewButton}
               onPress={() => handleOrderPress(order._id)}
             >
-              <Ionicons name="star" size={14} color="#FFD700" />
+              <Ionicons name="star-outline" size={14} color="#FFD700" />
               <Text style={styles.reviewButtonText}>Đánh giá</Text>
             </TouchableOpacity>
           )}
@@ -335,6 +435,7 @@ const OrderHistoryScreen = () => {
               style={styles.cancelButton}
               onPress={() => handleCancelOrder(order._id)}
             >
+              <Ionicons name="close-outline" size={14} color="#DC2626" />
               <Text style={styles.cancelButtonText}>Hủy</Text>
             </TouchableOpacity>
           )}
@@ -345,17 +446,21 @@ const OrderHistoryScreen = () => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="bag-outline" size={64} color="#CCC" />
-      <Text style={styles.emptyTitle}>Chưa có đơn hàng nào</Text>
+      <Ionicons name="cafe-outline" size={80} color="#D1D5DB" />
+      <Text style={styles.emptyTitle}>Chưa có đơn bánh nào</Text>
       <Text style={styles.emptyText}>
-        {activeTab === 'all' ? 'Hãy bắt đầu mua sắm ngay!' : `Không có đơn hàng ${tabs.find(t => t.key === activeTab)?.title.toLowerCase()}`}
+        {activeTab === 'all'
+          ? 'Hãy đặt bánh ngon ngay nào!'
+          : `Không có đơn bánh ${tabs.find(t => t.key === activeTab)?.title.toLowerCase()}`
+        }
       </Text>
       {activeTab === 'all' && (
         <TouchableOpacity
           style={styles.shopButton}
           onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' })}
         >
-          <Text style={styles.shopButtonText}>Mua sắm ngay</Text>
+          <Ionicons name="storefront-outline" size={16} color="#FFFFFF" />
+          <Text style={styles.shopButtonText}>Đặt bánh ngay</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -365,7 +470,7 @@ const OrderHistoryScreen = () => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#5C4033" />
-        <Text style={styles.loadingText}>Đang tải...</Text>
+        <Text style={styles.loadingText}>Đang tải đơn bánh...</Text>
       </View>
     );
   }
@@ -375,7 +480,7 @@ const OrderHistoryScreen = () => {
       <StatusBar barStyle="light-content" backgroundColor="#5C4033" />
 
       {/* Header */}
-      <LinearGradient colors={['#5C4033', '#7A5A47']} style={styles.header}>
+      <LinearGradient colors={['#5C4033', '#8B4513']} style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.dispatch(
             CommonActions.reset({
@@ -387,15 +492,18 @@ const OrderHistoryScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đơn hàng của tôi</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Đơn bánh của tôi</Text>
+          <Text style={styles.headerSubtitle}>Theo dõi đơn hàng bánh ngon</Text>
+        </View>
         <TouchableOpacity onPress={fetchOrders} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={22} color="#FFF" />
+          <Ionicons name="refresh-outline" size={22} color="#FFF" />
         </TouchableOpacity>
       </LinearGradient>
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScrollContent}>
           {tabs.map((tab) => {
             const count = getOrderCount(tab.key as TabType);
             const isActive = activeTab === tab.key;
@@ -403,20 +511,27 @@ const OrderHistoryScreen = () => {
             return (
               <TouchableOpacity
                 key={tab.key}
-                style={[styles.tabItem, isActive && styles.activeTab]}
+                style={[
+                  styles.tabItem,
+                  isActive && styles.activeTab,
+                  { borderBottomColor: isActive ? tab.color : 'transparent' }
+                ]}
                 onPress={() => setActiveTab(tab.key as TabType)}
               >
                 <Ionicons
-                  name={tab.icon}
-                  size={16}
-                  color={isActive ? '#5C4033' : '#999'}
+                  name={tab.icon as any}
+                  size={18}
+                  color={isActive ? tab.color : '#999'}
                 />
-                <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+                <Text style={[
+                  styles.tabText,
+                  isActive && { ...styles.activeTabText, color: tab.color }
+                ]}>
                   {tab.title}
                 </Text>
                 {count > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{count}</Text>
+                  <View style={[styles.badge, { backgroundColor: tab.color }]}>
+                    <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -443,14 +558,16 @@ const OrderHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFF8F3',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: StatusBar.currentHeight || 44,
-    paddingBottom: 12,
+    paddingBottom: 16,
     paddingHorizontal: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   backButton: {
     width: 40,
@@ -460,12 +577,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
+  headerCenter: {
     flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#FFF',
     textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
   refreshButton: {
     width: 40,
@@ -478,41 +603,52 @@ const styles = StyleSheet.create({
   tabContainer: {
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: '#F0E6D6',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  tabScrollContent: {
+    paddingHorizontal: 8,
   },
   tabItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginHorizontal: 4,
-    borderRadius: 8,
+    borderRadius: 12,
     marginVertical: 8,
     position: 'relative',
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+    minWidth: 100,
+    justifyContent: 'center',
   },
   activeTab: {
-    backgroundColor: '#F8F6F3',
+    backgroundColor: 'rgba(92, 64, 51, 0.05)',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#999',
     marginLeft: 6,
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#5C4033',
     fontWeight: '600',
   },
   badge: {
     position: 'absolute',
-    top: 4,
-    right: 8,
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    top: 2,
+    right: 6,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 6,
   },
   badgeText: {
     color: '#FFF',
@@ -521,23 +657,26 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 12,
+    paddingBottom: 20,
   },
   orderCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 3,
+    shadowColor: '#5C4033',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F0E6D6',
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   orderIdSection: {
     flexDirection: 'row',
@@ -552,9 +691,11 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(92, 64, 51, 0.1)',
   },
   statusText: {
     fontSize: 11,
@@ -563,79 +704,126 @@ const styles = StyleSheet.create({
   },
   orderInfo: {
     marginBottom: 12,
+    backgroundColor: 'rgba(92, 64, 51, 0.02)',
+    padding: 12,
+    borderRadius: 12,
   },
   statusDescription: {
     fontSize: 13,
-    color: '#666',
-    marginBottom: 4,
+    color: '#8B5A2B',
+    marginBottom: 6,
   },
   dateText: {
     fontSize: 12,
-    color: '#999',
+    color: '#B8860B',
+    fontWeight: '500',
   },
   addressSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    backgroundColor: '#F8F9FA',
-    padding: 8,
-    borderRadius: 6,
+    marginBottom: 16,
+    backgroundColor: '#FEF3C7',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE047',
   },
   addressText: {
     fontSize: 12,
-    color: '#666',
-    marginLeft: 6,
+    color: '#B45309',
+    marginLeft: 8,
     flex: 1,
+    fontWeight: '500',
+  },
+  paymentDetails: {
+    marginBottom: 12,
+  },
+  priceBreakdown: {
+    marginBottom: 12,
+  },
+  priceItem: {
+    fontSize: 12,
+    color: '#8B5A2B',
+    marginBottom: 4,
+    backgroundColor: 'rgba(92, 64, 51, 0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   totalSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    paddingTop: 8,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: '#F0E6D6',
   },
   totalLabel: {
     fontSize: 13,
-    color: '#333',
-    fontWeight: '500',
+    color: '#5C4033',
+    fontWeight: '600',
+  },
+  paymentMethodContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
   },
   paymentMethod: {
     fontSize: 11,
-    color: '#999',
-    marginTop: 2,
+    color: '#8B5A2B',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   totalAmount: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#5C4033',
+    color: '#D97706',
+  },
+  voucherInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8F0',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  voucherText: {
+    fontSize: 11,
+    color: '#15803D',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   actionSection: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 8,
   },
   detailButton: {
     flex: 1,
-    backgroundColor: '#F8F6F3',
-    paddingVertical: 10,
-    borderRadius: 6,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF8F3',
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E0D5C7',
+    borderColor: '#F0E6D6',
   },
   detailButtonText: {
     fontSize: 13,
     color: '#5C4033',
     fontWeight: '600',
+    marginLeft: 4,
   },
   reviewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF9C4',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 6,
+    justifyContent: 'center',
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#FDE047',
   },
@@ -646,10 +834,12 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FEF2F2',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#FECACA',
   },
@@ -657,47 +847,60 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#DC2626',
     fontWeight: '600',
+    marginLeft: 4,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
+    paddingHorizontal: 20,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: '#5C4033',
     marginTop: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
-    color: '#666',
+    color: '#8B5A2B',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 24,
+    marginBottom: 32,
   },
   shopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#5C4033',
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingVertical: 14,
+    borderRadius: 25,
+    elevation: 3,
+    shadowColor: '#5C4033',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
   },
   shopButtonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+    marginLeft: 8,
   },
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFF8F3',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8B5A2B',
+    fontWeight: '500',
   },
 });
+
 export default OrderHistoryScreen;

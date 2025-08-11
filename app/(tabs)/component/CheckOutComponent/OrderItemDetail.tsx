@@ -8,15 +8,27 @@ type BillDetailItemType = {
     _id: string;
     status?: string;
   };
-  product_id: {
+  // Legacy structure
+  product_id?: {
     _id: string;
     name: string;
     price: number;
     image_url: string;
   };
+  // New structure
+  product_snapshot?: {
+    name: string;
+    base_price: number;
+    discount_price?: number;
+    image_url: string;
+    selected_size?: string;
+    size_price_increase?: number;
+    final_unit_price: number;
+  };
   size: string;
   quantity: number;
-  price: number;
+  price?: number; // Legacy
+  unit_price?: number; // New
   total: number;
   createdAt?: string;
   updatedAt?: string;
@@ -30,37 +42,88 @@ interface OrderItemDetailProps {
   onReview?: () => void;
 }
 
-const OrderItemDetail: React.FC<OrderItemDetailProps> = ({ 
-  orderItem, 
-  onPress, 
+const OrderItemDetail: React.FC<OrderItemDetailProps> = ({
+  orderItem,
+  onPress,
   showReviewButton = false,
-  onReview 
+  onReview
 }) => {
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + 'đ';
+  const formatPrice = (price?: number | null) => {
+    const safePrice = Number(price);
+    if (isNaN(safePrice)) return '0đ';
+    return safePrice.toLocaleString('vi-VN') + 'đ';
   };
 
+  // Helper function to get product data from either structure
+  const getProductData = () => {
+    if (orderItem.product_snapshot) {
+      // Calculate actual price for this size
+      const basePriceForSize = orderItem.product_snapshot.base_price + (orderItem.product_snapshot.size_price_increase || 0);
+      
+      return {
+        name: orderItem.product_snapshot.name,
+        image_url: orderItem.product_snapshot.image_url,
+        basePrice: basePriceForSize, // This is the actual price for selected size
+        discountPrice: orderItem.product_snapshot.discount_price,
+        finalPrice: orderItem.product_snapshot.final_unit_price,
+        unitPrice: orderItem.unit_price || orderItem.product_snapshot.final_unit_price
+      };
+    } else if (orderItem.product_id) {
+      return {
+        name: orderItem.product_id.name,
+        image_url: orderItem.product_id.image_url,
+        basePrice: orderItem.product_id.price,
+        discountPrice: null,
+        finalPrice: orderItem.price || orderItem.product_id.price,
+        unitPrice: orderItem.price || orderItem.product_id.price
+      };
+    }
+    return {
+      name: 'Unknown Product',
+      image_url: '',
+      basePrice: 0,
+      discountPrice: null,
+      finalPrice: 0,
+      unitPrice: 0
+    };
+  };
+
+  const productData = getProductData();
+
   const calculateDiscount = () => {
-    const originalTotal = orderItem.product_id.price * orderItem.quantity;
-    const actualTotal = orderItem.total;
-    return originalTotal - actualTotal;
+    if (orderItem.product_snapshot) {
+      // For new structure: compare actual size price with final price
+      const actualSizePrice = orderItem.product_snapshot.base_price + (orderItem.product_snapshot.size_price_increase || 0);
+      const finalUnitPrice = orderItem.product_snapshot.final_unit_price;
+      const discountPerUnit = actualSizePrice - finalUnitPrice;
+      return discountPerUnit * orderItem.quantity;
+    }
+    
+    // Legacy calculation
+    if (orderItem.product_id?.price && orderItem.price) {
+      const originalTotal = orderItem.product_id.price * orderItem.quantity;
+      const actualTotal = orderItem.total;
+      return originalTotal - actualTotal;
+    }
+    
+    return 0;
   };
 
   const discountAmount = calculateDiscount();
   const hasDiscount = discountAmount > 0;
 
   return (
-    <TouchableOpacity 
-      style={styles.container} 
+    <TouchableOpacity
+      style={styles.container}
       onPress={onPress}
       activeOpacity={0.95}
     >
       <View style={styles.productCard}>
         {/* Product Image */}
         <View style={styles.imageContainer}>
-          <Image 
-            source={{ 
-              uri: orderItem.product_id.image_url || 'https://via.placeholder.com/100x100?text=No+Image' 
+          <Image
+            source={{
+              uri: productData.image_url || 'https://via.placeholder.com/100x100?text=No+Image'
             }}
             style={styles.productImage}
             resizeMode="cover"
@@ -75,9 +138,9 @@ const OrderItemDetail: React.FC<OrderItemDetailProps> = ({
         {/* Product Info */}
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>
-            {orderItem.product_id.name}
+            {productData.name}
           </Text>
-          
+
           <View style={styles.detailsRow}>
             <View style={styles.sizeContainer}>
               <Icon name="resize-outline" size={14} color="#666" />
@@ -95,23 +158,23 @@ const OrderItemDetail: React.FC<OrderItemDetailProps> = ({
               <View style={styles.priceContainer}>
                 {hasDiscount && (
                   <Text style={styles.originalPrice}>
-                    {formatPrice(orderItem.product_id.price)}
+                    {formatPrice(productData.basePrice)}
                   </Text>
                 )}
                 <Text style={styles.currentPrice}>
-                  {formatPrice(orderItem.price)}
+                  {formatPrice(productData.unitPrice)}
                 </Text>
               </View>
             </View>
-            
+
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Thành tiền:</Text>
               <Text style={styles.totalPrice}>
                 {formatPrice(orderItem.total)}
               </Text>
             </View>
-            
-            {hasDiscount && (
+
+            {hasDiscount && discountAmount > 0 && (
               <View style={styles.savingsRow}>
                 <Icon name="pricetag" size={14} color="#34C759" />
                 <Text style={styles.savingsText}>
@@ -123,7 +186,7 @@ const OrderItemDetail: React.FC<OrderItemDetailProps> = ({
 
           {/* Review Button */}
           {showReviewButton && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.reviewButton}
               onPress={onReview}
             >
@@ -134,21 +197,6 @@ const OrderItemDetail: React.FC<OrderItemDetailProps> = ({
         </View>
       </View>
 
-      {/* Quick Info Bar */}
-      <View style={styles.quickInfoBar}>
-        <View style={styles.infoItem}>
-          <Icon name="checkmark-circle" size={16} color="#34C759" />
-          <Text style={styles.infoText}>Chính hãng</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Icon name="shield-checkmark" size={16} color="#007AFF" />
-          <Text style={styles.infoText}>Bảo hành</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Icon name="refresh" size={16} color="#FF9500" />
-          <Text style={styles.infoText}>Đổi trả 7 ngày</Text>
-        </View>
-      </View>
     </TouchableOpacity>
   );
 };
@@ -311,25 +359,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 6,
-  },
-  quickInfoBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#FAFAFA',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoText: {
-    fontSize: 11,
-    color: '#666',
-    marginLeft: 4,
-    fontWeight: '500',
   },
 });
 

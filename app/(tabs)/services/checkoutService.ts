@@ -19,12 +19,21 @@ export interface CartItem {
 export interface BillPayload {
   Account_id: string;
   address_id: string | null;
+  address_snapshot?: {
+    name: string;
+    phone: string;
+    detail: string;
+    ward: string;
+    district: string;
+    city: string;
+  };
   note: string;
   shipping_method: string;
   payment_method: string;
   total: number;
   original_total: number;
   discount_amount: number;
+  shipping_fee: number;
   voucher_code?: string;
   items: BillDetailItem[];
 }
@@ -48,6 +57,7 @@ export interface PendingOrder {
     total: number;
     originalTotal: number;
     discountAmount: number;
+    shippingFee: number;
     voucherCode?: string;
   };
 }
@@ -101,7 +111,7 @@ class CheckoutService {
           title: item.product_id.name,
           product_id: item.product_id,
           Account_id: item.Account_id,
-          Size_id:item.size_id,
+          Size_id: item.size_id,
           Size: item.size_id.size,
           price: finalPrice,
           image: item.product_id.image_url,
@@ -139,69 +149,99 @@ class CheckoutService {
   }
 
   async createPendingBill(
-addresses: Address[], listCart: CartItem[], note: string, selectedShippingMethod: string, selectedPaymentName: string, originalTotal: number, finalTotal: number, discountAmount: number, voucherCode?: string, sizeID?: never[]  ): Promise<PendingOrder> {
+    addresses: Address[],
+    listCart: CartItem[],
+    note: string,
+    selectedShippingMethod: string,
+    selectedPaymentName: string,
+    originalTotal: number,
+    finalTotal: number,
+    discountAmount: number,
+    voucherCode?: string,
+    shippingFee: number = 0
+  ): Promise<PendingOrder> {
     try {
       const accountId = await getUserData('accountId');
-      console.log("Account ID:", accountId);
       const defaultAddress = addresses[0];
 
-      // ✅ SỬA: Đảm bảo gửi đầy đủ thông tin bao gồm size
+      // 🏷️ Lưu snapshot địa chỉ - QUAN TRỌNG cho việc hiển thị sau này
+      const addressSnapshot = defaultAddress
+        ? {
+          name: defaultAddress.name,
+          phone: defaultAddress.phone,
+          detail: defaultAddress.detail_address,
+          ward: defaultAddress.ward,
+          district: defaultAddress.district,
+          city: defaultAddress.city,
+        }
+        : null;
+
+      // 📦 Lưu snapshot sản phẩm
       const items = listCart.map((item: CartItem) => ({
         product_id: item.product_id._id || item.product_id,
-        size: item.Size || 'M', // ✅ Thêm size từ CartItem.Size
+        size: item.Size || 'M',
         quantity: item.quantity,
-        unit_price: item.price,
-        total: item.price * item.quantity // ✅ Tính total ngay ở frontend
+        unit_price: item.price, // ✅ Giá đã tính chính xác từ FE
+        total: item.price * item.quantity,
+        product_snapshot: {
+          name: item.title,
+          image: item.image,
+          price: item.price,
+        },
       }));
 
+      // ✅ FIX: Tính toán total chính xác - KHÔNG CỘI SHIP 2 LẦN
+      const calculatedTotal = originalTotal + shippingFee - discountAmount;
+
+      // ✅ PAYLOAD ĐÃ CẬP NHẬT với address_snapshot và shipping_fee
       const payload = {
         Account_id: accountId,
         address_id: defaultAddress?._id ?? null,
+        address_snapshot: addressSnapshot, // ✅ Thêm snapshot địa chỉ
         shipping_method: selectedShippingMethod,
         payment_method: selectedPaymentName,
-        original_total: originalTotal,
-        total: finalTotal,
+        original_total: originalTotal, // ✅ Tiền bánh gốc
+        total: calculatedTotal, // ✅ Tổng cuối cùng (đã bao gồm ship và trừ giảm giá)
         discount_amount: discountAmount,
         voucher_code: voucherCode,
         note: note || '',
-        items
+        shipping_fee: shippingFee, // ✅ Phí ship riêng biệt
+        items,
       };
 
-      console.log('📤 Payload gửi đi:', JSON.stringify(payload, null, 2));
-      console.log('📦 Items detail:', items);
+      console.log('📤 Payload gửi đi (Updated):', JSON.stringify(payload, null, 2));
+      console.log('💰 Chi tiết tính toán:');
+      console.log('  - Tiền bánh gốc:', originalTotal.toLocaleString('vi-VN'), 'VND');
+      console.log('  - Phí ship:', shippingFee.toLocaleString('vi-VN'), 'VND');
+      console.log('  - Giảm giá:', discountAmount.toLocaleString('vi-VN'), 'VND');
+      console.log('  - Tổng cuối cùng:', calculatedTotal.toLocaleString('vi-VN'), 'VND');
 
-      // Đổi endpoint như đã sửa trước đó
       const response = await axios.post(`${BASE_URL}/bills/CreatePending`, payload);
 
       if (response.status === 200 && response.data.billId) {
-        const billId = response.data.billId;
         return {
-          billId,
+          billId: response.data.billId,
           orderData: {
             items: listCart,
             address: defaultAddress,
             note,
             shippingMethod: selectedShippingMethod,
             paymentMethod: selectedPaymentName,
-            total: finalTotal,
+            total: calculatedTotal, // ✅ Trả về tổng đã tính chính xác
             originalTotal,
             discountAmount,
-            voucherCode
-          }
+            shippingFee, // ✅ Trả về phí ship riêng biệt
+            voucherCode,
+          },
         };
       } else {
         throw new Error(response.data.message || 'Không thể tạo đơn hàng');
       }
     } catch (error) {
       console.error('❌ Lỗi tạo pending bill:', error);
-      if (error.response) {
-        console.error('❌ Response data:', error.response.data);
-        console.error('❌ Response status:', error.response.status);
-      }
       throw new Error('Không thể tạo đơn hàng');
     }
   }
-
 
   async confirmPayment(billId: string, items: CartItem[]): Promise<void> {
     try {
@@ -298,6 +338,29 @@ addresses: Address[], listCart: CartItem[], note: string, selectedShippingMethod
     } catch (error) {
       console.error('❌ Lỗi cập nhật trạng thái:', error);
       throw new Error('Không thể cập nhật trạng thái đơn hàng');
+    }
+  }
+
+  // ✅ THÊM METHOD MỚI để lấy bill với address_snapshot
+  async getBillWithSnapshot(billId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${BASE_URL}/bills/${billId}`);
+      const bill = response.data.data;
+
+      // Log để debug
+      console.log('📋 Bill data with snapshot:', {
+        id: bill._id,
+        hasSnapshot: !!bill.address_snapshot,
+        snapshot: bill.address_snapshot,
+        shipping_fee: bill.shipping_fee,
+        original_total: bill.original_total,
+        total: bill.total
+      });
+
+      return bill;
+    } catch (error) {
+      console.error('❌ Lỗi lấy thông tin bill với snapshot:', error);
+      throw new Error('Không thể lấy thông tin đơn hàng');
     }
   }
 }

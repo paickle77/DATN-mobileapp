@@ -19,7 +19,6 @@ import EditAddressModal from '../../component/EditAddressModal';
 import { AddressService } from '../../services/AddressService';
 import { BASE_URL } from '../../services/api';
 import { getUserData, removeUserDataByKey, saveUserData } from '../utils/storage';
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 
 export interface Address {
   _id: string;
@@ -106,7 +105,7 @@ const AddressListScreen = () => {
       await fetchAddresses(uid);
 
       if (mode === 'select') {
-        const selected = await getUserData('selectedAddress');
+        const selected = await getUserData('addressId');
         if (selected && selected._id) {
           setSelectedAddressId(selected._id);
         }
@@ -132,7 +131,7 @@ const AddressListScreen = () => {
   const handleDeleteAddress = async (id: string) => {
     const addressToDelete = addresses.find(addr => addr._id === id);
 
-    const addressId = await getUserData('selectedAddress');
+    const addressId = await getUserData('addressId');
     if (addressToDelete?.isDefault === true || addressToDelete?.isDefault === 'true') {
       Alert.alert('Không thể xóa', 'Đây là địa chỉ mặc định. Vui lòng đặt địa chỉ khác làm mặc định trước khi xóa.');
       return;
@@ -150,7 +149,7 @@ const AddressListScreen = () => {
               await fetchAddresses(currentUserId);
             }
             if (addressId === id) {
-              await removeUserDataByKey('selectedAddress');
+              // await removeUserDataByKey('selectedAddress');
               setSelectedAddressId(null);
               console.log('Đã xóa địa chỉ đã chọn ở local storage', addressId);
             }
@@ -166,7 +165,7 @@ const AddressListScreen = () => {
 
   const handleSelectAddress = async (address: Address) => {
     setSelectedAddressId(address._id);
-    await saveUserData({ key: 'selectedAddress', value: address });
+    await saveUserData({ key: 'addressId', value: address });
     // Có thể thêm delay nhỏ để user thấy animation
     setTimeout(() => {
       navigation.goBack();

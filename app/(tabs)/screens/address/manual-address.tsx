@@ -55,8 +55,11 @@ interface Props {
 }
 
 const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
+
+  const haNoi = data.find((p) => p.Name === 'Thành phố Hà Nội') || null;
+
   const [selectedAddress, setSelectedAddress] = useState<AddressSelection>({
-    province: null,
+    province: haNoi,
     district: null,
     ward: null,
     detail: '',
@@ -159,10 +162,6 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Chọn địa chỉ</Text>
       
-      {/* Debug info */}
-      <View style={styles.debugContainer}>
-        <Text style={styles.debugText}>Debug - User ID: {route.params?.id}</Text>
-      </View>
 
       <Text style={styles.label}>Tỉnh/Thành phố</Text>
       <TouchableOpacity style={styles.selectBox} onPress={() => setModalType('province')}>

@@ -2,6 +2,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AddressService } from '../../services/AddressService';
+import { saveUserData } from '../utils/storage';
 
 type RootStackParamList = {
   CompleteProfile: {
@@ -25,6 +26,7 @@ type RootStackParamList = {
     latitude?: string;
     longitude?: string;
     address?: string;
+    profile_id?: string;
   };
 };
 
@@ -80,24 +82,18 @@ const AddressScreen = () => {
     setIsLoading(true);
     try {
       const { latitude, longitude, address } = locationData;
-      
+
       let addressData: any = {
         name: fullName,
         phone: phone,
+        province: 'Hà Nội', // 🚀 Ship trong Hà Nội
       };
 
-      // Nếu có địa chỉ string đầy đủ, parse nó
       if (address) {
         const parsedAddress = AddressService.parseAddressString(address);
-        addressData = { ...addressData, ...parsedAddress };
-      } 
-      // Nếu chỉ có tọa độ
-      else if (latitude && longitude) {
-        addressData = {
-          ...addressData,
-          latitude,
-          longitude,
-        };
+        addressData = { ...addressData, ...parsedAddress, province: 'Hà Nội' };
+      } else if (latitude && longitude) {
+        addressData = { ...addressData, latitude, longitude };
       }
 
       console.log('🔼 Dữ liệu gửi lên API:', JSON.stringify(addressData, null, 2));
@@ -108,25 +104,32 @@ const AddressScreen = () => {
         return;
       }
 
-      await AddressService.createFirstAddress(finalAccountId, addressData);
-      console.log('✅ Địa chỉ mặc định đã được lưu thành công');
+      // ✅ Gọi API và nhận object địa chỉ mới
+      const newAddress = await AddressService.createFirstAddress(finalAccountId, addressData);
+      console.log('✅ Địa chỉ mặc định đã được lưu thành công:', newAddress);
+    console.log('📦 Địa chỉ mới:',newAddress);
+      // ✅ Lưu toàn bộ ID vào AsyncStorage
+      await saveUserData({ key: 'accountId', value: finalAccountId });
+      if (route.params?.profile_id) {
+        await saveUserData({ key: 'profileId', value: route.params.profile_id });
+      }
+      await saveUserData({ key: 'userName', value: fullName || '' });
+      await saveUserData({ key: 'userPhone', value: phone || '' });
+      await saveUserData({ key: 'userEmail', value: route.params?.email || '' });
 
-      Alert.alert(
-        'Thành công', 
-        'Địa chỉ đã được lưu thành công!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('TabNavigator')
-          }
-        ]
-      );
+      // ✅ Lưu luôn addressId mới tạo
+      if (newAddress) {
+        await saveUserData({ key: 'addressId', value: newAddress });
+        console.log('📦 newAddress từ API:', JSON.stringify(newAddress._id,));
+      }
+
+      Alert.alert('Thành công', 'Địa chỉ đã được lưu thành công!', [
+        { text: 'OK', onPress: () => navigation.navigate('TabNavigator') }
+      ]);
+
     } catch (error: any) {
       console.error('❌ Lỗi khi gửi API:', error?.response?.data || error.message);
-      Alert.alert(
-        'Lỗi', 
-        error?.response?.data?.message || error.message || 'Không thể lưu địa chỉ. Vui lòng thử lại!'
-      );
+      Alert.alert('Lỗi', error?.response?.data?.message || error.message || 'Không thể lưu địa chỉ. Vui lòng thử lại!');
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +144,7 @@ const AddressScreen = () => {
         />
       </View>
       <Text style={styles.title}>Vị trí của bạn là gì?</Text>
-      
+
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Địa chỉ đã chọn:</Text>
         <View style={styles.resultBox}>
@@ -150,27 +153,9 @@ const AddressScreen = () => {
       </View>
 
       <View style={styles.bottomButtonContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => {
-            const accountId = route.params?.account_id || route.params?.id;
-            navigation.navigate('SelectLocation', {
-              id: accountId,
-              account_id: accountId, // Đảm bảo cả 2 tham số
-              email: route.params?.email,
-              password: route.params?.password,
-              fullName: route.params?.fullName,
-              phone: route.params?.phone,
-              gender: route.params?.gender,
-              avatar: route.params?.avatar,
-            });
-          }}
-        >
-          <Text style={styles.buttonText}>Chọn vị trí trên bản đồ</Text>
-        </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.button1}
+          style={styles.button}
           onPress={() => {
             const accountId = route.params?.account_id || route.params?.id;
             navigation.navigate('ManualAddress', {
@@ -252,22 +237,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   button: {
-    flex: 1,
-    backgroundColor: '#fff',
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 4,
-    borderColor: '#6B4F35',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  button1: {
     flex: 1,
     backgroundColor: '#fff',
     height: 50,

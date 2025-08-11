@@ -25,7 +25,6 @@ interface ApiResponse<T> {
 }
 
 export class AddressService {
-  private static baseUrl = `${BASE_URL}/addresses`;
 
 
 // tạo địa chỉ đầu tiên 
@@ -62,9 +61,9 @@ export class AddressService {
   static async deleteAddress(id: string): Promise<boolean> {
     try {
       console.log('🗑️ Xóa địa chỉ:', id);
-      
-      await axios.delete(`${this.baseUrl}/${id}`);
-      
+
+      await axios.delete(`${BASE_URL}/addresses/${id}`);
+
       console.log('✅ Xóa địa chỉ thành công');
       return true;
     } catch (error) {
@@ -79,7 +78,7 @@ export class AddressService {
   // Tạo địa chỉ mới
   static async createAddress(addressData: Omit<Address, '_id'>): Promise<Address> {
     try {
-      const response = await axios.post<ApiResponse<Address>>(this.baseUrl, addressData);
+      const response = await axios.post<ApiResponse<Address>>(`${BASE_URL}/addresses`, addressData);
       return response.data.data;
     } catch (error) {
       console.error('Lỗi tạo địa chỉ:', error);
@@ -90,7 +89,7 @@ export class AddressService {
   // Lấy địa chỉ theo user ID
   static async getAddressByUserId(userId: string): Promise<Address[]> {
     try {
-      const response = await axios.get<ApiResponse<Address[]>>(`${this.baseUrl}/user/${userId}`);
+      const response = await axios.get<ApiResponse<Address[]>>(`${BASE_URL}/addresses/user/${userId}`);
       return response.data.data;
     } catch (error) {
       console.error('Lỗi lấy địa chỉ:', error);
@@ -101,7 +100,7 @@ export class AddressService {
   // Cập nhật địa chỉ
   static async updateAddress(id: string, addressData: Partial<Address>): Promise<Address> {
     try {
-      const response = await axios.put<ApiResponse<Address>>(`${this.baseUrl}/${id}`, addressData);
+      const response = await axios.put<ApiResponse<Address>>(`${BASE_URL}/addresses/${id}`, addressData);
       return response.data.data;
     } catch (error) {
       console.error('Lỗi cập nhật địa chỉ:', error);

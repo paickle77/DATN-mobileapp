@@ -56,7 +56,7 @@ const Checkout = ({
   // State declarations
   const [note, setNote] = useState('');
   const [selectedVoucher, setSelectedVoucher] = useState(null);
-  const [voucher_User,setVoucher_User]=useState('');
+  const [voucher_User, setVoucher_User] = useState('');
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [selectedPaymentName, setSelectedPaymentName] = useState('');
@@ -72,8 +72,9 @@ const Checkout = ({
   const [shippingError, setShippingError] = useState(false);
   const [paymentError, setPaymentError] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
-  const [sizeID,setSizeID]=useState([]);
+  const [sizeID, setSizeID] = useState([]);
   const [sizeQuantityList, setSizeQuantityList] = useState<{ sizeId: string; quantity: number }[]>([]);
+
   // Tính toán district type và shipping methods dựa trên địa chỉ đã chọn
   const districtType = useMemo(() => {
     if (addresses.length > 0 && addresses[0].district) {
@@ -100,9 +101,12 @@ const Checkout = ({
   // Calculations
   const subtotal = listCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingFee = shippingMethods.find(method => method.id === selectedShippingMethod)?.price || 0;
-  const originalTotal = subtotal + shippingFee;
+  // ✅ originalTotal = tiền hàng gốc (chưa tính phí ship)
+  const originalTotal = subtotal;
+  // ✅ discount tính dựa trên originalTotal
   const discountAmount = percent > 0 ? (originalTotal * percent) / 100 : 0;
-  const finalTotal = originalTotal - discountAmount;
+  // ✅ finalTotal = hàng + phí ship - giảm giá
+  const finalTotal = originalTotal + shippingFee - discountAmount;
 
   // Utility functions
   const formatPrice = (price: number) => {
@@ -137,7 +141,7 @@ const Checkout = ({
         if (useVoucher) {
           setSelectedVoucher(useVoucher);
           setNameCode(useVoucher?.voucher_id?.code || '');
-          console.log("Voucher_id :",useVoucher)
+          console.log("Voucher_id :", useVoucher)
           const rawPercent = useVoucher?.voucher_id?.discount_percent || 0;
           const cleanPercent =
             typeof rawPercent === 'string'
@@ -164,7 +168,7 @@ const Checkout = ({
 
       if (selected && selected._id) {
         setAddresses([selected]);
-        saveUserData({ key: 'selectedAddress', value: selected });
+        saveUserData({ key: 'addressId', value: selected._id});
         navigation.setParams({ selectedAddress: null });
       }
     }, [route.params?.selectedAddress])
@@ -174,7 +178,7 @@ const Checkout = ({
     useCallback(() => {
       const loadSelectedAddress = async () => {
         try {
-          const address = await getUserData('selectedAddress');
+          const address = await getUserData('addressId');
           if (address) {
             setAddresses([address]);
           }
@@ -208,18 +212,18 @@ const Checkout = ({
       const cartItems = await checkoutService.fetchCartData(selectedItemIds);
       setListCart(cartItems);
       const extractedData = cartItems.map((item: any) => ({
-  sizeId: item.Size_id?._id,
-  quantity: item.quantity,
-}));
+        sizeId: item.Size_id?._id,
+        quantity: item.quantity,
+      }));
 
-setSizeQuantityList(extractedData);
+      setSizeQuantityList(extractedData);
 
-console.log("📦 Size & Quantity list:", extractedData);
+      console.log("📦 Size & Quantity list:", extractedData);
       cartItems.forEach((item, index) => {
-  console.log(`🛍️ Size_id of item ${index}:`, item.Size_id);
-  console.log(`🛍️ Size_id of item :`, cartItems);
-  setSizeID(item.Size_id);
-});
+        console.log(`🛍️ Size_id of item ${index}:`, item.Size_id);
+        console.log(`🛍️ Size_id of item :`, cartItems);
+        setSizeID(item.Size_id);
+      });
     } catch (error) {
       console.error('Lỗi lấy giỏ hàng:', error);
       setNotification({
@@ -235,7 +239,7 @@ console.log("📦 Size & Quantity list:", extractedData);
     useCallback(() => {
       const fetchInitialAddress = async () => {
         try {
-          const selected = await getUserData('selectedAddress');
+          const selected = await getUserData('addressId');
           console.log('📍 Địa chỉ đã chọn:', selected);
 
           if (selected) {
@@ -245,7 +249,7 @@ console.log("📦 Size & Quantity list:", extractedData);
             if (found) {
               setAddresses([found]);
             } else {
-              await removeUserDataByKey('selectedAddress');
+              // await removeUserDataByKey('selectedAddress');
               const defaultAddress = await checkoutService.fetchDefaultAddress();
               setAddresses([defaultAddress]);
             }
@@ -319,7 +323,7 @@ console.log("📦 Size & Quantity list:", extractedData);
         if (voucherDetails && typeof voucherDetails === 'object') {
           setSelectedVoucher(selectedVoucherFromRoute);
           setNameCode(voucherDetails.code || '');
-          console.log("Voucher_id :",voucherDetails)
+          console.log("Voucher_id :", voucherDetails)
           setPercent(voucherDetails.discount_percent || 0);
         }
       } else if (selectedVoucherFromRoute === null) {
@@ -391,11 +395,11 @@ console.log("📦 Size & Quantity list:", extractedData);
       }
 
       if (selectedVoucher) {
-    console.log('Voucher đã chọn, id:', selectedVoucher.voucher_id?._id);
+        console.log('Voucher đã chọn, id:', selectedVoucher.voucher_id?._id);
         setVoucher_User(selectedVoucher.voucher_id?._id)
-  } else {
-    console.log('Chưa chọn voucher');
-  }
+      } else {
+        console.log('Chưa chọn voucher');
+      }
 
       if (!selectedPaymentMethod) {
         setPaymentError(true);
@@ -428,6 +432,7 @@ console.log("📦 Size & Quantity list:", extractedData);
       setLoading(true);
       const selectedShipping = shippingMethods.find(m => m.id === selectedShippingMethod);
       const selectedShippingName = selectedShipping?.name || '';
+      const shippingFee = selectedShipping?.price || 0;
 
       const pendingOrder = await checkoutService.createPendingBill(
         addresses,
@@ -439,15 +444,16 @@ console.log("📦 Size & Quantity list:", extractedData);
         finalTotal,
         discountAmount,
         nameCode,
-
+        shippingFee, // ✅ phí ship
       );
+      console.log(`💰 Tổng tiền thanh toán: ${(finalTotal + shippingFee).toLocaleString('vi-VN')} VND`);
 
       console.log('✅ Tạo pending bill thành công:', pendingOrder.billId);
       navigation.navigate('ConfirmationScreen', {
         pendingOrder,
         selectedItemIds,
-          sizeQuantityList, // 👈 Thêm dòng này
-          voucher_User: selectedVoucher?.voucher_id?._id || '', // ✅ TRUYỀN TRỰC TIẾP
+        sizeQuantityList, // 👈 Thêm dòng này
+        voucher_User: selectedVoucher?.voucher_id?._id || '', // ✅ TRUYỀN TRỰC TIẾP
       });
 
     } catch (error) {
