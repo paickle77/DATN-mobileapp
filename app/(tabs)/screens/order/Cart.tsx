@@ -63,7 +63,7 @@ export default function CartScreen() {
             (s._id === item.size_id._id ||
               (s.size === item.size_id.size && s.product_id === item.product_id._id))
           );
-
+        
           const priceIncrease = sizeInfo?.price_increase || 0;
           const basePrice = item.product_id.discount_price || item.product_id.price;
           const finalPrice = basePrice + priceIncrease;
@@ -78,9 +78,10 @@ export default function CartScreen() {
             quantity: item.quantity,
             product_id: item.product_id,
             selected: false, // Mặc định không được chọn
+            size_id:item.size_id._id,
+            quantitySize:item.size_id.quantity
           };
         });
-
       const userCartItems = formattedData.filter((item: any) => item.Account_id === accountId);
       setList(userCartItems);
       console.log("✅ Dữ liệu giỏ hàng theo user:", userCartItems);
@@ -99,25 +100,35 @@ export default function CartScreen() {
   };
 
   // Cập nhật số lượng
-  const updateQuantity = async (item: any, newQuantity: number) => {
-    if (newQuantity < 1) return;
+const updateQuantity = async (item: any, newQuantity: number) => {
+  if (newQuantity < 1) return;
 
-    try {
-      const payload = {
-        quantity: newQuantity,
-        product_id: item.product_id,
-        size_id: item.size_id,
-        Account_id: item.Account_id,
-      };
+  // ✅ Kiểm tra vượt quá số lượng tồn kho
+  if (newQuantity > item.quantitySize) {
+    Alert.alert(
+      "Thông báo",
+      `Số lượng vượt mức cho phép. Tồn kho hiện tại: ${item.quantitySize}`
+    );
+    return;
+  }
 
-      const res = await axios.put(`${BASE_URL}/carts/${item.id}`, payload);
-      console.log("✅ Đã cập nhật số lượng:", res.data);
+  try {
+    const payload = {
+      quantity: newQuantity,
+      product_id: item.product_id,
+      size_id: item.size_id,
+      Account_id: item.Account_id,
+    };
 
-      await FetchData();
-    } catch (error) {
-      console.log("❌ Lỗi khi cập nhật số lượng:", error);
-    }
-  };
+    const res = await axios.put(`${BASE_URL}/carts/${item.id}`, payload);
+    console.log("✅ Đã cập nhật số lượng:", res.data);
+
+    await FetchData();
+  } catch (error) {
+    console.log("❌ Lỗi khi cập nhật số lượng:", error);
+  }
+};
+
 
   // Xoá sản phẩm
   const removeItem = async (id: string) => {
