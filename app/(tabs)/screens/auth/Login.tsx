@@ -57,7 +57,7 @@ export default function Login() {
         await Notifications.scheduleNotificationAsync({
            content: {
              title: ' Đăng nhập thành công!',
-             body: `Đơn hàng của bạn đã được đặt, vui lòng chờ Admin xác nhận`,
+             body: `Bạn được chuyển tới trang chủ`,
              sound: 'default',
            },
            trigger: null, // Gửi ngay lập tức

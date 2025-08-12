@@ -67,6 +67,7 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
       if (token) {
         setPushToken(token);
         console.log('🔐 Token:', token);
+        console.log("V")
       }
     } catch (error) {
       console.error('❌ Lỗi khi lấy push token:', error);
@@ -168,13 +169,13 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
       await checkoutService.clearSelectedCartItems(pendingOrder.orderData.items.map(item => item.id));
       console.log("Dữ liệu data: ", pendingOrder.orderData.items);
       
-      const userId = await getUserData('profileId');
+      const userId = await getUserData('accountId');
       console.log("userid :", userId);
 
       // ✅ CHỈ GỌI API UPDATE VOUCHER KHI THỰC SỰ CÓ SỬ DỤNG VOUCHER
       if (pendingOrder.orderData.voucherCode || voucher_User) {
         try {
-          await axios.put(`${BASE_URL}/voucher_user/by-voucher/${userId}/status`, {
+          await axios.put(`${BASE_URL}/voucher_user/${userId}/${voucher_User}/status`, {
             status: 'inactive',
           });
           console.log("✅ Đã cập nhật trạng thái voucher");
