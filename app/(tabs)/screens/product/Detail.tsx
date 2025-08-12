@@ -209,18 +209,22 @@ const Detail: React.FC = () => {
         sizeData._id,
         quantity
       );
-
-      if (result.isUpdate) {
-        showNotification(
-          `Đã thêm ${quantity} sản phẩm. Tổng hiện tại: ${result.totalQuantity} sản phẩm`,
-          'success'
-        );
+      if (result.totalQuantity > sizeData.quantity) {
+        showNotification('Không thể thêm vào giỏ hàng. Số lượng trong giỏ hàng vượt quá số lượng trong kho.', 'error');
       } else {
-        showNotification(
-          `Đã thêm ${quantity} sản phẩm vào giỏ hàng`,
-          'success'
-        );
+        if (result.isUpdate) {
+          showNotification(
+            `Đã thêm ${quantity} sản phẩm. Tổng hiện tại: ${result.totalQuantity} sản phẩm`,
+            'success'
+          );
+        } else {
+          showNotification(
+            `Đã thêm ${quantity} sản phẩm vào giỏ hàng`,
+            'success'
+          );
+        }
       }
+   
 
     } catch (error) {
       showNotification('Không thể thêm vào giỏ hàng. Vui lòng thử lại.', 'error');

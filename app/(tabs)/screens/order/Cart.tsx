@@ -104,13 +104,13 @@ const updateQuantity = async (item: any, newQuantity: number) => {
   if (newQuantity < 1) return;
 
   // ✅ Kiểm tra vượt quá số lượng tồn kho
-  if (newQuantity > item.quantitySize) {
-    Alert.alert(
-      "Thông báo",
-      `Số lượng vượt mức cho phép. Tồn kho hiện tại: ${item.quantitySize}`
-    );
-    return;
-  }
+  // if (newQuantity > item.quantitySize) {
+  //   Alert.alert(
+  //     "Thông báo",
+  //     `Số lượng vượt mức cho phép. Tồn kho hiện tại: ${item.quantitySize}`
+  //   );
+  //   return;
+  // }
 
   try {
     const payload = {
