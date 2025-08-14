@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -237,7 +236,7 @@ const OrderDetails = () => {
   const navigateToReview = async (productId?: string) => {
     try {
       let targetProductId = productId;
-      
+      console.log("PRODUCTID!!!: ",productId)
       if (!targetProductId && data.length > 0) {
         // Try to get product ID from either structure
         const firstItem = data[0];
@@ -251,8 +250,9 @@ const OrderDetails = () => {
       }
 
       if (targetProductId) {
-        await AsyncStorage.setItem('productID', targetProductId);
-        navigation.navigate('comment' as never);
+      console.log("targetProductId", targetProductId);
+navigation.navigate('Review' as never, { ProductID: targetProductId } as never);
+
       } else {
         Alert.alert('Lỗi', 'Không tìm thấy thông tin sản phẩm để đánh giá');
       }
@@ -263,7 +263,8 @@ const OrderDetails = () => {
   };
 
   const getProductId = (item: BillDetailItemType) => {
-    return item.product_id?._id || item._id;
+    console.log("item :",item.product_id)
+    return item.product_id;
   };
 
   const renderProductItem = (item: BillDetailItemType) => (
@@ -277,7 +278,7 @@ const OrderDetails = () => {
       {isOrderCompleted() && !hasReviewed && (
         <TouchableOpacity 
           style={styles.individualReviewButton}
-          onPress={() => navigateToReview(getProductId(item))}
+          onPress={() => navigateToReview(item.product_id)}
         >
           <Icon name="star-outline" size={16} color="#5C4033" />
           <Text style={styles.individualReviewButtonText}>Đánh giá bánh này</Text>

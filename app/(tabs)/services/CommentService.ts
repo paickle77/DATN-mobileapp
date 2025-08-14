@@ -47,9 +47,10 @@ class CommentService {
   /**
    * Lấy tên user theo ID (với cache)
    */
-  async getUserName(userId: string): Promise<string> {
-    return await detailService.getUserInfo(userId);
-  }
+async getUserName(userId: string): Promise<string> {
+  const name = await detailService.getUserInfo(userId);
+  return name; // không fallback ở đây nữa, đã xử lý ở DetailService
+}
 
   /**
    * Xử lý hiển thị tên user từ review object

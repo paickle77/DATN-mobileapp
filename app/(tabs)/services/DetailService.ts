@@ -196,19 +196,27 @@ class DetailService {
     }
   }
 
-  async handleAddToCart(accountId: string, productId: string, sizeId: string, quantity: number): Promise<{ isUpdate: boolean; totalQuantity: number }> {
+  async handleAddToCart(accountId: string, productId: string, sizeId: string, quantity: number, stockQuantity: number): Promise<{ isUpdate: boolean; totalQuantity: number; exceeded: boolean }> {
     try {
       const cartItems = await this.getCartItems();
       const existingCartItem = cartItems.find(
         (item: CartItem) => item.Account_id === accountId && item.product_id?._id === productId && item.size_id?._id === sizeId
       );
+
+      const currentQuantity = existingCartItem ? existingCartItem.quantity : 0;
+      const updatedQuantity = currentQuantity + quantity;
+
+      // If the updated quantity exceeds stock, do not update and signal exceed
+      if (updatedQuantity > stockQuantity) {
+        return { isUpdate: !!existingCartItem, totalQuantity: currentQuantity, exceeded: true };
+      }
+
       if (existingCartItem) {
-        const updatedQuantity = existingCartItem.quantity + quantity;
         await this.updateCartItemQuantity(existingCartItem._id, updatedQuantity);
-        return { isUpdate: true, totalQuantity: updatedQuantity };
+        return { isUpdate: true, totalQuantity: updatedQuantity, exceeded: false };
       } else {
         await this.addToCart(accountId, productId, sizeId, quantity);
-        return { isUpdate: false, totalQuantity: quantity };
+        return { isUpdate: false, totalQuantity: quantity, exceeded: false };
       }
     } catch (error) {
       console.error('❌ Lỗi khi xử lý giỏ hàng:', error);
@@ -251,15 +259,19 @@ class DetailService {
     }
   }
 
-  async getUserInfo(accountId: string): Promise<string> {
-    try {
-      const response = await axios.get(`${this.baseUrl}/accounts/${accountId}`);
-      return response.data.data?.email || 'Người dùng';
-    } catch (error) {
-      console.error('❌ Lỗi khi lấy thông tin user:', error);
-      return 'Người dùng';
-    }
+async getUserInfo(accountId: string): Promise<string> {
+  console.log("thông tin getUserInfo:", accountId);
+  try {
+    const response = await axios.get(`${this.baseUrl}/account/${accountId}`);
+    const email = response?.data?.data?.email;
+    console.log("getUserInfo email:", email);
+    return email || "Khách hàng"; // Nếu không có email, fallback
+  } catch (error) {
+    console.error('❌ Lỗi khi lấy thông tin user:', error);
+    return "Khách hàng"; // fallback khi API lỗi
   }
+}
+
 
   async getReviewSummary(productId: string): Promise<ReviewSummary> {
     try {

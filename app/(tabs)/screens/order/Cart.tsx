@@ -5,6 +5,7 @@ import axios from 'axios';
 import React, { useCallback, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CartItem from '../../component/CartItem';
+import NotificationComponent from '../../component/NotificationComponent';
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
 
@@ -34,6 +35,20 @@ export default function CartScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [list, setList] = useState<CartItemType[]>([]);
   const [selectAll, setSelectAll] = useState(false);
+
+
+
+    const [notification, setNotification] = useState({
+      message: '',
+      type: 'info' as 'success' | 'error' | 'warning' | 'info',
+      visible: false,
+    });
+  
+    const showNotification = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+      setNotification({ message, type, visible: true });
+    };
+  
+
 
   useFocusEffect(
     useCallback(() => {
@@ -104,13 +119,17 @@ const updateQuantity = async (item: any, newQuantity: number) => {
   if (newQuantity < 1) return;
 
   // ✅ Kiểm tra vượt quá số lượng tồn kho
-  // if (newQuantity > item.quantitySize) {
-  //   Alert.alert(
-  //     "Thông báo",
-  //     `Số lượng vượt mức cho phép. Tồn kho hiện tại: ${item.quantitySize}`
-  //   );
-  //   return;
-  // }
+  if (newQuantity > item.quantitySize) {
+    showNotification(
+            `Số lượng vượt mức cho phép. Tồn kho hiện tại: ${item.quantitySize}`,
+            'warning'
+          );
+    // Alert.alert(
+    //   "Thông báo",
+    //   `Số lượng vượt mức cho phép. Tồn kho hiện tại: ${item.quantitySize}`
+    // );
+    return;
+  }
 
   try {
     const payload = {
@@ -219,6 +238,18 @@ const updateQuantity = async (item: any, newQuantity: number) => {
 
   return (
     <View style={styles.container}>
+      {notification.visible && (
+        <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center', zIndex: 999 }}>
+          <NotificationComponent
+            key={notification.message + notification.type}
+            message={notification.message}
+            type={notification.type}
+            visible={notification.visible}
+            onHide={() => setNotification(prev => ({ ...prev, visible: false }))}
+            style={{ width: '90%' }}
+          />
+        </View>
+      )}
       {/* Header với nút Back */}
       <View style={styles.header}>
         <TouchableOpacity

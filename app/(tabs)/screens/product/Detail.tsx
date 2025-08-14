@@ -43,6 +43,10 @@ const Detail: React.FC = () => {
   });
 
 
+  const HandleNavigatetocomment=(ProductID :String)=>{
+
+  }
+
 
   const [notification, setNotification] = useState({
     message: '',
@@ -207,17 +211,26 @@ const Detail: React.FC = () => {
         userId,
         product._id,
         sizeData._id,
-        quantity
+        quantity,
+        sizeData.quantity
       );
-      if (result.totalQuantity > sizeData.quantity) {
+      if (result.exceeded) {
         showNotification('Không thể thêm vào giỏ hàng. Số lượng trong giỏ hàng vượt quá số lượng trong kho.', 'error');
       } else {
-        if (result.isUpdate) {
-          showNotification(
-            `Đã thêm ${quantity} sản phẩm. Tổng hiện tại: ${result.totalQuantity} sản phẩm`,
-            'success'
-          );
-        } else {
+if (result.exceeded) {
+  showNotification(
+    'Không thể thêm vào giỏ hàng. Số lượng trong giỏ hàng vượt quá số lượng trong kho.',
+    'error'
+  );
+
+  // Giảm quantity về tồn kho tối đa
+  const sizeData = sizes.find(s => s.size === selectedSize);
+  if (sizeData) {
+    setQuantity(sizeData.quantity); // gán về tồn kho hiện tại
+  }
+  return; // thoát hẳn, không chạy tiếp
+}
+ else {
           showNotification(
             `Đã thêm ${quantity} sản phẩm vào giỏ hàng`,
             'success'

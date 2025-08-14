@@ -1,5 +1,6 @@
 import { FontAwesome } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,11 +16,12 @@ import {
 } from 'react-native';
 import commentService from '../../services/CommentService';
 import { Review, ReviewSummary } from '../../services/DetailService';
-import { getUserData } from '../utils/storage';
 
 const { width } = Dimensions.get('window');
 
 const CommentScreen = () => {
+    const route = useRoute();
+    const { productId } = route.params as { ProductId: string };
   const navigation = useNavigation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [filteredReviews, setFilteredReviews] = useState<Review[]>([]);
@@ -55,9 +57,8 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
     try {
       setLoading(true);
       setError(null);
-      const productID = await getUserData('productID');
-      console.log('🆔 ProductID lấy từ AsyncStorage:', productID);
-      if (!productID) {
+      console.log('🆔 ProductID lấy từ AsyncStorage:', productId);
+      if (!productId) {
         setError('Không tìm thấy ID sản phẩm');
         return;
       }
@@ -67,7 +68,7 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
         await commentService.refreshCache();
       }
 
-      await fetchReviewData(productID, forceRefresh);
+      await fetchReviewData(productId, forceRefresh);
       
     } catch (err) {
       setError('Lỗi khi tải dữ liệu đánh giá');
