@@ -36,24 +36,24 @@ interface Order {
   status: string;
   createdAt: string;
   total: number;
-  user_id: {
+  Account_id: string;
+  address_id: string | null;
+  address_snapshot?: {
     name: string;
-  };
-  address_id: {
-    detail_address: string;
+    phone: string;
+    detail: string;
     ward: string;
     district: string;
     city: string;
-    name: string;
-    phone: string;
   };
   shipper_id?: string;
+  shipping_method?: string;
 }
 
 interface Shipper{
   _id: string;
   account_id: string;
-  isOnline: boolean;
+  is_online: 'offline' | 'online' | 'busy';
 }
 
 interface FilterOption {
@@ -65,21 +65,20 @@ interface FilterOption {
 const DeliveredOrders = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [IsOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState<"online" | "offline" | "busy">("offline");
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
-
+  type OnlineStatus = "online" | "offline" | "busy";
 
   useFocusEffect(
-  useCallback(() => {
-    // Mỗi lần vào lại màn hình, gọi lại
-    fetchOrders();
-    fetchUserData();
-  }, [])
-);
+    useCallback(() => {
+      fetchOrders();
+      fetchUserData();
+    }, [])
+  );
 
   useEffect(() => {
     fetchOrders();
@@ -94,8 +93,9 @@ const DeliveredOrders = () => {
   const fetchOrders = async () => {
     try {
       const response = await axios.get(`${BASE_URL}/GetAllBills`);
-      const data = response.data.data || [];
-      setOrders(data);
+      const data = (response.data.data || []).filter((order: Order) => order.Account_id && order.address_snapshot);
+      const filtered = data.filter((o: Order) => o.shipping_method !== 'Nhận tại cửa hàng');
+      setOrders(filtered);
     } catch (error) {
       console.error('Lỗi khi lấy đơn hàng:', error);
       Alert.alert('Lỗi', 'Không thể lấy danh sách đơn hàng.');
@@ -132,14 +132,17 @@ const DeliveredOrders = () => {
     const shipperID = await getUserData('shipperID');
 
     const filtered = orders.filter(order => {
+      if (order.shipping_method === 'Nhận tại cửa hàng') {
+        return false;
+      }
       const matchesSearch =
-        order.user_id?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.address_snapshot?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         order._id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.address_id?.detail_address?.toLowerCase().includes(searchQuery.toLowerCase());
+        order.address_snapshot?.detail?.toLowerCase().includes(searchQuery.toLowerCase()) || '';
 
       const isReady = order.status === 'ready';
       const isOwnedByShipper =
-        ['shipping', 'done', 'cancelled'].includes(order.status) &&
+        ['shipping', 'done', 'failed'].includes(order.status) &&
         (order as any).shipper_id === shipperID;
 
       const matchesFilter =
@@ -160,7 +163,7 @@ const DeliveredOrders = () => {
     const countReady = orders.filter(o => o.status === 'ready').length;
     const countShipping = orders.filter(o => o.status === 'shipping' && o.shipper_id === shipperID).length;
     const countDone = orders.filter(o => o.status === 'done' && o.shipper_id === shipperID).length;
-    const countCancelled = orders.filter(o => o.status === 'cancelled' && o.shipper_id === shipperID).length;
+    const countCancelled = orders.filter(o => o.status === 'failed' && o.shipper_id === shipperID).length;
     const countAll = countReady + countShipping + countDone + countCancelled;
 
     setFilterOptions([
@@ -168,7 +171,7 @@ const DeliveredOrders = () => {
       { label: 'Có thể nhận', value: 'ready', count: countReady },
       { label: 'Đang giao', value: 'shipping', count: countShipping },
       { label: 'Đã giao', value: 'done', count: countDone },
-      { label: 'Đã hủy', value: 'cancelled', count: countCancelled },
+      { label: 'Giao hàng thất bại', value: 'failed', count: countCancelled },
     ]);
   };
 
@@ -199,9 +202,9 @@ const DeliveredOrders = () => {
           bgColor: '#E8F5E8',
           icon: '✅'
         };
-      case 'cancelled':
+      case 'failed':
         return { 
-          label: 'Đã hủy', 
+          label: 'Giao thất bại', 
           color: '#F44336', 
           bgColor: '#FFEBEE',
           icon: '❌'
@@ -216,11 +219,32 @@ const DeliveredOrders = () => {
     }
   };
 
-  const handleAcceptOrder = async (orderId: string) => {
-    if (IsOnline === false) {
-      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
-      return;
+  const setOnlineStatus = async (status:OnlineStatus) => {
+    let newStatus: OnlineStatus = status ;
+
+    const id = await getUserData('shipperID');
+    try {
+      await axios.post(`${BASE_URL}/shippers/updateStatus`, {
+        _id: id,
+        is_online: newStatus
+      });
+      setIsOnline(newStatus);
+    } catch (error) {
+      console.error("❌ Lỗi khi cập nhật trạng thái online:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật trạng thái online.");
     }
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    if ((isOnline as OnlineStatus) === 'offline') {
+            Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
+            return;
+      }
+
+      if ((isOnline as OnlineStatus) === 'busy') {
+            Alert.alert('Thông báo', 'Bạn đang có đơn, không thể nhận đơn hàng này.');
+            return;
+          }
     try {
       const shipperID = await getUserData('shipperID');
       
@@ -243,6 +267,7 @@ const DeliveredOrders = () => {
                 
                 if (res.data.success) {
                   Alert.alert('Thành công', 'Đã nhận đơn hàng thành công!');
+                  setOnlineStatus('busy'); // Set status to busy
                   fetchOrders(); // Refresh orders list
                 } else {
                   Alert.alert('Lỗi', res.data.message || 'Không thể nhận đơn hàng');
@@ -263,10 +288,10 @@ const DeliveredOrders = () => {
   };
 
   const handleCompleteOrder = async (orderId: string) => {
-    if (!IsOnline) {
-      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
-      return;
-    }
+    if (isOnline !== 'online') {
+            Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
+            return;
+      }
     try {
       const shipperID = await getUserData('shipperID');
       
@@ -311,10 +336,10 @@ const DeliveredOrders = () => {
   };
 
   const handleCancelOrder = async (orderId: string) => {
-    if (!IsOnline) {
-      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
-      return;
-    }
+    if (isOnline !== 'online') {
+            Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
+            return;
+      }
     try {
       const shipperID = await getUserData('shipperID');
       
@@ -388,8 +413,8 @@ const DeliveredOrders = () => {
             <Text style={styles.customerIconText}>👤</Text>
           </View>
           <View style={styles.customerInfo}>
-            <Text style={styles.customerName}>{item.address_id?.name}</Text>
-            <Text style={styles.customerPhone}>{item.address_id?.phone}</Text>
+            <Text style={styles.customerName}>{item.address_snapshot?.name || ''}</Text>
+            <Text style={styles.customerPhone}>{item.address_snapshot?.phone}</Text>
           </View>
         </View>
 
@@ -401,10 +426,10 @@ const DeliveredOrders = () => {
           <View style={styles.addressInfo}>
             <Text style={styles.addressLabel}>Địa chỉ giao hàng</Text>
             <Text style={styles.addressText}>
-              {item.address_id?.detail_address}
+              {item.address_snapshot?.detail}
             </Text>
             <Text style={styles.addressSubText}>
-              {item.address_id?.ward}, {item.address_id?.district}, {item.address_id?.city}
+              {item.address_snapshot?.ward}, {item.address_snapshot?.district}, {item.address_snapshot?.city}
             </Text>
           </View>
         </View>
@@ -451,15 +476,14 @@ const DeliveredOrders = () => {
                 </TouchableOpacity>
               )}
               
-              {isShippingOrder && (
+              {/* {isShippingOrder && (
                 <View style={styles.shippingActions}>
                   <TouchableOpacity 
                     style={styles.cancelButton}
                     onPress={() => handleCancelOrder(item._id)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.cancelButtonIcon}>❌</Text>
-                    <Text style={styles.cancelButtonText}>Hủy đơn</Text>
+                    <Text style={styles.cancelButtonText}>Khách không nhận</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
@@ -471,7 +495,7 @@ const DeliveredOrders = () => {
                     <Text style={styles.completeButtonText}>Hoàn thành</Text>
                   </TouchableOpacity>
                 </View>
-              )}
+              )} */}
             </View>
           </>
         )}
@@ -923,7 +947,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#5C5C5C',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 20,

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useNavigation } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { BASE_URL, URL } from '../../services/api';
+import { BASE_URL } from '../../services/api';
 import { clearUserData, getUserData } from '../utils/storage';
 // import LinearGradient from 'react-native-linear-gradient';
 // Hoặc nếu dùng Expo:
@@ -29,7 +29,7 @@ interface ShipperStats {
   completedOrders: number;
   onTimeRate: number;
   totalEarnings: number;
-  status: 'active' | 'inactive' | 'busy';
+  status: 'online' | 'offline' | 'busy';
 }
 
 interface VehicleInfo {
@@ -44,17 +44,17 @@ interface ShipperData {
   phone: string;
   license_number: string | null;
   vehicle_type: string | null;
-  is_online: boolean;
+  is_online: 'offline' | 'online' | 'busy';
 }
 
 interface ShipperProfile {
   id: string;
-  name: string;
+  full_name: string;
   phone: string;
   image: string;
   vehicleType: string;
   licenseNumber: string;
-  isOnline: boolean;
+  isOnline: 'offline' | 'online' | 'busy';
   accountId: string;
 }
 
@@ -78,12 +78,12 @@ interface ProfileItemProps {
 
 const defaultShipperData: ShipperProfile = {
   id: '',
-  name: '',
+  full_name: '',
   phone: '',
   image: 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
   vehicleType: '',
   licenseNumber: '',
-  isOnline: false,
+  isOnline: 'offline',
   accountId: '',
 };
 
@@ -137,12 +137,12 @@ const ProfileItem: React.FC<ProfileItemProps> = ({
 
 const mapToShipperProfile = (item: any): ShipperProfile => ({
   id: item._id,
-  name: item.full_name || '',
+  full_name: item.full_name || '',
   phone: item.phone || '',
   image: item.image || 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
   vehicleType: item.vehicle_type || '',
   licenseNumber: item.license_number || '',
-  isOnline: item.is_online || false,
+  isOnline: item.is_online || 'offline',
   accountId: item.account_id || '',
 });
 
@@ -158,6 +158,18 @@ const ShipProfileScreen: React.FC = () => {
   const [shipperId, setShipperId] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
 
+   useFocusEffect(
+      useCallback(() => {
+        const fetchData = async () => {
+          const Id = await getUserData('userData');
+          if (Id) {
+            fetchShipperData(Id);
+          }
+        };
+        fetchData();
+      }, [])
+    );
+
   // Lấy ID người dùng 1 lần duy nhất
   useEffect(() => {
     const loadUserId = async () => {
@@ -171,16 +183,7 @@ const ShipProfileScreen: React.FC = () => {
     loadUserId();
   }, []);
 
-  // Gọi API khi có shipperId
-  useEffect(() => {
-    const fetchData = async () => {
-      const Id = await getUserData('userData');
-      if (Id) {
-        fetchShipperData(Id);
-      }
-    };
-    fetchData();
-  }, [accountId]);
+ 
 
   // Fetch API từ MongoDB
   const fetchShipperData = async (id: string) => {
@@ -212,48 +215,31 @@ const ShipProfileScreen: React.FC = () => {
   };
 
   const updateShipperProfile = async (updated: ShipperProfile): Promise<boolean> => {
-  try {
-    const formData = new FormData();
+    try {
+      const payload = {
+        full_name: updated.full_name,
+        phone: updated.phone,
+        license_number: updated.licenseNumber,
+        vehicle_type: updated.vehicleType,
+        image: updated.image, // base64 string "data:image/jpeg;base64,...."
+      };
 
-    formData.append('full_name', updated.name);
-    formData.append('phone', updated.phone);
-    formData.append('license_number', updated.licenseNumber);
-    formData.append('vehicle_type', updated.vehicleType);
+      const res = await axios.put(`${BASE_URL}/shippers/${shipperId}`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-    if (updated.image && updated.image.startsWith('file://')) {
-      const filename = updated.image.split('/').pop() || 'avatar.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
-
-      formData.append('image', {
-        uri: updated.image,
-        name: filename,
-        type: type,
-      } as any); // 👈 React Native chấp nhận ép kiểu đơn giản như này
+      if (res.status === 200 || res.status === 201) {
+        Alert.alert('✅ Thành công', 'Cập nhật thành công!');
+        return true;
+      } else {
+        throw new Error('Cập nhật không thành công');
+      }
+    } catch (error: any) {
+      console.error('❌ updateShipperProfile error:', error?.message || error);
+      Alert.alert('Lỗi khi cập nhật', error?.message || 'Đã xảy ra lỗi');
+      return false;
     }
-
-    console.log('🔼 FormData to send:', formData);
-
-    const res = await axios.put(`${BASE_URL}/shippers/${shipperId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    if (res.status === 200 || res.status === 201) {
-      Alert.alert('✅ Thành công', 'Cập nhật thành công!');
-      return true;
-    } else {
-      throw new Error('Cập nhật không thành công');
-    }
-  } catch (error: any) {
-    console.error('❌ updateShipperProfile error:', error?.message || error);
-    Alert.alert('Lỗi khi cập nhật', error?.message || 'Đã xảy ra lỗi');
-    return false;
-  }
-};
-
-
+  };
 
   const handleEdit = () => setIsEditing(true);
 
@@ -282,6 +268,8 @@ const ShipProfileScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           await clearUserData('userData');
+          await clearUserData('shipperID');
+
           navigation.reset({
             index: 0,
             routes: [{ name: 'Login' as never }],
@@ -294,23 +282,17 @@ const ShipProfileScreen: React.FC = () => {
 
   
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return '#10B981';
-      case 'busy': return '#F59E0B';
-      case 'inactive': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
+  
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return 'Đang hoạt động';
-      case 'busy': return 'Đang bận';
-      case 'inactive': return 'Không hoạt động';
-      default: return 'Không xác định';
-    }
-  };
+  const getStatusText = (status: 'online' | 'offline' | 'busy') => {
+  switch (status) {
+    case 'online': return 'Đang hoạt động';
+    case 'busy': return 'Đang bận';
+    case 'offline': return 'Không hoạt động';
+    default: return 'Không xác định';
+  }
+};
+
 
   const pickImage = async () => {
           const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -325,13 +307,15 @@ const ShipProfileScreen: React.FC = () => {
               allowsEditing: true,
               aspect: [1, 1],
               quality: 0.8,
+              base64: true, 
           });
   
           if (!result.canceled) {
-              setShipperData(prev => ({
+              const base64String = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                setShipperData(prev => ({
                   ...prev,
-                  avatar: { uri: result.assets[0].uri },
-                  image: result.assets[0].uri
+                  avatar: { uri: base64String },
+                  image: base64String,
               }));
           }
       };
@@ -349,13 +333,15 @@ const ShipProfileScreen: React.FC = () => {
               allowsEditing: true,
               aspect: [1, 1],
               quality: 0.8,
+              base64: true, 
           });
   
           if (!result.canceled) {
-              setShipperData(prev => ({
+              const base64String = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                setShipperData(prev => ({
                   ...prev,
-                  avatar: { uri: result.assets[0].uri },
-                  image: result.assets[0].uri,
+                  avatar: { uri: base64String },
+                  image: base64String,
               }));
               console.log('🟢 Chụp ảnh thành công:', result.assets[0].uri);
           }
@@ -363,16 +349,16 @@ const ShipProfileScreen: React.FC = () => {
   
       // Hiển thị tùy chọn thay đổi ảnh
       const showImageOptions = () => {
-          Alert.alert(
-              'Thay đổi ảnh đại diện',
+              Alert.alert(
+                  'Thay đổi ảnh đại diện',
               'Chọn cách bạn muốn thay đổi ảnh đại diện',
-              [
-                  { text: 'Hủy', style: 'cancel' },
-                  { text: 'Chọn từ thư viện', onPress: pickImage },
-                  { text: 'Chụp ảnh mới', onPress: takePhoto },
-              ]
-          );
-      };
+                  [
+                      { text: 'Hủy', style: 'cancel' },
+                      { text: 'Chọn từ thư viện', onPress: () => pickImage() },
+                      { text: 'Chụp ảnh mới', onPress: () => takePhoto() },
+                  ]
+              );
+          };
 
   return (
     <View style={styles.container}>
@@ -388,7 +374,7 @@ const ShipProfileScreen: React.FC = () => {
             <Text style={styles.headerTitle}>Thông tin cá nhân</Text>
             <TouchableOpacity
               style={styles.editButton}
-              onPress={handleEdit}
+              onPress={isEditing ? handleCancel : handleEdit}
               disabled={isSaving}
             >
               <Ionicons 
@@ -397,14 +383,16 @@ const ShipProfileScreen: React.FC = () => {
                 color="#FFFFFF" 
               />
             </TouchableOpacity>
+
           </View>
 
           <View style={styles.profileHeader}>
             <TouchableOpacity 
               style={styles.avatarContainer}
-              onPress={showImageOptions}
+              onPress={isEditing ? showImageOptions : undefined} 
+              activeOpacity={isEditing ? 0.7 : 1} 
             >
-              <Image source={{ uri: URL+shipperData.image }} style={styles.avatar} />
+              <Image source={{ uri: shipperData.image }} style={styles.avatar} />
               {isEditing && (
                 <View style={styles.avatarEditIcon}>
                   <Ionicons name="camera-outline" size={12} color="#FFFFFF" />
@@ -412,8 +400,9 @@ const ShipProfileScreen: React.FC = () => {
               )}
             </TouchableOpacity>
 
+
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{shipperData.name}</Text>
+              <Text style={styles.profileName}>{shipperData.full_name}</Text>
               <Text style={styles.profileId}>ID: {shipperData.id}</Text>
               {/* <View style={styles.ratingContainer}>
                 <Ionicons name="star" size={14} color="#FFC107" />
@@ -492,10 +481,11 @@ const ShipProfileScreen: React.FC = () => {
             <ProfileItem
               icon="pulse-outline"
               label="Trạng thái"
-              value={shipperData.isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
+              value={getStatusText(shipperData.isOnline)}
               isEditing={false}
               onChange={() => {}}
             />
+
 
           </View>
 
