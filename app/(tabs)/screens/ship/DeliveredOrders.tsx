@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from 'expo-router';
 import moment from 'moment';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -14,11 +15,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-// Import icons (assuming you have vector icons installed)
-// import Icon from 'react-native-vector-icons/MaterialIcons';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useFocusEffect } from 'expo-router';
-import { BASE_URL } from '../../services/api';
+import {
+  assignOrderToShipper,
+  cancelOrder,
+  completeOrder,
+  fetchAllBills,
+  fetchShipperInfo,
+  updateShipperStatus
+} from '../../services/ShipService';
 import { getUserData } from '../utils/storage';
 
 const { width } = Dimensions.get('window');
@@ -50,7 +54,7 @@ interface Order {
   shipping_method?: string;
 }
 
-interface Shipper{
+interface Shipper {
   _id: string;
   account_id: string;
   is_online: 'offline' | 'online' | 'busy';
@@ -75,14 +79,14 @@ const DeliveredOrders = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchOrders();
-      fetchUserData();
+      loadOrders();
+      loadShipperStatus();
     }, [])
   );
 
   useEffect(() => {
-    fetchOrders();
-    fetchUserData();
+    loadOrders();
+    loadShipperStatus();
     onRefresh();
   }, []);
 
@@ -90,11 +94,12 @@ const DeliveredOrders = () => {
     filterOrders();
   }, [searchQuery, selectedFilter, orders]);
 
-  const fetchOrders = async () => {
+  const loadOrders = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/GetAllBills`);
-      const data = (response.data.data || []).filter((order: Order) => order.Account_id && order.address_snapshot);
-      const filtered = data.filter((o: Order) => o.shipping_method !== 'Nhận tại cửa hàng');
+      const data = await fetchAllBills();
+      const filtered = (data || []).filter((order: Order) =>
+        order.Account_id && order.address_snapshot && order.shipping_method !== 'Nhận tại cửa hàng'
+      );
       setOrders(filtered);
     } catch (error) {
       console.error('Lỗi khi lấy đơn hàng:', error);
@@ -102,39 +107,29 @@ const DeliveredOrders = () => {
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchOrders();
-    await fetchUserData();
-    setRefreshing(false);
-  };
-
-  const fetchUserData = async () => {
+  const loadShipperStatus = async () => {
     try {
-      const userId = await getUserData('userData');
-      const response = await axios.get(`${BASE_URL}/shippers`);
-      const userData = response.data.data;
-      const currentUser = userData.find((u: Shipper) => u.account_id === userId);
-      console.log('Current User:', currentUser);
-      setIsOnline(currentUser?.is_online || false);
-
+      const shipper = await fetchShipperInfo();
+      setIsOnline(shipper?.is_online || 'offline');
     } catch (error) {
-      console.error('Lỗi khi lấy thông tin người dùng:', error);
-      Alert.alert('Lỗi', 'Không thể lấy thông tin người dùng.');
+      console.error('Lỗi khi lấy thông tin shipper:', error);
+      Alert.alert('Lỗi', 'Không thể lấy thông tin shipper.');
     }
   };
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadOrders();
+    await loadShipperStatus();
+    setRefreshing(false);
+  };
 
   const filterOrders = async () => {
     const shipperID = await getUserData('shipperID');
 
     const filtered = orders.filter(order => {
-      if (order.shipping_method === 'Nhận tại cửa hàng') {
-        return false;
-      }
+      if (order.shipping_method === 'Nhận tại cửa hàng') return false;
+
       const matchesSearch =
         order.address_snapshot?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         order._id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -179,6 +174,81 @@ const DeliveredOrders = () => {
     updateFilterOptions();
   }, [orders]);
 
+  const setOnlineStatus = async (status: OnlineStatus) => {
+    try {
+      const id = await getUserData('shipperID');
+      await updateShipperStatus(id, status);
+      setIsOnline(status);
+    } catch (error) {
+      console.error("❌ Lỗi khi cập nhật trạng thái online:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật trạng thái online.");
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    if (isOnline === 'offline') {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
+      return;
+    }
+    if (isOnline === 'busy') {
+      Alert.alert('Thông báo', 'Bạn đang có đơn, không thể nhận đơn hàng này.');
+      return;
+    }
+    try {
+      const shipperID = await getUserData('shipperID');
+      const res = await assignOrderToShipper(orderId, shipperID);
+      if (res.success) {
+        Alert.alert('Thành công', 'Đã nhận đơn hàng thành công!');
+        setOnlineStatus('busy');
+        loadOrders();
+      } else {
+        Alert.alert('Lỗi', res.message || 'Không thể nhận đơn hàng');
+      }
+    } catch (error) {
+      console.error('Error accepting order:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi nhận đơn hàng');
+    }
+  };
+
+  const handleCompleteOrder = async (orderId: string) => {
+    if (isOnline !== 'online') {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hoàn thành đơn hàng.');
+      return;
+    }
+    try {
+      const shipperID = await getUserData('shipperID');
+      const res = await completeOrder(orderId, shipperID);
+      if (res.success) {
+        Alert.alert('🎉 Thành công', 'Đơn hàng đã được hoàn thành!');
+        loadOrders();
+      } else {
+        Alert.alert('Lỗi', res.message || 'Không thể hoàn thành đơn hàng');
+      }
+    } catch (error) {
+      console.error('Error completing order:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi hoàn thành đơn hàng');
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (isOnline !== 'online') {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hủy đơn hàng.');
+      return;
+    }
+    try {
+      const shipperID = await getUserData('shipperID');
+      const res = await cancelOrder(orderId, shipperID);
+      if (res.success) {
+        Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');
+        loadOrders();
+      } else {
+        Alert.alert('Lỗi', res.message || 'Không thể hủy đơn hàng');
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi hủy đơn hàng');
+    }
+  };
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'ready':
@@ -218,171 +288,6 @@ const DeliveredOrders = () => {
         };
     }
   };
-
-  const setOnlineStatus = async (status:OnlineStatus) => {
-    let newStatus: OnlineStatus = status ;
-
-    const id = await getUserData('shipperID');
-    try {
-      await axios.post(`${BASE_URL}/shippers/updateStatus`, {
-        _id: id,
-        is_online: newStatus
-      });
-      setIsOnline(newStatus);
-    } catch (error) {
-      console.error("❌ Lỗi khi cập nhật trạng thái online:", error);
-      Alert.alert("Lỗi", "Không thể cập nhật trạng thái online.");
-    }
-  };
-
-  const handleAcceptOrder = async (orderId: string) => {
-    if ((isOnline as OnlineStatus) === 'offline') {
-            Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
-            return;
-      }
-
-      if ((isOnline as OnlineStatus) === 'busy') {
-            Alert.alert('Thông báo', 'Bạn đang có đơn, không thể nhận đơn hàng này.');
-            return;
-          }
-    try {
-      const shipperID = await getUserData('shipperID');
-      
-      Alert.alert(
-        'Xác nhận nhận đơn',
-        'Bạn có chắc chắn muốn nhận đơn hàng này?',
-        [
-          {
-            text: 'Hủy',
-            style: 'cancel',
-          },
-          {
-            text: 'Nhận đơn',
-            onPress: async () => {
-              try {
-                // Call API to accept order
-                const res = await axios.put(`${BASE_URL}/bills/${orderId}/assign-shipper`, {
-                                shipper_id: shipperID,
-                              });
-                
-                if (res.data.success) {
-                  Alert.alert('Thành công', 'Đã nhận đơn hàng thành công!');
-                  setOnlineStatus('busy'); // Set status to busy
-                  fetchOrders(); // Refresh orders list
-                } else {
-                  Alert.alert('Lỗi', res.data.message || 'Không thể nhận đơn hàng');
-                }
-              } catch (error) {
-                console.error('Error accepting order:', error);
-                Alert.alert('Lỗi', 'Có lỗi xảy ra khi nhận đơn hàng');
-              }
-            },
-          },
-        ],
-        { cancelable: false }
-      );
-    } catch (error) {
-      console.error('Error getting shipper ID:', error);
-      Alert.alert('Lỗi', 'Không thể lấy thông tin shipper');
-    }
-  };
-
-  const handleCompleteOrder = async (orderId: string) => {
-    if (isOnline !== 'online') {
-            Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
-            return;
-      }
-    try {
-      const shipperID = await getUserData('shipperID');
-      
-      Alert.alert(
-        'Hoàn thành đơn hàng',
-        'Xác nhận bạn đã giao hàng thành công cho khách hàng?',
-        [
-          {
-            text: 'Chưa giao',
-            style: 'cancel',
-          },
-          {
-            text: 'Đã giao xong',
-            style: 'default',
-            onPress: async () => {
-              try {
-                // Call API to complete order
-                const response = await axios.post(`${BASE_URL}/bills/CompleteOrder`, {
-                  orderId: orderId,
-                  shipperId: shipperID
-                });
-                
-                if (response.data.success) {
-                  Alert.alert('🎉 Thành công', 'Đơn hàng đã được hoàn thành!');
-                  fetchOrders(); // Refresh orders list
-                } else {
-                  Alert.alert('Lỗi', response.data.message || 'Không thể hoàn thành đơn hàng');
-                }
-              } catch (error) {
-                console.error('Error completing order:', error);
-                Alert.alert('Lỗi', 'Có lỗi xảy ra khi hoàn thành đơn hàng');
-              }
-            },
-          },
-        ],
-        { cancelable: false }
-      );
-    } catch (error) {
-      console.error('Error getting shipper ID:', error);
-      Alert.alert('Lỗi', 'Không thể lấy thông tin shipper');
-    }
-  };
-
-  const handleCancelOrder = async (orderId: string) => {
-    if (isOnline !== 'online') {
-            Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
-            return;
-      }
-    try {
-      const shipperID = await getUserData('shipperID');
-      
-      Alert.alert(
-        'Hủy đơn hàng',
-        'Bạn có chắc chắn muốn hủy đơn hàng này?\nLý do hủy có thể là: khách không nhận, địa chỉ sai, không liên lạc được...',
-        [
-          {
-            text: 'Không hủy',
-            style: 'cancel',
-          },
-          {
-            text: 'Xác nhận hủy',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                // Call API to cancel order
-                const response = await axios.post(`${BASE_URL}/bills/CancelOrder`, {
-                  orderId: orderId,
-                  shipperId: shipperID
-                });
-                
-                if (response.data.success) {
-                  Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');
-                  fetchOrders(); // Refresh orders list
-                } else {
-                  Alert.alert('Lỗi', response.data.message || 'Không thể hủy đơn hàng');
-                }
-              } catch (error) {
-                console.error('Error cancelling order:', error);
-                Alert.alert('Lỗi', 'Có lỗi xảy ra khi hủy đơn hàng');
-              }
-            },
-          },
-        ],
-        { cancelable: false }
-      );
-    } catch (error) {
-      console.error('Error getting shipper ID:', error);
-      Alert.alert('Lỗi', 'Không thể lấy thông tin shipper');
-    }
-  };
-
   const renderOrderCard = ({ item }: { item: Order }) => {
     const statusConfig = getStatusConfig(item.status);
     const isReadyOrder = item.status === 'ready';
