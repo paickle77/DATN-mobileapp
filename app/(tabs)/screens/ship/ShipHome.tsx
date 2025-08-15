@@ -256,7 +256,7 @@ const fetchTodayStats = async () => {
       title: 'Thống kê',
       icon: 'stats-chart-outline',
       color: '#7C2D12',
-      onPress: () => Alert.alert('Chuyển đến', 'Thống kê cá nhân')
+      onPress: () => navigation.navigate('Commission' as never)
     }
   ];
 

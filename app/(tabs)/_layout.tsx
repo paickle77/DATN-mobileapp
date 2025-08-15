@@ -38,6 +38,7 @@ import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
 import VoucherScreen from './screens/profile/VoucherScreen';
+import CommissionScreen from './screens/ship/Commission';
 import DeliveredOrders from './screens/ship/DeliveredOrders';
 import ShipHome from './screens/ship/ShipHome';
 import OrderDetailPage from './screens/ship/ShipOrderDetail';
@@ -104,6 +105,9 @@ export default function TabLayout() {
       <Stack.Screen name="DeliveredOrders" component={DeliveredOrders} options={{ headerShown: false }} />
       <Stack.Screen name="ShipProfile" component={ShipProfile} options={{ headerShown: false }} />
       <Stack.Screen name="ShipOrderDetail" component={OrderDetailPage} options={{ headerShown: false }} />
+      <Stack.Screen name="Commission" component={CommissionScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
+    
   );
+
 }
