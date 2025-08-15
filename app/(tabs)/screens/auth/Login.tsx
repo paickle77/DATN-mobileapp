@@ -15,6 +15,7 @@ import {
 import CustomSnackbar from '../../../(tabs)/component/CustomSnackbar'; // ✅ ĐÃ THÊM COMPONENT SNACKBAR
 import { loginAuthService } from '../../services/LoginAuthService';
 import { validateLoginForm } from '../../utils/validation';
+import { saveUserData } from '../utils/storage';
 
 // Kiểu dữ liệu navigation
 
@@ -25,7 +26,6 @@ type RootStackParamList = {
   NewPassword: { email: string };
   CompleteProfile: { email: string };
   TabNavigator: undefined;
-  ShipperTabNavigator: undefined;
 };
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -36,7 +36,7 @@ export default function Login() {
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({ email: '', password: '' });
-  
+
   const [snackbarVisible, setSnackbarVisible] = useState(false); // ✅ SNACKBAR STATE
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState<'success' | 'error'>('success');
@@ -64,6 +64,87 @@ export default function Login() {
   setLoading(false);
 
   if (result.success) {
+    try {
+      // ✅ Lưu tất cả thông tin quan trọng vào AsyncStorage
+      const userData = result.data;
+      
+      // Lưu account ID
+      if (userData?.account?._id) {
+        await saveUserData({
+          key: 'accountId',
+          value: userData.account._id.toString()
+        });
+        console.log('🆔 Account ID:', userData.account._id);
+      }
+
+      // Lưu profile ID (thay vì user ID)
+      if (userData?.profile?._id) {
+        await saveUserData({
+          key: 'profileId', 
+          value: userData.profile._id.toString()
+        });
+        console.log('🆔 Profile ID:', userData.profile._id);
+      }
+
+      // Lưu address ID từ profile
+      if (userData?.profile?.address_id) {
+        await saveUserData({
+          key: 'addressId',
+          value: userData.profile.address_id.toString()
+        });
+        console.log('🆔 Address ID:', userData.profile.address_id);
+      }
+
+      // Lưu role
+      if (userData?.account?.role) {
+        await saveUserData({
+          key: 'userRole',
+          value: userData.account.role
+        });
+      }
+
+      // Lưu email
+      if (userData?.account?.email) {
+        await saveUserData({
+          key: 'userEmail',
+          value: userData.account.email
+        });
+      }
+
+      // Lưu thông tin profile
+      if (userData?.profile?.name) {
+        await saveUserData({
+          key: 'userName',
+          value: userData.profile.name
+        });
+      }
+
+      if (userData?.profile?.phone) {
+        await saveUserData({
+          key: 'userPhone',
+          value: userData.profile.phone
+        });
+      }
+
+      // Lưu token
+      if (userData?.token) {
+        await saveUserData({
+          key: 'authToken',
+          value: userData.token
+        });
+        console.log('🔑 Auth Token:', userData.token);
+      }
+
+      // Lưu toàn bộ user data để backup
+      await saveUserData({
+        key: 'fullUserData',
+        value: JSON.stringify(userData)
+      });
+
+    } catch (storageError) {
+      console.error('❌ Lỗi khi lưu data vào storage:', storageError);
+    }
+
     setSnackbarMessage(result.message);
     setSnackbarType('success');
     setSnackbarVisible(true);
@@ -195,7 +276,7 @@ export default function Login() {
       <View style={styles.socialContainer}>
         <TouchableOpacity
           style={[styles.socialButton, loading && styles.buttonDisabled]}
-          onPress={() => {}}
+          onPress={() => { }}
           disabled={loading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
@@ -203,7 +284,7 @@ export default function Login() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.socialButton, loading && styles.buttonDisabled]}
-          onPress={() => {}}
+          onPress={() => { }}
           disabled={loading}
         >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />

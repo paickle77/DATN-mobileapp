@@ -22,7 +22,8 @@ import NotificationScreen from './screens/notification/NotificationScreen';
 import testPushTokenService from './screens/notification/testPushTokenService';
 import CartScreen, { default as Cart } from './screens/order/Cart';
 import Checkout from './screens/order/Checkout';
-import OderDetails from './screens/order/OrderDetails';
+import ConfirmationScreen from './screens/order/confirmationScreen';
+import { default as OderDetails, default as OrderDetails } from './screens/order/OrderDetails';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
 import CategoryScreen from './screens/product/CategoryScreen';
@@ -39,6 +40,7 @@ import UserProfile from './screens/profile/UserProfile';
 import VoucherScreen from './screens/profile/VoucherScreen';
 import DeliveredOrders from './screens/ship/DeliveredOrders';
 import ShipHome from './screens/ship/ShipHome';
+import OrderDetailPage from './screens/ship/ShipOrderDetail';
 import ShipProfile from './screens/ship/ShipProfile';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -57,6 +59,8 @@ export default function TabLayout() {
        <Stack.Screen name="Odercomponent" component={Odercomponent} options={{ headerShown: false }} />
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ConfirmationScreen" component={ConfirmationScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="OrderDetails" component={OrderDetails} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
@@ -76,6 +80,7 @@ export default function TabLayout() {
       <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CategoryItem" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Cart" component={Cart} options={{ headerShown: false }} />
+
       
 
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}
@@ -95,9 +100,10 @@ export default function TabLayout() {
 
       {/* Ship  Screen */}
       <Stack.Screen name="ShipTabNavigator" component={ShipTabNavigator} options={{ headerShown: false }} />
-      <Stack.Screen name="ShipHomeScreen" component={ShipHome} options={{ headerShown: false }} />
-      <Stack.Screen name="DeliveredOrdersScreen" component={DeliveredOrders} options={{ headerShown: false }} />
-      <Stack.Screen name="ShipProfileScreen" component={ShipProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipHome" component={ShipHome} options={{ headerShown: false }} />
+      <Stack.Screen name="DeliveredOrders" component={DeliveredOrders} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipProfile" component={ShipProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipOrderDetail" component={OrderDetailPage} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

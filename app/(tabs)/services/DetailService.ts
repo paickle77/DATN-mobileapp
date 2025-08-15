@@ -23,6 +23,7 @@ export interface Product {
 export interface Size {
   _id: string;
   product_id: string;
+  product_id: string;
   quantity: number;
   size: string;
   price_increase: number;
@@ -101,9 +102,7 @@ class DetailService {
     try {
       const response = await axios.get(`${this.baseUrl}/sizes`);
       const allSizes = response.data.data || response.data;
-      console.log(productId, 'Tìm kiếm size cho sản phẩm');
       const foundSizes = allSizes.filter((size: Size) => size.product_id === productId);
-      console.log('Danh sách size tìm thấy:', foundSizes);
       return foundSizes;
     } catch (error) {
       console.error('❌ Lỗi khi lấy danh sách size:', error);

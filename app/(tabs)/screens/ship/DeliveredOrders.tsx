@@ -1,8 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import moment from 'moment';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  Dimensions,
   FlatList,
   RefreshControl,
   StatusBar,
@@ -12,30 +14,46 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+// Import icons (assuming you have vector icons installed)
+// import Icon from 'react-native-vector-icons/MaterialIcons';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from 'expo-router';
+import { BASE_URL } from '../../services/api';
+import { getUserData } from '../utils/storage';
 
-// Types
-interface DeliveredOrder {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  customerPhone: string;
-  address: string;
-  items: OrderItem[];
-  subtotal: number;
-  shippingFee: number;
+const { width } = Dimensions.get('window');
+
+type RootStackParamList = {
+  DeliveredOrders: undefined;
+  ShipTabNavigator: undefined;
+  ShipHome: undefined;
+  OderDetails: { orderId: string };
+  ShipOrderDetail: { orderId: string };
+};
+
+interface Order {
+  _id: string;
+  status: string;
+  createdAt: string;
   total: number;
-  paymentMethod: 'COD' | 'ONLINE';
-  deliveredAt: string;
-  deliveryTime: number; // minutes
-  customerRating?: number;
-  customerNote?: string;
-  tips?: number;
+  user_id: {
+    name: string;
+  };
+  address_id: {
+    detail_address: string;
+    ward: string;
+    district: string;
+    city: string;
+    name: string;
+    phone: string;
+  };
+  shipper_id?: string;
 }
 
-interface OrderItem {
-  name: string;
-  quantity: number;
-  price: number;
+interface Shipper{
+  _id: string;
+  account_id: string;
+  isOnline: boolean;
 }
 
 interface FilterOption {
@@ -44,283 +62,462 @@ interface FilterOption {
   count: number;
 }
 
-const DeliveredOrders: React.FC = () => {
+const DeliveredOrders = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [IsOnline, setIsOnline] = useState(true);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
 
-  // Mock data - dữ liệu cứng tạm
-  const deliveredOrders: DeliveredOrder[] = [
-    {
-      id: '1',
-      orderNumber: 'DH001',
-      customerName: 'Trần Thị Lan',
-      customerPhone: '0901234567',
-      address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
-      items: [
-        { name: 'Phở bò tái', quantity: 2, price: 65000 },
-        { name: 'Nước cam', quantity: 1, price: 25000 }
-      ],
-      subtotal: 155000,
-      shippingFee: 15000,
-      total: 170000,
-      paymentMethod: 'COD',
-      deliveredAt: '2024-01-15 14:30',
-      deliveryTime: 25,
-      customerRating: 5,
-      tips: 10000
-    },
-    {
-      id: '2',
-      orderNumber: 'DH002',
-      customerName: 'Lê Minh Đức',
-      customerPhone: '0912345678',
-      address: '456 Lê Lợi, Phường 2, Quận 3, TP.HCM',
-      items: [
-        { name: 'Bánh mì thịt nướng', quantity: 1, price: 35000 },
-        { name: 'Cà phê sữa đá', quantity: 2, price: 20000 }
-      ],
-      subtotal: 75000,
-      shippingFee: 12000,
-      total: 87000,
-      paymentMethod: 'ONLINE',
-      deliveredAt: '2024-01-15 13:45',
-      deliveryTime: 18,
-      customerRating: 4,
-      customerNote: 'Giao hàng nhanh, đóng gói cẩn thận'
-    },
-    {
-      id: '3',
-      orderNumber: 'DH003',
-      customerName: 'Phạm Thu Hà',
-      customerPhone: '0923456789',
-      address: '789 Điện Biên Phủ, Phường 1, Quận Bình Thạnh, TP.HCM',
-      items: [
-        { name: 'Cơm gà Hải Nam', quantity: 1, price: 55000 },
-        { name: 'Chè ba màu', quantity: 1, price: 18000 },
-        { name: 'Trà đá', quantity: 2, price: 5000 }
-      ],
-      subtotal: 83000,
-      shippingFee: 18000,
-      total: 101000,
-      paymentMethod: 'COD',
-      deliveredAt: '2024-01-15 12:20',
-      deliveryTime: 32,
-      customerRating: 5,
-      tips: 5000
-    },
-    {
-      id: '4',
-      orderNumber: 'DH004',
-      customerName: 'Hoàng Văn Nam',
-      customerPhone: '0934567890',
-      address: '321 Võ Văn Tần, Phường 6, Quận 3, TP.HCM',
-      items: [
-        { name: 'Bún bò Huế', quantity: 1, price: 45000 },
-        { name: 'Nem nướng', quantity: 3, price: 15000 }
-      ],
-      subtotal: 90000,
-      shippingFee: 10000,
-      total: 100000,
-      paymentMethod: 'ONLINE',
-      deliveredAt: '2024-01-15 11:15',
-      deliveryTime: 22
-    },
-    {
-      id: '5',
-      orderNumber: 'DH005',
-      customerName: 'Nguyễn Thị Mai',
-      customerPhone: '0945678901',
-      address: '654 Pasteur, Phường 1, Quận 1, TP.HCM',
-      items: [
-        { name: 'Pizza hải sản', quantity: 1, price: 185000 },
-        { name: 'Coca Cola', quantity: 2, price: 15000 }
-      ],
-      subtotal: 215000,
-      shippingFee: 20000,
-      total: 235000,
-      paymentMethod: 'COD',
-      deliveredAt: '2024-01-15 10:30',
-      deliveryTime: 28,
-      customerRating: 4,
-      customerNote: 'Pizza còn nóng, rất ngon!'
+
+  useFocusEffect(
+  useCallback(() => {
+    // Mỗi lần vào lại màn hình, gọi lại
+    fetchOrders();
+    fetchUserData();
+  }, [])
+);
+
+  useEffect(() => {
+    fetchOrders();
+    fetchUserData();
+    onRefresh();
+  }, []);
+
+  useEffect(() => {
+    filterOrders();
+  }, [searchQuery, selectedFilter, orders]);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/GetAllBills`);
+      const data = response.data.data || [];
+      setOrders(data);
+    } catch (error) {
+      console.error('Lỗi khi lấy đơn hàng:', error);
+      Alert.alert('Lỗi', 'Không thể lấy danh sách đơn hàng.');
     }
-  ];
+  };
 
-  const filterOptions: FilterOption[] = [
-    { label: 'Tất cả', value: 'all', count: deliveredOrders.length },
-    { label: 'COD', value: 'COD', count: deliveredOrders.filter(o => o.paymentMethod === 'COD').length },
-    { label: 'Online', value: 'ONLINE', count: deliveredOrders.filter(o => o.paymentMethod === 'ONLINE').length },
-    { label: 'Có tip', value: 'tips', count: deliveredOrders.filter(o => o.tips && o.tips > 0).length },
-  ];
-
-  const filteredOrders = deliveredOrders.filter(order => {
-    const matchesSearch = order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         order.address.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesFilter = selectedFilter === 'all' || 
-                         (selectedFilter === 'tips' ? (order.tips && order.tips > 0) : order.paymentMethod === selectedFilter);
-    
-    return matchesSearch && matchesFilter;
-  });
-
-  const totalEarnings = filteredOrders.reduce((sum, order) => sum + order.total, 0);
-  const totalTips = filteredOrders.reduce((sum, order) => sum + (order.tips || 0), 0);
-
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      Alert.alert('Đã cập nhật', 'Danh sách đơn hàng mới nhất');
-    }, 2000);
+    await fetchOrders();
+    await fetchUserData();
+    setRefreshing(false);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(amount);
+  const fetchUserData = async () => {
+    try {
+      const userId = await getUserData('userData');
+      const response = await axios.get(`${BASE_URL}/shippers`);
+      const userData = response.data.data;
+      const currentUser = userData.find((u: Shipper) => u.account_id === userId);
+      console.log('Current User:', currentUser);
+      setIsOnline(currentUser?.is_online || false);
+
+    } catch (error) {
+      console.error('Lỗi khi lấy thông tin người dùng:', error);
+      Alert.alert('Lỗi', 'Không thể lấy thông tin người dùng.');
+    }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('vi-VN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const filterOrders = async () => {
+    const shipperID = await getUserData('shipperID');
+
+    const filtered = orders.filter(order => {
+      const matchesSearch =
+        order.user_id?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order._id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.address_id?.detail_address?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const isReady = order.status === 'ready';
+      const isOwnedByShipper =
+        ['shipping', 'done', 'cancelled'].includes(order.status) &&
+        (order as any).shipper_id === shipperID;
+
+      const matchesFilter =
+        selectedFilter === 'all'
+          ? isReady || isOwnedByShipper
+          : order.status === selectedFilter &&
+            (order.status === 'ready' || (order as any).shipper_id === shipperID);
+
+      return matchesSearch && matchesFilter;
     });
+
+    setFilteredOrders(filtered);
   };
 
-  const renderStars = (rating?: number) => {
-    if (!rating) return null;
+  const updateFilterOptions = async () => {
+    const shipperID = await getUserData('shipperID');
+
+    const countReady = orders.filter(o => o.status === 'ready').length;
+    const countShipping = orders.filter(o => o.status === 'shipping' && o.shipper_id === shipperID).length;
+    const countDone = orders.filter(o => o.status === 'done' && o.shipper_id === shipperID).length;
+    const countCancelled = orders.filter(o => o.status === 'cancelled' && o.shipper_id === shipperID).length;
+    const countAll = countReady + countShipping + countDone + countCancelled;
+
+    setFilterOptions([
+      { label: 'Tất cả', value: 'all', count: countAll },
+      { label: 'Có thể nhận', value: 'ready', count: countReady },
+      { label: 'Đang giao', value: 'shipping', count: countShipping },
+      { label: 'Đã giao', value: 'done', count: countDone },
+      { label: 'Đã hủy', value: 'cancelled', count: countCancelled },
+    ]);
+  };
+
+  useEffect(() => {
+    updateFilterOptions();
+  }, [orders]);
+
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'ready':
+        return { 
+          label: 'Có thể nhận', 
+          color: '#FF6B35', 
+          bgColor: '#FFF0ED',
+          icon: '📦'
+        };
+      case 'shipping':
+        return { 
+          label: 'Đang giao', 
+          color: '#2196F3', 
+          bgColor: '#E3F2FD',
+          icon: '🚚'
+        };
+      case 'done':
+        return { 
+          label: 'Đã giao', 
+          color: '#4CAF50', 
+          bgColor: '#E8F5E8',
+          icon: '✅'
+        };
+      case 'cancelled':
+        return { 
+          label: 'Đã hủy', 
+          color: '#F44336', 
+          bgColor: '#FFEBEE',
+          icon: '❌'
+        };
+      default:
+        return { 
+          label: status, 
+          color: '#9E9E9E', 
+          bgColor: '#F5F5F5',
+          icon: '📄'
+        };
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    if (IsOnline === false) {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
+      return;
+    }
+    try {
+      const shipperID = await getUserData('shipperID');
+      
+      Alert.alert(
+        'Xác nhận nhận đơn',
+        'Bạn có chắc chắn muốn nhận đơn hàng này?',
+        [
+          {
+            text: 'Hủy',
+            style: 'cancel',
+          },
+          {
+            text: 'Nhận đơn',
+            onPress: async () => {
+              try {
+                // Call API to accept order
+                const res = await axios.put(`${BASE_URL}/bills/${orderId}/assign-shipper`, {
+                                shipper_id: shipperID,
+                              });
+                
+                if (res.data.success) {
+                  Alert.alert('Thành công', 'Đã nhận đơn hàng thành công!');
+                  fetchOrders(); // Refresh orders list
+                } else {
+                  Alert.alert('Lỗi', res.data.message || 'Không thể nhận đơn hàng');
+                }
+              } catch (error) {
+                console.error('Error accepting order:', error);
+                Alert.alert('Lỗi', 'Có lỗi xảy ra khi nhận đơn hàng');
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    } catch (error) {
+      console.error('Error getting shipper ID:', error);
+      Alert.alert('Lỗi', 'Không thể lấy thông tin shipper');
+    }
+  };
+
+  const handleCompleteOrder = async (orderId: string) => {
+    if (!IsOnline) {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
+      return;
+    }
+    try {
+      const shipperID = await getUserData('shipperID');
+      
+      Alert.alert(
+        'Hoàn thành đơn hàng',
+        'Xác nhận bạn đã giao hàng thành công cho khách hàng?',
+        [
+          {
+            text: 'Chưa giao',
+            style: 'cancel',
+          },
+          {
+            text: 'Đã giao xong',
+            style: 'default',
+            onPress: async () => {
+              try {
+                // Call API to complete order
+                const response = await axios.post(`${BASE_URL}/bills/CompleteOrder`, {
+                  orderId: orderId,
+                  shipperId: shipperID
+                });
+                
+                if (response.data.success) {
+                  Alert.alert('🎉 Thành công', 'Đơn hàng đã được hoàn thành!');
+                  fetchOrders(); // Refresh orders list
+                } else {
+                  Alert.alert('Lỗi', response.data.message || 'Không thể hoàn thành đơn hàng');
+                }
+              } catch (error) {
+                console.error('Error completing order:', error);
+                Alert.alert('Lỗi', 'Có lỗi xảy ra khi hoàn thành đơn hàng');
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    } catch (error) {
+      console.error('Error getting shipper ID:', error);
+      Alert.alert('Lỗi', 'Không thể lấy thông tin shipper');
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!IsOnline) {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ trực tuyến để nhận đơn hàng.');
+      return;
+    }
+    try {
+      const shipperID = await getUserData('shipperID');
+      
+      Alert.alert(
+        'Hủy đơn hàng',
+        'Bạn có chắc chắn muốn hủy đơn hàng này?\nLý do hủy có thể là: khách không nhận, địa chỉ sai, không liên lạc được...',
+        [
+          {
+            text: 'Không hủy',
+            style: 'cancel',
+          },
+          {
+            text: 'Xác nhận hủy',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                // Call API to cancel order
+                const response = await axios.post(`${BASE_URL}/bills/CancelOrder`, {
+                  orderId: orderId,
+                  shipperId: shipperID
+                });
+                
+                if (response.data.success) {
+                  Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');
+                  fetchOrders(); // Refresh orders list
+                } else {
+                  Alert.alert('Lỗi', response.data.message || 'Không thể hủy đơn hàng');
+                }
+              } catch (error) {
+                console.error('Error cancelling order:', error);
+                Alert.alert('Lỗi', 'Có lỗi xảy ra khi hủy đơn hàng');
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    } catch (error) {
+      console.error('Error getting shipper ID:', error);
+      Alert.alert('Lỗi', 'Không thể lấy thông tin shipper');
+    }
+  };
+
+  const renderOrderCard = ({ item }: { item: Order }) => {
+    const statusConfig = getStatusConfig(item.status);
+    const isReadyOrder = item.status === 'ready';
+    const isShippingOrder = item.status === 'shipping';
+    
     return (
-      <View style={styles.starsContainer}>
-        {[1, 2, 3, 4, 5].map(star => (
-          <Ionicons
-            key={star}
-            name={star <= rating ? 'star' : 'star-outline'}
-            size={14}
-            color="#F59E0B"
-          />
-        ))}
+      <View style={styles.card}>
+        {/* Header với mã đơn và trạng thái */}
+        <View style={styles.cardHeader}>
+          <View style={styles.orderIdContainer}>
+            <Text style={styles.orderIdLabel}>Đơn hàng</Text>
+            <Text style={styles.orderId}>#{item._id.slice(-8).toUpperCase()}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+            <Text style={styles.statusIcon}>{statusConfig.icon}</Text>
+            <Text style={[styles.statusText, { color: statusConfig.color }]}>
+              {statusConfig.label}
+            </Text>
+          </View>
+        </View>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Thông tin khách hàng */}
+        <View style={styles.customerSection}>
+          <View style={styles.customerIcon}>
+            <Text style={styles.customerIconText}>👤</Text>
+          </View>
+          <View style={styles.customerInfo}>
+            <Text style={styles.customerName}>{item.address_id?.name}</Text>
+            <Text style={styles.customerPhone}>{item.address_id?.phone}</Text>
+          </View>
+        </View>
+
+        {/* Địa chỉ giao hàng */}
+        <View style={styles.addressSection}>
+          <View style={styles.addressIcon}>
+            <Text style={styles.addressIconText}>📍</Text>
+          </View>
+          <View style={styles.addressInfo}>
+            <Text style={styles.addressLabel}>Địa chỉ giao hàng</Text>
+            <Text style={styles.addressText}>
+              {item.address_id?.detail_address}
+            </Text>
+            <Text style={styles.addressSubText}>
+              {item.address_id?.ward}, {item.address_id?.district}, {item.address_id?.city}
+            </Text>
+          </View>
+        </View>
+
+        {/* Footer với thời gian và tổng tiền */}
+        <View style={styles.cardFooter}>
+          <View style={styles.timeSection}>
+            <Text style={styles.timeIcon}>🕐</Text>
+            <Text style={styles.timeText}>
+              {moment(item.createdAt).format('DD/MM/YYYY HH:mm')}
+            </Text>
+          </View>
+          <View style={styles.priceSection}>
+            <Text style={styles.priceLabel}>Tổng tiền</Text>
+            <Text style={styles.priceText}>
+              {item.total?.toLocaleString()}₫
+            </Text>
+          </View>
+          
+
+        </View>
+
+<TouchableOpacity 
+  style={styles.acceptButton}
+  onPress={() => navigation.navigate('ShipOrderDetail', { orderId: item._id } as never)}
+  activeOpacity={0.8}
+>
+  <Text style={styles.acceptButtonIcon}>🔍</Text>
+  <Text style={styles.acceptButtonText}>Xem chi tiết</Text>
+</TouchableOpacity>
+        {/* Action Buttons */}
+        {(isReadyOrder || isShippingOrder) && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.actionSection}>
+              {isReadyOrder && (
+                <TouchableOpacity 
+                  style={styles.acceptButton}
+                  onPress={() => handleAcceptOrder(item._id)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.acceptButtonIcon}>🚚</Text>
+                  <Text style={styles.acceptButtonText}>Nhận đơn hàng</Text>
+                </TouchableOpacity>
+              )}
+              
+              {isShippingOrder && (
+                <View style={styles.shippingActions}>
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => handleCancelOrder(item._id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.cancelButtonIcon}>❌</Text>
+                    <Text style={styles.cancelButtonText}>Hủy đơn</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.completeButton}
+                    onPress={() => handleCompleteOrder(item._id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.completeButtonIcon}>✅</Text>
+                    <Text style={styles.completeButtonText}>Hoàn thành</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </>
+        )}
       </View>
     );
   };
 
-  const renderOrderCard = ({ item }: { item: DeliveredOrder }) => (
-    <TouchableOpacity
-      style={styles.orderCard}
-      activeOpacity={0.8}
-      onPress={() => Alert.alert('Chi tiết đơn hàng', `Đơn hàng ${item.orderNumber}`)}
-    >
-      {/* Header */}
-      <View style={styles.orderHeader}>
-        <View style={styles.orderInfo}>
-          <Text style={styles.orderNumber}>#{item.orderNumber}</Text>
-          <Text style={styles.deliveryTime}>⏱️ {item.deliveryTime} phút</Text>
-        </View>
-        <View style={styles.paymentBadge}>
-          <Text style={[styles.paymentText, { 
-            color: item.paymentMethod === 'COD' ? '#DC2626' : '#059669' 
-          }]}>
-            {item.paymentMethod}
-          </Text>
-        </View>
-      </View>
-
-      {/* Customer Info */}
-      <View style={styles.customerSection}>
-        <View style={styles.customerInfo}>
-          <Ionicons name="person-outline" size={16} color="#6B7280" />
-          <Text style={styles.customerName}>{item.customerName}</Text>
-          <TouchableOpacity onPress={() => Alert.alert('Gọi điện', item.customerPhone)}>
-            <Ionicons name="call-outline" size={16} color="#4F46E5" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.addressInfo}>
-          <Ionicons name="location-outline" size={16} color="#6B7280" />
-          <Text style={styles.address} numberOfLines={2}>{item.address}</Text>
-        </View>
-      </View>
-
-      {/* Items Summary */}
-      <View style={styles.itemsSection}>
-        <Text style={styles.itemsTitle}>Món ăn ({item.items.length}):</Text>
-        {item.items.map((orderItem, index) => (
-          <Text key={index} style={styles.itemText}>
-            • {orderItem.name} x{orderItem.quantity}
-          </Text>
-        ))}
-      </View>
-
-      {/* Rating & Note */}
-      {(item.customerRating || item.customerNote) && (
-        <View style={styles.feedbackSection}>
-          {item.customerRating && (
-            <View style={styles.ratingRow}>
-              {renderStars(item.customerRating)}
-              <Text style={styles.ratingText}>({item.customerRating}/5)</Text>
-            </View>
-          )}
-          {item.customerNote && (
-            <Text style={styles.customerNote}>💬 "{item.customerNote}"</Text>
-          )}
-        </View>
-      )}
-
-      {/* Footer */}
-      <View style={styles.orderFooter}>
-        <View style={styles.timeInfo}>
-          <Ionicons name="time-outline" size={14} color="#6B7280" />
-          <Text style={styles.deliveredTime}>{formatTime(item.deliveredAt)}</Text>
-        </View>
-        <View style={styles.priceInfo}>
-          {item.tips && (
-            <Text style={styles.tips}>Tip: {formatCurrency(item.tips)}</Text>
-          )}
-          <Text style={styles.totalAmount}>{formatCurrency(item.total)}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>Không có đơn hàng</Text>
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyIcon}>📦</Text>
+      <Text style={styles.emptyTitle}>Chưa có đơn hàng</Text>
       <Text style={styles.emptySubtitle}>
-        {searchQuery ? 'Không tìm thấy đơn hàng phù hợp' : 'Chưa có đơn hàng nào được giao'}
+        {selectedFilter === 'ready' 
+          ? 'Hiện tại chưa có đơn hàng nào có thể nhận'
+          : 'Không tìm thấy đơn hàng nào phù hợp'
+        }
       </Text>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1F2937" />
+      <StatusBar backgroundColor="#5C4033" barStyle="light-content" />
       
       {/* Header */}
-      <LinearGradient colors={['#1F2937', '#374151']} style={styles.header}>
-        <Text style={styles.headerTitle}>Đơn hàng đã giao</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Quản lý đơn hàng</Text>
         <Text style={styles.headerSubtitle}>
-          {filteredOrders.length} đơn • {formatCurrency(totalEarnings)}
-          {totalTips > 0 && ` • Tip: ${formatCurrency(totalTips)}`}
+          {filteredOrders.length} đơn hàng
         </Text>
-      </LinearGradient>
+      </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={20} color="#6B7280" />
+        <View style={styles.searchInputContainer}>
+          <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm theo tên khách, mã đơn, địa chỉ..."
+            placeholder="Tìm kiếm theo tên, mã đơn, địa chỉ..."
+            placeholderTextColor="#999"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor="#9CA3AF"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#6B7280" />
+              <Text style={styles.clearIcon}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -328,274 +525,426 @@ const DeliveredOrders: React.FC = () => {
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
-        {filterOptions.map((filter) => (
-          <TouchableOpacity
-            key={filter.value}
-            style={[
-              styles.filterTab,
-              selectedFilter === filter.value && styles.filterTabActive
-            ]}
-            onPress={() => setSelectedFilter(filter.value)}
-          >
-            <Text style={[
-              styles.filterText,
-              selectedFilter === filter.value && styles.filterTextActive
-            ]}>
-              {filter.label} ({filter.count})
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={filterOptions}
+          keyExtractor={(item) => item.value}
+          contentContainerStyle={styles.filterList}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                selectedFilter === item.value && styles.selectedFilterButton
+              ]}
+              onPress={() => setSelectedFilter(item.value)}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                selectedFilter === item.value && styles.selectedFilterText
+              ]}>
+                {item.label}
+              </Text>
+              <View style={[
+                styles.filterCount,
+                selectedFilter === item.value && styles.selectedFilterCount
+              ]}>
+                <Text style={[
+                  styles.filterCountText,
+                  selectedFilter === item.value && styles.selectedFilterCountText
+                ]}>
+                  {item.count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
       </View>
 
       {/* Orders List */}
       <FlatList
         data={filteredOrders}
+        keyExtractor={(item) => item._id}
         renderItem={renderOrderCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={['#5C4033']}
+          />
         }
         ListEmptyComponent={renderEmptyState}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 };
 
+export default DeliveredOrders;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8F9FA',
   },
   header: {
-    paddingTop: 50,
-    paddingBottom: 20,
+    backgroundColor: '#5C4033',
+    paddingTop: 20,
     paddingHorizontal: 20,
+    paddingBottom: 20,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
-    color: 'white',
+    fontWeight: 'bold',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#D1D5DB',
+    color: '#FFFFFF',
+    opacity: 0.8,
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: '#FFFFFF',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 12,
+    color: '#666',
   },
   searchInput: {
     flex: 1,
-    marginLeft: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#333',
+  },
+  clearIcon: {
+    fontSize: 14,
+    color: '#999',
+    padding: 4,
   },
   filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  filterTab: {
+  filterList: {
+    paddingHorizontal: 16,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    marginRight: 8,
+    marginRight: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E0E0E0',
   },
-  filterTabActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+  selectedFilterButton: {
+    backgroundColor: '#5C4033',
+    borderColor: '#5C4033',
   },
-  filterText: {
+  filterButtonText: {
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '500',
+    color: '#666',
+    marginRight: 6,
   },
-  filterTextActive: {
-    color: 'white',
+  selectedFilterText: {
+    color: '#FFFFFF',
+  },
+  filterCount: {
+    backgroundColor: '#E0E0E0',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  selectedFilterCount: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  filterCountText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  selectedFilterCountText: {
+    color: '#FFFFFF',
   },
   listContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  orderCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 16,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 3,
+    overflow: 'hidden',
   },
-  orderHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    padding: 16,
+    backgroundColor: '#FAFAFA',
   },
-  orderInfo: {
+  orderIdContainer: {
+    flex: 1,
+  },
+  orderIdLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  orderId: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  orderNumber: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginRight: 12,
+  statusIcon: {
+    fontSize: 14,
+    marginRight: 4,
   },
-  deliveryTime: {
-    fontSize: 12,
-    color: '#059669',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  paymentBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#F3F4F6',
-  },
-  paymentText: {
+  statusText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
   },
   customerSection: {
-    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    paddingBottom: 12,
+  },
+  customerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#5C4033',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  customerIconText: {
+    fontSize: 18,
+    color: '#FFFFFF',
   },
   customerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+    flex: 1,
   },
   customerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  customerPhone: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginLeft: 8,
-    flex: 1,
+    color: '#666',
+  },
+  addressSection: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  addressIcon: {
+    width: 24,
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 2,
+  },
+  addressIconText: {
+    fontSize: 16,
   },
   addressInfo: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  address: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginLeft: 8,
     flex: 1,
-    lineHeight: 20,
   },
-  itemsSection: {
-    marginBottom: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  itemsTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  itemText: {
-    fontSize: 14,
-    color: '#6B7280',
+  addressLabel: {
+    fontSize: 12,
+    color: '#666',
     marginBottom: 4,
   },
-  feedbackSection: {
-    marginBottom: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    marginRight: 8,
-  },
-  ratingText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  customerNote: {
-    fontSize: 14,
-    color: '#4B5563',
-    fontStyle: 'italic',
+  addressText: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 2,
     lineHeight: 20,
   },
-  orderFooter: {
+  addressSubText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 18,
+  },
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    padding: 16,
+    backgroundColor: '#FAFAFA',
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: '#F0F0F0',
   },
-  timeInfo: {
+  timeSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  deliveredTime: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginLeft: 4,
+  timeIcon: {
+    fontSize: 14,
+    marginRight: 6,
   },
-  priceInfo: {
+  timeText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  priceSection: {
     alignItems: 'flex-end',
   },
-  tips: {
+  priceLabel: {
     fontSize: 12,
-    color: '#059669',
-    marginBottom: 4,
+    color: '#666',
+    marginBottom: 2,
   },
-  totalAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#DC2626',
+  priceText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#5C4033',
   },
-  emptyState: {
+  emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 80,
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4B5563',
-    marginTop: 16,
+    color: '#333',
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#666',
     textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 40,
+  },
+  actionSection: {
+    padding: 16,
+  },
+  acceptButton: {
+    backgroundColor: '#5C4033',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#5C4033',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  acceptButtonIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  acceptButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  completeButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    flex: 1,
+    marginLeft: 8,
+  },
+  completeButtonIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  completeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  shippingActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F44336',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#F44336',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    flex: 1,
+    marginRight: 8,
+  },
+  cancelButtonIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
-
-export default DeliveredOrders;

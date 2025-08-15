@@ -81,7 +81,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     }
 
     try {
-      const userId = await getUserData('userData');
+      const userId = await getUserData('profileId');
       const payload = {
         detail_address: detailAddress,
         ward: selectedWard.Name,

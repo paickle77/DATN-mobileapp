@@ -162,7 +162,7 @@ const Detail: React.FC = () => {
     let basePrice = product.discount_price || product.price;
     const sizeData = sizes.find(s => s.size === selectedSize);
     if (sizeData) {
-      basePrice += sizeData.price_increase * 1000;
+      basePrice += sizeData.price_increase ;
     }
     setTotalPrice(quantity * basePrice);
   };
@@ -328,16 +328,6 @@ const Detail: React.FC = () => {
             </Text>
           </View>
 
-          {/* Ingredients Card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>
-              <Ionicons name="leaf-outline" size={20} color="#4CAF50" /> Nguyên liệu
-            </Text>
-            <Text style={styles.ingredientText}>
-              {product.ingredient_id.map(i => i.name).join(", ")}
-            </Text>
-          </View>
-
           {/* Reviews Card */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
@@ -390,7 +380,7 @@ const Detail: React.FC = () => {
                     styles.sizePrice,
                     selectedSize === s.size && styles.activeSizePrice
                   ]}>
-                    +{formatPrice(s.price_increase * 1000)}đ
+                    +{formatPrice(s.price_increase )}đ
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -441,7 +431,7 @@ const Detail: React.FC = () => {
               const sizeData = sizes.find(s => s.size === selectedSize);
 
               if (sizeData) {
-                adjustedPrice += sizeData.price_increase * 1000;
+                adjustedPrice += sizeData.price_increase ;
               }
               return (
                 <View style={styles.priceContainer}>
@@ -450,7 +440,7 @@ const Detail: React.FC = () => {
                       <Text style={styles.originalPrice}>
                         {(() => {
                           const sizeInfo = sizes.find(s => s.size === selectedSize);
-                          const priceIncrease = sizeInfo ? sizeInfo.price_increase * 1000 : 0;
+                          const priceIncrease = sizeInfo ? sizeInfo.price_increase : 0;
                           const fullOriginalPrice = product.price + priceIncrease;
                           return `${formatPrice(fullOriginalPrice)}đ`;
                         })()}
@@ -729,12 +719,7 @@ const styles = StyleSheet.create({
     color: '#546E7A',
     textAlign: 'justify',
   },
-  ingredientText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#4CAF50',
-    fontWeight: '500',
-  },
+ 
   reviewSummaryContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { CommonActions } from '@react-navigation/native';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from 'expo-router';
@@ -12,7 +13,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { BASE_URL } from '../../services/api';
 import { Users } from '../../services/ProfileService';
@@ -44,6 +45,11 @@ type OrderType = {
   shipping_method: string;
   status: string;
   total: number;
+  original_total?: number; // Tổng tiền trước giảm giá
+  discount_amount?: number; // Số tiền giảm giá
+  voucher_code?: string; // Mã voucher đã sử dụng
+  payment_confirmed_at?: string;
+  delivered_at?: string;
   updatedAt: string;
   user_id: {
     _id: string;
@@ -64,35 +70,30 @@ type OrderType = {
   };
 };
 
-
-
 const UserOrderHistoryScreen = () => {
   const navigation = useNavigation();
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'processing' | 'shipping' | 'completed'>('processing');
+  const [activeTab, setActiveTab] = useState<'doing' | 'shipping' | 'done'>('doing');
+
 
   const tabs = [
-    { key: 'processing', title: 'Đang xử lý', icon: 'time-outline' },
+    { key: 'doing', title: 'Đang xử lý', icon: 'time-outline' },
     { key: 'shipping', title: 'Đang giao', icon: 'car-outline' },
-    { key: 'completed', title: 'Hoàn thành', icon: 'checkmark-done-circle-outline' },
+    { key: 'done', title: 'Hoàn thành', icon: 'checkmark-done-circle-outline' },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'đang xử lý':
-      case 'pending':
+      case 'pending_payment':
         return '#FF9500';
-      case 'đã xác nhận':
       case 'confirmed':
+      case 'processing':
         return '#007AFF';
-      case 'đang giao':
       case 'shipping':
         return '#5856D6';
-      case 'đã giao':
       case 'delivered':
         return '#34C759';
-      case 'đã hủy':
       case 'cancelled':
         return '#FF3B30';
       default:
@@ -102,19 +103,15 @@ const UserOrderHistoryScreen = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'đang xử lý':
-      case 'pending':
+      case 'pending_payment':
         return 'time-outline';
-      case 'đã xác nhận':
       case 'confirmed':
+      case 'processing':
         return 'checkmark-circle-outline';
-      case 'đang giao':
       case 'shipping':
         return 'car-outline';
-      case 'đã giao':
       case 'delivered':
         return 'checkmark-done-circle-outline';
-      case 'đã hủy':
       case 'cancelled':
         return 'close-circle-outline';
       default:
@@ -124,14 +121,14 @@ const UserOrderHistoryScreen = () => {
 
   const getStatusText = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending':
-        return 'Đang xử lý';
+      case 'pending_payment':
       case 'confirmed':
-        return 'Đã xác nhận';
+      case 'processing':
+        return 'Đang xử lý';
       case 'shipping':
-        return 'Đang giao hàng';
+        return 'Đang giao';
       case 'delivered':
-        return 'Đã giao thành công';
+        return 'Hoàn thành';
       case 'cancelled':
         return 'Đã hủy';
       default:
@@ -143,23 +140,24 @@ const UserOrderHistoryScreen = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${BASE_URL}/GetAllBills`);
-      const userData = await getUserData('userData') as Users | null;
-                          if (!userData || !userData) return;
-      
-                          const userId = userData;
+      const userId = await getUserData('userData');
 
       const allOrders: OrderType[] = response.data.data;
 
       const filteredOrders = allOrders.filter((order: OrderType) => {
         let orderUserId: string | undefined;
+
         if (order.user_id && typeof order.user_id === 'object') {
           orderUserId = order.user_id._id ?? undefined;
         } else if (typeof order.user_id === 'string') {
           orderUserId = order.user_id;
         }
-        console.log('So sánh:', orderUserId, 'vs', userData);
-        return orderUserId === userData?._id;
+
+        return orderUserId === userId;
       });
+
+      // Sắp xếp theo thời gian tạo mới nhất
+      filteredOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       console.log('Số đơn hàng:', filteredOrders.length);
       setOrders(filteredOrders);
@@ -173,17 +171,17 @@ const UserOrderHistoryScreen = () => {
 
   const getFilteredOrders = () => {
     switch (activeTab) {
-      case 'processing':
+      case 'doing':
         return orders.filter(order =>
-          ['đang xử lý', 'pending', 'đã xác nhận', 'confirmed'].includes(order.status.toLowerCase())
+          ['pending_payment', 'doing', 'processing'].includes(order.status.toLowerCase())
         );
       case 'shipping':
         return orders.filter(order =>
-          ['đang giao', 'shipping'].includes(order.status.toLowerCase())
+          order.status.toLowerCase() === 'shipping'
         );
-      case 'completed':
+      case 'done':
         return orders.filter(order =>
-          ['đã giao', 'delivered', 'đã hủy', 'cancelled'].includes(order.status.toLowerCase())
+          ['delivered', 'cancelled'].includes(order.status.toLowerCase())
         );
       default:
         return [];
@@ -208,8 +206,8 @@ const UserOrderHistoryScreen = () => {
         {
           text: 'Mua lại',
           onPress: () => {
-            // Navigate to cart or product page with order items
             console.log('Reorder:', order._id);
+            // TODO: Implement reorder logic
           }
         }
       ]
@@ -227,8 +225,7 @@ const UserOrderHistoryScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Call API to cancel order
-              await axios.put(`${BASE_URL}/cancelOrder/${orderId}`);
+              await axios.put(`${BASE_URL}/bills/${orderId}`, { status: 'cancelled' });
               fetchOrders();
               Alert.alert('Thành công', 'Đơn hàng đã được hủy');
             } catch (error) {
@@ -238,6 +235,10 @@ const UserOrderHistoryScreen = () => {
         }
       ]
     );
+  };
+
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('vi-VN') + 'đ';
   };
 
   const renderOrderCard = ({ item: order }: { item: OrderType }) => (
@@ -301,6 +302,19 @@ const UserOrderHistoryScreen = () => {
         </View>
       </View>
 
+      {/* Voucher Info */}
+      {order.voucher_code && (
+        <View style={styles.voucherSection}>
+          <Ionicons name="pricetag" size={14} color="#34C759" />
+          <Text style={styles.voucherText}>Đã sử dụng mã: {order.voucher_code}</Text>
+          {order.discount_amount && order.discount_amount > 0 && (
+            <Text style={styles.discountText}>
+              (Tiết kiệm {formatPrice(order.discount_amount)})
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* Note */}
       {order.note && (
         <View style={styles.noteSection}>
@@ -311,9 +325,16 @@ const UserOrderHistoryScreen = () => {
 
       {/* Total Amount */}
       <View style={styles.totalSection}>
-        <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+        <View>
+          <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+          {order.original_total && order.original_total !== order.total && (
+            <Text style={styles.originalPrice}>
+              {formatPrice(order.original_total)}
+            </Text>
+          )}
+        </View>
         <Text style={styles.totalAmount}>
-          {Number(order.total).toLocaleString('vi-VN')}đ
+          {formatPrice(order.total)}
         </Text>
       </View>
 
@@ -328,7 +349,7 @@ const UserOrderHistoryScreen = () => {
         </TouchableOpacity>
 
         {/* Conditional Action Buttons */}
-        {activeTab === 'processing' && (
+        {(order.status === 'pending_payment' || order.status === 'confirmed') && (
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => handleCancelOrder(order._id)}
@@ -338,7 +359,17 @@ const UserOrderHistoryScreen = () => {
           </TouchableOpacity>
         )}
 
-        {activeTab === 'completed' && order.status.toLowerCase() === 'delivered' && (
+        {order.status === 'delivered' && (
+          <TouchableOpacity
+            style={styles.reviewButton}
+            onPress={() => navigation.navigate('ReviewScreen', { orderId: order._id })}
+          >
+            <Ionicons name="star-outline" size={16} color="#FFD700" />
+            <Text style={styles.reviewButtonText}>Đánh giá</Text>
+          </TouchableOpacity>
+        )}
+
+        {order.status === 'delivered' && (
           <TouchableOpacity
             style={styles.reorderButton}
             onPress={() => handleReorder(order)}
@@ -350,10 +381,10 @@ const UserOrderHistoryScreen = () => {
       </View>
 
       {/* Progress Indicator for shipping orders */}
-      {activeTab === 'shipping' && (
+      {order.status === 'shipping' && (
         <View style={styles.progressSection}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '60%' }]} />
+            <View style={[styles.progressFill, { width: '70%' }]} />
           </View>
           <Text style={styles.progressText}>Đang trên đường giao đến bạn</Text>
         </View>
@@ -404,7 +435,22 @@ const UserOrderHistoryScreen = () => {
         colors={['#5C4033', '#7A5A47']}
         style={styles.header}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => {
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: 'TabNavigator',
+                    params: { screen: 'Profile' },
+                  },
+                ],
+              })
+            );
+          }}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.screenTitle}>Đơn hàng của tôi</Text>
@@ -657,6 +703,30 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 6,
   },
+  // Thêm các styles bị thiếu
+  voucherSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: '#F0FDF4',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  voucherText: {
+    fontSize: 13,
+    color: '#166534',
+    fontWeight: '600',
+    marginLeft: 6,
+    flex: 1,
+  },
+  discountText: {
+    fontSize: 12,
+    color: '#15803D',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
   noteSection: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -685,6 +755,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontWeight: '500',
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: '#999',
+    textDecorationLine: 'line-through',
+    marginTop: 2,
   },
   totalAmount: {
     fontSize: 18,
@@ -726,6 +802,23 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  reviewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  reviewButtonText: {
+    color: '#B45309',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 6,
