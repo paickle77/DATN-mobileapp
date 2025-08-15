@@ -55,12 +55,16 @@ async getUserName(userId: string): Promise<string> {
   /**
    * Xử lý hiển thị tên user từ review object
    */
-  getUserDisplayName(review: Review): string {
-    if (typeof review.user_id === 'object' && review.user_id.name) {
-      return review.user_id.name;
-    }
-    return 'Khách hàng';
+ getUserDisplayName(review: Review): string {
+  console.log("Username@@:", review);
+
+  if (typeof review.Account_id === 'object' && review.Account_id.email) {
+    // Lấy phần trước dấu @
+    return review.Account_id.email.split('@')[0];
   }
+  return 'Khách hàng';
+}
+
 
   /**
    * Format ngày tháng cho đánh giá

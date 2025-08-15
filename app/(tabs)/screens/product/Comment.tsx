@@ -113,6 +113,7 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
 ) => {
   let filtered = commentService.filterReviewsByRating(reviewsToFilter, filter);
   filtered = commentService.sortReviews(filtered, sort);
+  console.log("Data đã lọc ở Comment :",filtered)
   setFilteredReviews(filtered);
 };
 
