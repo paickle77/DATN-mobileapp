@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import NotificationCard from '../../component/NotificationCard';
 import { BASE_URL } from '../../services/api';
+import { getUserData } from '../utils/storage';
 
 const NotificationScreen = () => {
   const navigation = useNavigation();
@@ -16,10 +17,19 @@ const NotificationScreen = () => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/notifications`);
+      const UserID  = await getUserData('profileId');
+
+      const currentUserId = UserID;
+      console.log('Current User ID:', currentUserId);
+
+      const response = await axios.get(`${BASE_URL}/notifications/user/${currentUserId}`);
       const allNotifications = response.data?.data || [];
-      const readNotifications = allNotifications.filter(noti => noti.is_read === true);
-      setNotifications(readNotifications);
+
+      // Nếu muốn hiển thị tất cả thông báo (mới + đã đọc)
+      setNotifications(allNotifications);
+
+      // Nếu chỉ muốn hiển thị thông báo mới (chưa đọc)
+      // setNotifications(allNotifications.filter(noti => !noti.is_read));
     } catch (error) {
       console.error('Lỗi khi lấy dữ liệu thông báo:', error);
     }

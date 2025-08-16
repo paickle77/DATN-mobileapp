@@ -80,9 +80,7 @@ const UserProfileScreen = () => {
             const response = await axios.get(`${BASE_URL}/users/${userId}`);
             if (response.data && response.data.success !== false) {
                 setUser(response.data.data); // ✅ cập nhật user
-                console.log("User",response.data.data)
                 const FectEmail= await axios.get(`${BASE_URL}/account/${response.data.data.account_id}`)
-                console.log("Email trả về:", FectEmail.data.data.email);
                 SetEmail(FectEmail.data.data.email)
                 return response.data.data;
             } else {
