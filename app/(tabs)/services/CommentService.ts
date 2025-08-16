@@ -47,19 +47,24 @@ class CommentService {
   /**
    * Lấy tên user theo ID (với cache)
    */
-  async getUserName(userId: string): Promise<string> {
-    return await detailService.getUserInfo(userId);
-  }
+async getUserName(userId: string): Promise<string> {
+  const name = await detailService.getUserInfo(userId);
+  return name; // không fallback ở đây nữa, đã xử lý ở DetailService
+}
 
   /**
    * Xử lý hiển thị tên user từ review object
    */
-  getUserDisplayName(review: Review): string {
-    if (typeof review.user_id === 'object' && review.user_id.name) {
-      return review.user_id.name;
-    }
-    return 'Khách hàng';
+ getUserDisplayName(review: Review): string {
+  console.log("Username@@:", review);
+
+  if (typeof review.Account_id === 'object' && review.Account_id.email) {
+    // Lấy phần trước dấu @
+    return review.Account_id.email.split('@')[0];
   }
+  return 'Khách hàng';
+}
+
 
   /**
    * Format ngày tháng cho đánh giá
