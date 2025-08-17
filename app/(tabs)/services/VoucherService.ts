@@ -13,24 +13,19 @@ export interface Voucher {
   discount_percent: number;
   start_date: string;
   end_date: string;
-  is_active?: boolean;
-  usage_limit?: number;
-  used_count?: number;
-  min_order_value?: number;
-  max_discount_amount?: number;
+  quantity: number;           // tổng số lượng phát hành
+  used_count: number;         // đã dùng bao nhiêu
+  max_usage_per_user: number; // tối đa mỗi user được dùng
+  status: 'active' | 'inactive'; // trạng thái voucher
 }
 
 export interface UserVoucher {
   _id: string;
   Account_id: string;
   voucher_id: string | Voucher;
-  is_used: boolean;
-  used_date?: string;
-  status: string; // 'active', 'used', 'expired'
-  start_date: string;
-  created_at?: string;
-  updated_at?: string;
-  __v?: number;
+  status: 'active' | 'used' | 'expired'; // trạng thái sử dụng
+  saved_at: string;           // thời gian lưu voucher
+  used_at?: string;           // thời gian sử dụng (nếu có)
 }
 
 export interface VoucherResponse {
@@ -45,15 +40,18 @@ export interface UserVoucherResponse {
   data: UserVoucher[];
 }
 
-export interface ValidationResponse {
+export interface UseVoucherResponse {
   success: boolean;
   message: string;
   data?: {
-    isValid: boolean;
-    discount_amount: number;
-    final_amount: number;
-    voucher: Voucher;
-  }
+    voucherUser: UserVoucher;
+    voucher: {
+      code: string;
+      discount_percent: number;
+      used_count: number;
+      quantity: number;
+    };
+  };
 }
 
 // --- MAIN CLASS ---
@@ -135,7 +133,7 @@ class VoucherService {
 
       const availableVouchers = allVouchersResponse.data.filter(voucher =>
         !savedVoucherIds.includes(voucher._id) &&
-        voucher.is_active !== false &&
+        voucher.status === 'active' &&
         dayjs(voucher.end_date).isAfter(dayjs())
       );
 
@@ -150,25 +148,33 @@ class VoucherService {
     }
   }
 
-  // Lưu voucher vào danh sách
+  // Lưu voucher vào danh sách với kiểm tra trùng lặp
   async saveVoucherToList(voucher_id: string): Promise<any> {
     try {
       const accountId = await this.getAccountId();
 
       const payload = {
         Account_id: accountId,
-        voucher_id,
-        status: 'active',
-        start_date: new Date().toISOString(),
-        is_used: false
+        voucher_id
       };
 
       console.log('💾 Đang lưu voucher:', payload);
-      const response = await axios.post(`${BASE_URL}/voucher_users`, payload);
+      const response = await axios.post(`${BASE_URL}/voucher_users/save`, payload);
+      console.log('✅ Lưu voucher thành công:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('❌ Lỗi khi lưu voucher:', error);
-      throw error;
+      
+      // Xử lý các lỗi cụ thể
+      if (error.response?.status === 409) {
+        throw new Error('Bạn đã lưu voucher này rồi!');
+      } else if (error.response?.status === 400) {
+        throw new Error(error.response.data.message || 'Voucher không hợp lệ');
+      } else if (error.response?.status === 404) {
+        throw new Error('Voucher không tồn tại hoặc đã bị vô hiệu hóa');
+      }
+      
+      throw error.response?.data || error;
     }
   }
 
@@ -179,6 +185,54 @@ class VoucherService {
       return response.data;
     } catch (error: any) {
       console.error('❌ Lỗi khi xóa voucher:', error);
+      throw error;
+    }
+  }
+
+  // Đánh dấu voucher đã sử dụng (gọi khi đơn hàng thành công)
+  async markVoucherAsUsed(voucherUserId: string): Promise<UseVoucherResponse> {
+    try {
+      const payload = { voucherUserId };
+
+      console.log('🎯 Đang đánh dấu voucher đã sử dụng:', payload);
+      const response = await axios.post(`${BASE_URL}/voucher_users/mark-used`, payload);
+      console.log('✅ Đánh dấu voucher thành công:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Lỗi khi đánh dấu voucher đã sử dụng:', error);
+      throw error.response?.data || error;
+    }
+  }
+
+  // Sử dụng voucher (API cũ - giữ lại để tương thích)
+  async useVoucher(voucherUserId: string): Promise<UseVoucherResponse> {
+    try {
+      const accountId = await this.getAccountId();
+
+      const payload = {
+        accountId,
+        voucherUserId
+      };
+
+      console.log('🎫 Đang sử dụng voucher:', payload);
+      const response = await axios.post(`${BASE_URL}/voucher_users/use`, payload);
+      console.log('✅ Sử dụng voucher thành công:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Lỗi khi sử dụng voucher:', error);
+      throw error.response?.data || error;
+    }
+  }
+
+  // Cập nhật voucher hết hạn tự động
+  async updateExpiredVouchers(): Promise<any> {
+    try {
+      console.log('⏰ Đang cập nhật voucher hết hạn...');
+      const response = await axios.post(`${BASE_URL}/voucher_users/update-expired`);
+      console.log('✅ Cập nhật voucher hết hạn thành công:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Lỗi khi cập nhật voucher hết hạn:', error);
       throw error;
     }
   }

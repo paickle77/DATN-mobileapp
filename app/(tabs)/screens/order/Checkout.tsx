@@ -55,7 +55,7 @@ const Checkout = ({
 }) => {
   // State declarations
   const [note, setNote] = useState('');
-  const [selectedVoucher, setSelectedVoucher] = useState(null);
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
   const [voucher_User, setVoucher_User] = useState('');
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
@@ -395,8 +395,9 @@ const Checkout = ({
       }
 
       if (selectedVoucher) {
-        console.log('Voucher đã chọn, id:', selectedVoucher.voucher_id?._id);
-        setVoucher_User(selectedVoucher.voucher_id?._id)
+        console.log('Voucher đã chọn, voucher_user_id:', selectedVoucher._id);
+        console.log('Voucher gốc id:', selectedVoucher.voucher_id?._id);
+        setVoucher_User(selectedVoucher._id); // ✅ SET ID CUA VOUCHER_USER
       } else {
         console.log('Chưa chọn voucher');
       }
@@ -453,7 +454,7 @@ const Checkout = ({
         pendingOrder,
         selectedItemIds,
         sizeQuantityList, // 👈 Thêm dòng này
-        voucher_User: selectedVoucher?.voucher_id?._id || '', // ✅ TRUYỀN TRỰC TIẾP
+        voucher_User: selectedVoucher?._id || '', // ✅ TRUYỀN ID CUA VOUCHER_USER, KHÔNG PHẢI VOUCHER GỐC
       });
 
     } catch (error) {

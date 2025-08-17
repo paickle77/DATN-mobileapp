@@ -120,7 +120,9 @@ const VoucherScreen = () => {
               onSave={handleVoucherSaved}
             />
           ) : (
-            <UserVoucherList data={userVouchers} />
+            <UserVoucherList 
+              data={userVouchers}
+            />
           )}
         </ScrollView>
       </View>

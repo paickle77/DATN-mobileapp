@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { BASE_URL } from '../../services/api';
 import checkoutService, { PendingOrder } from '../../services/checkoutService';
+import voucherService from '../../services/VoucherService';
 import { registerForPushNotificationsAsync } from '../notification/PushTokenService';
 import { getUserData } from '../utils/storage';
 
@@ -172,18 +173,29 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
       const userId = await getUserData('accountId');
       console.log("userid :", userId);
 
+      // 🔍 DEBUG: Kiểm tra các giá trị voucher trước khi xử lý
+      console.log("🔍 DEBUG VOUCHER:");
+      console.log("- pendingOrder.orderData.voucherCode:", pendingOrder.orderData.voucherCode);
+      console.log("- voucher_User:", voucher_User);
+      console.log("- voucher_User type:", typeof voucher_User);
+
       // ✅ CHỈ GỌI API UPDATE VOUCHER KHI THỰC SỰ CÓ SỬ DỤNG VOUCHER
-      if (pendingOrder.orderData.voucherCode || voucher_User) {
+      if (pendingOrder.orderData.voucherCode && voucher_User) {
         try {
-          await axios.put(`${BASE_URL}/voucher_user/${userId}/${voucher_User}/status`, {
-            status: 'inactive',
-          });
-          console.log("✅ Đã cập nhật trạng thái voucher");
+          console.log("🎯 Gọi markVoucherAsUsed với voucherUserId:", voucher_User);
+          // ✅ SỬ DỤNG API MỚI để mark voucher as used
+          await voucherService.markVoucherAsUsed(voucher_User);
+          console.log("✅ Đã đánh dấu voucher đã sử dụng");
         } catch (voucherError) {
           console.error("❌ Lỗi khi cập nhật voucher:", voucherError);
+          // Không throw error vì đơn hàng vẫn thành công
         }
       } else {
         console.log("ℹ️ Không có voucher được sử dụng, bỏ qua việc cập nhật trạng thái");
+        console.log("ℹ️ Lý do:", {
+          hasVoucherCode: !!pendingOrder.orderData.voucherCode,
+          hasVoucherUser: !!voucher_User
+        });
       }
 
       // Giảm số lượng sản phẩm trong kho

@@ -24,12 +24,18 @@ type Props = {
 
 const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) => {
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
+  const [savingVouchers, setSavingVouchers] = useState<Set<string>>(new Set()); // Track saving state per voucher
 
   const formatDate = (date: string) => dayjs(date).format('DD/MM/YYYY');
 
   const handleSave = async (v: Voucher) => {
+    // Prevent spam clicking
+    if (savingVouchers.has(v._id)) {
+      return;
+    }
+
     const alreadySaved = userVouchers.some(
-      (uv) => uv.voucher_id._id === v._id
+      (uv) => typeof uv.voucher_id === 'object' && uv.voucher_id._id === v._id
     );
 
     if (alreadySaved) {
@@ -39,17 +45,28 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
       return;
     }
 
+    // Add to saving state
+    setSavingVouchers(prev => new Set(prev).add(v._id));
+
     try {
       await voucherService.saveVoucherToList(v._id);
       Alert.alert('Thành công', '✅ Đã lưu voucher!', [
         { text: 'OK', style: 'default' }
       ]);
       if (onSave) onSave(v);
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Lỗi', '❌ Lỗi khi lưu voucher', [
+    } catch (err: any) {
+      console.error('Save voucher error:', err);
+      const errorMessage = err?.message || 'Lỗi khi lưu voucher';
+      Alert.alert('Lỗi', `❌ ${errorMessage}`, [
         { text: 'OK', style: 'default' }
       ]);
+    } finally {
+      // Remove from saving state
+      setSavingVouchers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(v._id);
+        return newSet;
+      });
     }
   };
 
@@ -71,8 +88,9 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
       <Text style={styles.header}>📢 Voucher có sẵn</Text>
       {validVouchers.map((v) => {
         const isAlreadySaved = userVouchers.some(
-          (uv) => uv.voucher_id._id === v._id
+          (uv) => typeof uv.voucher_id === 'object' && uv.voucher_id._id === v._id
         );
+        const isSaving = savingVouchers.has(v._id);
         
         return (
           <View key={v._id} style={styles.card}>
@@ -82,6 +100,11 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                 {isAlreadySaved && (
                   <View style={styles.savedBadge}>
                     <Text style={styles.savedText}>✓ Đã lưu</Text>
+                  </View>
+                )}
+                {isSaving && (
+                  <View style={styles.savingBadge}>
+                    <Text style={styles.savingText}>⏳ Đang lưu...</Text>
                   </View>
                 )}
               </View>
@@ -101,19 +124,26 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
               📅 {formatDate(v.start_date)} - {formatDate(v.end_date)}
             </Text>
             
+            {/* Hiển thị thông tin số lượng */}
+            {v.quantity > 0 && (
+              <Text style={styles.quantityInfo}>
+                📊 Đã dùng: {v.used_count}/{v.quantity} | Tối đa: {v.max_usage_per_user} lần/người
+              </Text>
+            )}
+            
             <TouchableOpacity
               onPress={() => handleSave(v)}
               style={[
                 styles.saveButton,
-                isAlreadySaved && styles.disabledButton
+                (isAlreadySaved || isSaving) && styles.disabledButton
               ]}
-              disabled={isAlreadySaved}
+              disabled={isAlreadySaved || isSaving}
             >
               <Text style={[
                 styles.saveText,
-                isAlreadySaved && styles.disabledText
+                (isAlreadySaved || isSaving) && styles.disabledText
               ]}>
-                {isAlreadySaved ? '✓ Đã lưu' : '💾 Lưu Voucher'}
+                {isSaving ? '⏳ Đang lưu...' : isAlreadySaved ? '✓ Đã lưu' : '💾 Lưu Voucher'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -167,6 +197,41 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                       <Text style={styles.modalLabelTitle}>Thời gian hiệu lực</Text>
                       <Text style={styles.modalValue}>
                         {formatDate(selectedVoucher.start_date)} - {formatDate(selectedVoucher.end_date)}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {/* Hiển thị thông tin số lượng */}
+                  {selectedVoucher.quantity > 0 && (
+                    <View style={styles.modalRow}>
+                      <Text style={styles.modalIcon}>📊</Text>
+                      <View style={styles.modalTextContainer}>
+                        <Text style={styles.modalLabelTitle}>Số lượng</Text>
+                        <Text style={styles.modalValue}>
+                          Đã sử dụng: {selectedVoucher.used_count}/{selectedVoucher.quantity}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {selectedVoucher.max_usage_per_user > 0 && (
+                    <View style={styles.modalRow}>
+                      <Text style={styles.modalIcon}>👤</Text>
+                      <View style={styles.modalTextContainer}>
+                        <Text style={styles.modalLabelTitle}>Giới hạn mỗi người</Text>
+                        <Text style={styles.modalValue}>
+                          Tối đa {selectedVoucher.max_usage_per_user} lần
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  
+                  <View style={styles.modalRow}>
+                    <Text style={styles.modalIcon}>📌</Text>
+                    <View style={styles.modalTextContainer}>
+                      <Text style={styles.modalLabelTitle}>Trạng thái</Text>
+                      <Text style={styles.modalValue}>
+                        {selectedVoucher.status === 'active' ? '🟢 Hoạt động' : '🔴 Không hoạt động'}
                       </Text>
                     </View>
                   </View>
@@ -394,6 +459,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  quantityInfo: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  savingBadge: {
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  savingText: {
+    color: '#FF9800',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

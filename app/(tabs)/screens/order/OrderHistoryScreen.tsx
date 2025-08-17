@@ -7,14 +7,14 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   FlatList,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
@@ -67,23 +67,25 @@ type OrderType = {
   };
 };
 
-type TabType = 'all' | 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed';
+type TabType = 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed';
 
 const OrderHistoryScreen = () => {
   const navigation = useNavigation();
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [activeTab, setActiveTab] = useState<TabType>('pending');
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
-  // Tabs được tối ưu cho shop bánh
+  // Tabs tối ưu hóa trải nghiệm người dùng - ưu tiên trạng thái quan trọng
   const tabs = [
-    { key: 'all', title: 'Tất cả', icon: 'apps', color: '#5C4033' },
-    { key: 'pending', title: 'Chờ xác nhận', icon: 'time', color: '#FF9500' },
-    { key: 'shipping', title: 'Đang làm', icon: 'cafe', color: '#007AFF' },
-    { key: 'done', title: 'Hoàn thành', icon: 'checkmark-done-circle', color: '#34C759' },
-    { key: 'cancelled', title: 'Đã hủy', icon: 'close-circle', color: '#FF3B30' },
+    { key: 'pending', title: 'Chờ xác nhận', icon: 'time-outline', color: '#FF9500', priority: 1 },
+    { key: 'shipping', title: 'Đang làm', icon: 'restaurant-outline', color: '#007AFF', priority: 2 },
+    { key: 'done', title: 'Hoàn thành', icon: 'checkmark-done-circle-outline', color: '#34C759', priority: 3 },
+    { key: 'cancelled', title: 'Đã hủy', icon: 'close-circle-outline', color: '#FF3B30', priority: 4 },
   ];
 
+  const tabTitle = tabs.find(t => t.key === activeTab)?.title;
   const getStatusConfig = (status: string) => {
     const normalizedStatus = status ? status.toLowerCase() : '';
 
@@ -185,21 +187,48 @@ const OrderHistoryScreen = () => {
   };
 
   const getFilteredOrders = () => {
-    if (activeTab === 'all') return orders;
-
-    // Nhóm các trạng thái liên quan cho shop bánh
+    let filtered = orders;
+    
+    // Lọc theo tab
     if (activeTab === 'shipping') {
-      return orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase()));
-    }
-    if (activeTab === 'cancelled') {
-      return orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase()));
+      filtered = orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase()));
+    } else if (activeTab === 'cancelled') {
+      filtered = orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase()));
+    } else {
+      filtered = orders.filter(order => order.status.toLowerCase() === activeTab);
     }
 
-    return orders.filter(order => order.status.toLowerCase() === activeTab);
+    // Lọc theo tìm kiếm
+    if (searchText.trim()) {
+      const searchLower = searchText.toLowerCase().trim();
+      filtered = filtered.filter(order => {
+        // Tìm theo ID đơn hàng
+        const orderId = order._id?.slice(-6)?.toLowerCase() || '';
+        if (orderId.includes(searchLower)) return true;
+
+        // Tìm theo địa chỉ
+        if (order.address_snapshot) {
+          const addressText = [
+            order.address_snapshot.name,
+            order.address_snapshot.district,
+            order.address_snapshot.city
+          ].join(' ').toLowerCase();
+          if (addressText.includes(searchLower)) return true;
+        }
+
+        // Tìm theo voucher code
+        if (order.voucher_code && order.voucher_code.toLowerCase().includes(searchLower)) {
+          return true;
+        }
+
+        return false;
+      });
+    }
+
+    return filtered;
   };
 
   const getOrderCount = (status: TabType) => {
-    if (status === 'all') return orders.length;
     if (status === 'shipping') {
       return orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase())).length;
     }
@@ -222,7 +251,7 @@ const OrderHistoryScreen = () => {
   }, []);
 
   const handleOrderPress = (orderId: string) => {
-    navigation.navigate('OrderDetails', { orderId });
+    (navigation as any).navigate('OrderDetails', { orderId });
   };
 
   const handleCancelOrder = (orderId: string) => {
@@ -444,27 +473,58 @@ const OrderHistoryScreen = () => {
     );
   };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="cafe-outline" size={80} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>Chưa có đơn bánh nào</Text>
-      <Text style={styles.emptyText}>
-        {activeTab === 'all'
-          ? 'Hãy đặt bánh ngon ngay nào!'
-          : `Không có đơn bánh ${tabs.find(t => t.key === activeTab)?.title.toLowerCase()}`
-        }
-      </Text>
-      {activeTab === 'all' && (
-        <TouchableOpacity
-          style={styles.shopButton}
-          onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' })}
-        >
-          <Ionicons name="storefront-outline" size={16} color="#FFFFFF" />
-          <Text style={styles.shopButtonText}>Đặt bánh ngay</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  const renderEmptyState = () => {
+    const hasOrdersInOtherTabs = tabs.some(tab => 
+      tab.key !== activeTab && getOrderCount(tab.key as TabType) > 0
+    );
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="cafe-outline" size={80} color="#D1D5DB" />
+        <Text style={styles.emptyTitle}>
+          {hasOrdersInOtherTabs ? `Không có đơn ${tabTitle?.toLowerCase()}` : 'Chưa có đơn bánh nào'}
+        </Text>
+        <Text style={styles.emptyText}>
+          {hasOrdersInOtherTabs 
+            ? 'Hãy kiểm tra các tab khác để xem đơn hàng'
+            : 'Hãy đặt bánh ngon ngay nào!'
+          }
+        </Text>
+        
+        {/* Hiển thị gợi ý tab có đơn hàng */}
+        {hasOrdersInOtherTabs && (
+          <View style={styles.suggestedTabs}>
+            <Text style={styles.suggestedText}>Có đơn hàng tại:</Text>
+            <View style={styles.tabSuggestions}>
+              {tabs.filter(tab => getOrderCount(tab.key as TabType) > 0 && tab.key !== activeTab)
+                   .map(tab => (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.suggestedTab, { borderColor: tab.color }]}
+                  onPress={() => setActiveTab(tab.key as TabType)}
+                >
+                  <Ionicons name={tab.icon as any} size={14} color={tab.color} />
+                  <Text style={[styles.suggestedTabText, { color: tab.color }]}>
+                    {tab.title} ({getOrderCount(tab.key as TabType)})
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {!hasOrdersInOtherTabs && (
+          <TouchableOpacity
+            style={styles.shopButton}
+            onPress={() => navigation.navigate('TabNavigator', { screen: 'Home' } as any)}
+          >
+            <Ionicons name="storefront-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.shopButtonText}>Đặt bánh ngay</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   if (loading) {
     return (
@@ -492,14 +552,46 @@ const OrderHistoryScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
+        
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Đơn bánh của tôi</Text>
-          <Text style={styles.headerSubtitle}>Theo dõi đơn hàng bánh ngon</Text>
         </View>
-        <TouchableOpacity onPress={fetchOrders} style={styles.refreshButton}>
-          <Ionicons name="refresh-outline" size={22} color="#FFF" />
-        </TouchableOpacity>
+        
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            onPress={() => setSearchVisible(!searchVisible)} 
+            style={styles.searchButton}
+          >
+            <Ionicons name="search-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={fetchOrders} style={styles.refreshButton}>
+            <Ionicons name="refresh-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
+
+      {/* Search Bar */}
+      {searchVisible && (
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color="#8B5A2B" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm đơn hàng (ID, địa chỉ, mã giảm giá...)"
+            placeholderTextColor="#B8860B"
+            value={searchText}
+            onChangeText={setSearchText}
+            autoFocus={true}
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchText('')}
+              style={styles.clearButton}
+            >
+              <Ionicons name="close-circle" size={20} color="#B8860B" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
@@ -581,16 +673,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  searchButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#FFF',
     textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
   },
   refreshButton: {
     width: 40,
@@ -599,6 +698,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8F3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E6D6',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#5C4033',
+    marginLeft: 12,
+    paddingVertical: 8,
+  },
+  clearButton: {
+    padding: 4,
   },
   tabContainer: {
     backgroundColor: '#FFF',
@@ -869,6 +992,41 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 32,
+  },
+  suggestedTabs: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  suggestedText: {
+    fontSize: 13,
+    color: '#8B5A2B',
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  tabSuggestions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  suggestedTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    backgroundColor: '#FFF',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  suggestedTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   shopButton: {
     flexDirection: 'row',

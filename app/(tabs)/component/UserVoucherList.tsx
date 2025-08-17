@@ -3,8 +3,11 @@ import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { UserVoucher } from '../services/VoucherService';
 
+type Props = {
+  data: UserVoucher[];
+};
 
-const UserVoucherList = ({ data }: { data: UserVoucher[] }) => {
+const UserVoucherList: React.FC<Props> = ({ data }) => {
   const [selectedVoucher, setSelectedVoucher] = useState<UserVoucher | null>(null);
 
   const formatDate = (date: string) => dayjs(date).format('DD/MM/YYYY');
@@ -146,7 +149,7 @@ const UserVoucherList = ({ data }: { data: UserVoucher[] }) => {
                     <View style={styles.modalTextContainer}>
                       <Text style={styles.modalLabelTitle}>Thời gian hiệu lực</Text>
                       <Text style={styles.modalValue}>
-                        {formatDate(selectedVoucher.start_date)} - {formatDate(selectedVoucher.voucher_id.end_date)}
+                        {formatDate(selectedVoucher.voucher_id.start_date)} - {formatDate(selectedVoucher.voucher_id.end_date)}
                       </Text>
                     </View>
                   </View>
@@ -395,7 +398,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,}
+    fontSize: 16,
+  },
 });
 
 export default UserVoucherList;
