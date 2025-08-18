@@ -148,7 +148,16 @@ const ShipHome: React.FC = () => {
       };
 
       setTodayStats(todayStatsData);
-      setRecentOrders(readyOrders.slice(0, 5));
+      setRecentOrders(
+        readyOrders.slice(0, 5).map((order: any) => ({
+          _id: order._id,
+          address_snapshot: order.address_snapshot,
+          created_at: order.created_at,
+          shipping_method: order.shipping_method,
+          status: order.status,
+          total: order.total,
+        }))
+      );
     } catch (error) {
       console.error('❌ Lỗi khi lấy thống kê hôm nay:', error);
       Alert.alert('Lỗi', 'Không thể tải thống kê.');

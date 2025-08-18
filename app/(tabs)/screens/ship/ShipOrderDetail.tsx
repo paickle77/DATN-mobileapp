@@ -1,5 +1,4 @@
   import { useNavigation, useRoute } from '@react-navigation/native';
-import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import moment from 'moment';
 import React, { useEffect, useState } from 'react';
@@ -18,85 +17,12 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { BASE_URL } from '../../services/api';
+import { User } from '../../services/RegisterAuthService';
+import { assignOrderToShipper, cancelOrder, completeOrder, fetchOrderDetailLikeScreen, fetchOrderItemsLikeScreen, OrderDetail, OrderItem, Shipper, updateShipperOnlineStatus } from '../../services/ShipService';
 import { getUserData } from '../utils/storage';
 
 
 const screenWidth = Dimensions.get('window').width;
-
-  interface OrderItem {
-    _id: string;
-    bill_id: {
-      _id: string;
-    };
-    product_id: string
-    product_snapshot: {
-      name: string;
-      size_price_increase: number;
-      final_unit_price: number;
-      base_price: number;
-      dicount_price: number;
-      price: number;
-      image_url: string;
-    };
-    size: string;
-    quantity: number;
-    unit_price: number;
-    total: number;
-    createdAt?: string;
-    updatedAt?: string;
-    __v?: number;
-  }
-
-  interface User {
-      _id: string;
-      account_id: string;
-      name: string;
-      email: string;
-      phone: string;
-  }
-
-  interface Shipper{
-      _id: string;
-      account_id: string;
-      full_name: string;
-      phone: string;
-      image: string;
-      license_number: string;
-      vehicle_type: string;
-      is_online: 'offline' | 'online' | 'busy';
-      updatedAt: string;
-  }
-
-  interface OrderDetail {
-    _id: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-    total: number;
-    shipping_fee: number;
-    discount_amount: number;
-    payment_method: string;
-    note?: string;
-    Account_id?: string;
-    address_id: string | null;
-    address_snapshot?: {
-      name: string;
-      phone: string;
-      detail: string;
-      ward: string;
-      district: string;
-      city: string;
-    };
-    shipper_id?: string;
-    tracking_info?: {
-      accepted_at?: string;
-      shipping_at?: string;
-      completed_at?: string;
-      cancelled_at?: string;
-    };
-    proof_images?: string;
-  }
 
   const OrderDetailPage = () => {
     const navigation = useNavigation();
@@ -118,55 +44,204 @@ const screenWidth = Dimensions.get('window').width;
 
     useEffect(() => {
       fetchOrderDetail();
-      fetchOrderItems();
     }, [orderId]);
     
 
     const fetchOrderDetail = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${BASE_URL}/GetAllBills`);
-        const data = response.data.data;
-        const orderDetail = data.find((item: OrderDetail) => item._id === orderId);
-        setProofImage(orderDetail?.proof_images || null);
-        const shippers = await axios.get(`${BASE_URL}/shippers`);
-        const DataShipper = shippers.data.data;
-        const filteredItemsWithShipper = DataShipper.find( (shipper: Shipper) => shipper._id === orderDetail?.shipper_id);
-          setShipper(filteredItemsWithShipper || null);
-          
-          if (orderDetail && filteredItemsWithShipper) {
-              setOrder({ ...orderDetail, shipper_id: filteredItemsWithShipper });
-              setIsOnline(filteredItemsWithShipper.is_online || 'offline');
-              setProofImage(orderDetail.proof_images || null);
-          } else {
-              setOrder(orderDetail);
-          }
-          
-        const dataUser = await axios.get(`${BASE_URL}/users`);
-        const userData = dataUser.data.data;
-          console.log('✅ Dữ liệu người dùng:', orderDetail?.user_id);
-        const filteredUser = userData.find((user: User) => user.account_id === orderDetail?.user_id);
-        setUsers(filteredUser);
-      } catch (error) {
-        console.error('Error fetching order detail:', error);
+        const data = await fetchOrderDetailLikeScreen(orderId);
+
+        setOrder(data.order);
+        setProofImage(data.proofImage || null);
+        setShipper(data.shipper || null);
+        setUsers(data.user || null);
+        setIsOnline(data.is_online || 'offline');
+
+        const orderItems = await fetchOrderItemsLikeScreen(orderId);
+        setItems(orderItems);
+      } catch (e) {
+        console.error('Error fetching order detail:', e);
         Alert.alert('Lỗi', 'Không thể tải thông tin đơn hàng');
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchOrderItems = async () => {
-      try {
-          const response = await axios.get(`${BASE_URL}/GetAllBillDetails`);
-          const allItems: OrderItem[] = response.data.data;
-          const filteredItems = allItems.filter(item => item.bill_id?._id === orderId);
-          
-          setItems(filteredItems);
-      } catch (error) {
-          console.error('Error fetching order items:', error);
-          Alert.alert('Lỗi', 'Không thể tải thông tin sản phẩm trong đơn hàng');
+
+    const handleCallCustomer = () => {
+      if (users?.phone) {
+        Linking.openURL(`tel:${users?.phone}`);
       }
-      };
+    };
+
+    const handleCallShipper = () => {
+      if (shipper?.phone) {
+        Linking.openURL(`tel:${shipper?.phone}`);
+      }
+    };
+
+  const setOnlineStatus = async (status: OnlineStatus) => {
+    try {
+      const id = await getUserData('shipperID');
+      await updateShipperOnlineStatus(id, status);
+      setIsOnline(status);
+    } catch (error) {
+      console.error("❌ Lỗi khi cập nhật trạng thái online:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật trạng thái online.");
+    }
+  };
+
+  const handleAcceptOrder = async () => {
+    if (!order) return;
+
+    if (isOnline !== 'online') {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
+      return;
+    }
+    if ((isOnline as OnlineStatus) === 'busy') {
+      Alert.alert('Thông báo', 'Bạn đang có đơn, không thể nhận đơn hàng này.');
+      return;
+    }
+
+
+    try {
+      setActionLoading(true);
+      const shipperID = await getUserData('shipperID');
+      const res = await assignOrderToShipper(order._id, shipperID);
+
+      if (res.success) {
+        Alert.alert('Thành công', 'Đã nhận đơn hàng thành công!');
+        setOnlineStatus('busy');
+        fetchOrderDetail();
+      } else {
+        Alert.alert('Lỗi', res.message || 'Không thể nhận đơn hàng');
+      }
+    } catch (error) {
+      console.error('Error accepting order:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi nhận đơn hàng');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCompleteOrder = async () => {
+    if (!order) return;
+
+    if (isOnline !== 'online' && isOnline !== 'busy') {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hoàn thành đơn hàng.');
+      return;
+    }
+
+    if (!proofImage) {
+      Alert.alert('Thiếu ảnh', 'Bạn cần chụp hoặc chọn ảnh minh chứng trước khi hoàn thành đơn hàng.');
+      return;
+    }
+
+    
+    Alert.alert(
+      'Hoàn thành đơn hàng',
+      'Xác nhận bạn đã giao hàng thành công cho khách hàng?',
+      [
+        { text: 'Chưa giao', style: 'cancel' },
+        {
+          text: 'Đã giao xong',
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              const shipperID = await getUserData('shipperID');
+              const response = await completeOrder(orderId, shipperID, proofImage);
+
+              if (response.success) {
+                Alert.alert('🎉 Thành công', 'Đơn hàng đã được hoàn thành!');
+                setOnlineStatus('online');
+                fetchOrderDetail();
+                setProofImage(null);
+              } else {
+                Alert.alert('Lỗi', response.message || 'Không thể hoàn thành đơn hàng');
+              }
+            } catch (error) {
+              console.error('Error completing order:', error);
+              Alert.alert('Lỗi', 'Có lỗi xảy ra khi hoàn thành đơn hàng');
+            } finally {
+              setActionLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCancelOrder = async () => {
+    if (!order) return;
+
+    if (isOnline !== 'online' && isOnline !== 'busy') {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hủy đơn hàng.');
+      return;
+    }
+
+    if (!proofImage) {
+      Alert.alert('Thiếu ảnh', 'Bạn cần chụp hoặc chọn ảnh minh chứng trước khi hủy đơn hàng.');
+      return;
+    }
+
+    Alert.alert(
+      'Hủy đơn hàng',
+      'Bạn có chắc chắn đơn hàng không nhận không?',
+      [
+        { text: 'Không hủy', style: 'cancel' },
+        {
+          text: 'Xác nhận hủy',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              const shipperID = await getUserData('shipperID');
+              const response = await cancelOrder(orderId, shipperID, proofImage);
+
+              if (response.success) {
+                Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');
+                setOnlineStatus('online');
+                fetchOrderDetail();
+                setProofImage(null);
+              } else {
+                Alert.alert('Lỗi', response.message || 'Không thể hủy đơn hàng');
+              }
+            } catch (error) {
+              console.error('Error cancelling order:', error);
+              Alert.alert('Lỗi', 'Có lỗi xảy ra khi hủy đơn hàng');
+            } finally {
+              setActionLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5f3c1e" />
+          <Text style={styles.loadingText}>Đang tải thông tin...</Text>
+        </View>
+      );
+    }
+
+    if (!order) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>📦</Text>
+          <Text style={styles.errorTitle}>Không tìm thấy đơn hàng</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={fetchOrderDetail}
+          >
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
 
     const getStatusConfig = (status: string) => {
       switch (status) {
@@ -220,210 +295,7 @@ const screenWidth = Dimensions.get('window').width;
           };
       }
     };
-
-    const handleCallCustomer = () => {
-      if (users?.phone) {
-        Linking.openURL(`tel:${users?.phone}`);
-      }
-    };
-
-    const handleCallShipper = () => {
-      if (shipper?.phone) {
-        Linking.openURL(`tel:${shipper?.phone}`);
-      }
-    };
-
-    const setOnlineStatus = async (status:OnlineStatus) => {
-    let newStatus: OnlineStatus = status ;
-
-    const id = await getUserData('shipperID');
-    try {
-      await axios.post(`${BASE_URL}/shippers/updateStatus`, {
-        _id: id,
-        is_online: newStatus
-      });
-      setIsOnline(newStatus);
-    } catch (error) {
-      console.error("❌ Lỗi khi cập nhật trạng thái online:", error);
-      Alert.alert("Lỗi", "Không thể cập nhật trạng thái online.");
-    }
-  };
-
-
-
-    const handleAcceptOrder = async () => {
-      if (!order) return;
-
-      if (isOnline !== 'online') {
-            Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
-            return;
-      }
-      if ((isOnline as OnlineStatus) === 'busy') {
-      Alert.alert('Thông báo', 'Bạn đang có đơn, không thể nhận đơn hàng này.');
-      return;
-    }
-      
-      try {
-        setActionLoading(true);
-        const shipperID = await getUserData('shipperID');
-        
-        const res = await axios.put(`${BASE_URL}/bills/${order._id}/assign-shipper`, {
-                                  shipper_id: shipperID,
-                                });
-        
-        if (res.data.success) {
-          Alert.alert('Thành công', 'Đã nhận đơn hàng thành công!');
-          setOnlineStatus('busy'); 
-          fetchOrderDetail();
-        } else {
-          Alert.alert('Lỗi', res.data.message || 'Không thể nhận đơn hàng');
-        }
-      } catch (error) {
-        console.error('Error accepting order:', error);
-        Alert.alert('Lỗi', 'Có lỗi xảy ra khi nhận đơn hàng');
-      } finally {
-        setActionLoading(false);
-      }
-    };
-
-    const handleCompleteOrder = async () => {
-      if (!order) return;
-
-      if (isOnline !== 'online' && isOnline !== 'busy') {
-        Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hoàn thành đơn hàng.');
-        return;
-      }
-
-      if (!proofImage) {
-        Alert.alert('Thiếu ảnh', 'Bạn cần chụp hoặc chọn ảnh minh chứng trước khi hoàn thành đơn hàng.');
-        return;
-      }
-
-      Alert.alert(
-        'Hoàn thành đơn hàng',
-        'Xác nhận bạn đã giao hàng thành công cho khách hàng?',
-        [
-          { text: 'Chưa giao', style: 'cancel' },
-          {
-            text: 'Đã giao xong',
-            onPress: async () => {
-              try {
-                setActionLoading(true);
-                const shipperID = await getUserData('shipperID');
-
-                // Gửi thẳng Base64 qua JSON
-                const response = await axios.post(`${BASE_URL}/bills/CompleteOrder`, {
-                  orderId,
-                  shipperId: shipperID,
-                  proof_images: proofImage // Đây là chuỗi base64
-                });
-
-                if (response.data.success) {
-                  Alert.alert('🎉 Thành công', 'Đơn hàng đã được hoàn thành!');
-                  setOnlineStatus('online'); 
-                  fetchOrderDetail();
-                  setProofImage(null); // reset ảnh
-                } else {
-                  Alert.alert('Lỗi', response.data.message || 'Không thể hoàn thành đơn hàng');
-                }
-              } catch (error) {
-                console.error('Error completing order:', error);
-                Alert.alert('Lỗi', 'Có lỗi xảy ra khi hoàn thành đơn hàng');
-              } finally {
-                setActionLoading(false);
-              }
-            }
-          }
-        ]
-      );
-    };
-
-
-
-    const handleCancelOrder = async () => {
-      if (!order) return;
-
-      if (isOnline !== 'online' && isOnline !== 'busy') {
-        Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hủy đơn hàng.');
-        return;
-      }
-
-      if (!proofImage) {
-        Alert.alert('Thiếu ảnh', 'Bạn cần chụp hoặc chọn ảnh minh chứng trước khi hủy đơn hàng.');
-        return;
-      }
-
-      Alert.alert(
-        'Hủy đơn hàng',
-        'Bạn có chắc chắn đơn hàng không nhận không?',
-        [
-          { text: 'Không hủy', style: 'cancel' },
-          {
-            text: 'Xác nhận hủy',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                setActionLoading(true);
-                const shipperID = await getUserData('shipperID');
-
-              
-
-                const response = await axios.post(
-                  `${BASE_URL}/bills/CancelOrder`,
-                  {
-                    orderId,
-                    shipperId: shipperID,
-                    proof_images: proofImage // Gửi ảnh base64
-                  }
-                );
-
-                if (response.data.success) {
-                  Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');
-                  setOnlineStatus('online');
-                  fetchOrderDetail();
-                  setProofImage(null); // reset ảnh
-                } else {
-                  Alert.alert('Lỗi', response.data.message || 'Không thể hủy đơn hàng');
-                }
-              } catch (error) {
-                console.error('Error cancelling order:', error);
-                Alert.alert('Lỗi', 'Có lỗi xảy ra khi hủy đơn hàng');
-              } finally {
-                setActionLoading(false);
-              }
-            }
-          }
-        ]
-      );
-    };
-
-
     
-
-    if (loading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#5f3c1e" />
-          <Text style={styles.loadingText}>Đang tải thông tin...</Text>
-        </View>
-      );
-    }
-
-    if (!order) {
-      return (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorIcon}>📦</Text>
-          <Text style={styles.errorTitle}>Không tìm thấy đơn hàng</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={fetchOrderDetail}
-          >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
     const statusConfig = getStatusConfig(order.status);
 
     const pickImage = async () => {
@@ -557,11 +429,11 @@ const screenWidth = Dimensions.get('window').width;
             <View style={styles.cardContent}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Tên khách hàng</Text>
-                <Text style={styles.infoValue}>{users?.name || ''}</Text>
+                <Text style={styles.infoValue}>{order.address_snapshot?.name || ''}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Số điện thoại</Text>
-                <Text style={styles.infoValue}>{users?.phone}</Text>
+                <Text style={styles.infoValue}>{order.address_snapshot?.phone}</Text>
               </View>
             </View>
           </View>
@@ -575,8 +447,6 @@ const screenWidth = Dimensions.get('window').width;
             
             <View style={styles.cardContent}>
               <View style={styles.addressContainer}>
-                <Text style={styles.receiverName}>{order.address_snapshot?.name || ''}</Text>
-                <Text style={styles.receiverPhone}>{order.address_snapshot?.phone}</Text>
                 <Text style={styles.addressDetail}>
                   {order.address_snapshot?.detail}
                 </Text>
@@ -717,54 +587,76 @@ const screenWidth = Dimensions.get('window').width;
             </View>
           )}
 
+                    
           <View style={styles.card}>
             
-            <View style={styles.headerContainer}>
-              <Icon name="camera-alt" size={20} color="#5f3c1e" />
-              <Text style={styles.headerText}>Ảnh giao hàng</Text>
-            </View>
+            {(order.status === 'done' || order.status === 'failed') && (
+              <View style={styles.card}>
+                <View style={styles.headerContainer}>
+                  <Icon name="camera-alt" size={20} color="#5f3c1e" />
+                  <Text style={styles.headerText}>Ảnh giao hàng</Text>
+                </View>
 
-            {/* Image Display */}
-            {proofImage ? (
-              <View style={styles.imageContainer}>
-                <TouchableOpacity
-                  style={styles.imageWrapper}
-                  onPress={() => setSelectedImage(proofImage)}
-                  activeOpacity={0.8}
-                >
-                  <Image source={{ uri: proofImage }} style={styles.proofImage} />
-                  <View style={styles.imageOverlay}>
-                    <Icon name="zoom-in" size={24} color="white" />
+                {proofImage ? (
+                  <View style={styles.imageContainer}>
+                    <TouchableOpacity
+                      style={styles.imageWrapper}
+                      onPress={() => setSelectedImage(proofImage)}
+                      activeOpacity={0.8}>
+                      <Image source={{ uri: proofImage }} style={styles.proofImage} />
+                      <View style={styles.imageOverlay}>
+                        <Icon name="zoom-in" size={24} color="white" />
+                      </View>
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
-                
-                {order.status !== 'done' && order.status !== 'failed' && (
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={removeImage}
-                    activeOpacity={0.8}
-                  >
-                    <Icon name="close" size={16} color="white" />
-                  </TouchableOpacity>
-              )}
-              </View>
-            ) : order.status === 'done' ? (
+                ) : (
                   <View style={styles.noImageContainer}>
                     <Text style={styles.noImageText}>Không có ảnh chứng minh</Text>
                   </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={showImageOptions}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.uploadIconContainer}>
-                      <Icon name="add" size={24} color="#5f3c1e" />
-                    </View>
-                    <Text style={styles.uploadText}>Thêm ảnh giao hàng</Text>
-                    <Text style={styles.uploadSubtext}>Chạm để chọn ảnh</Text>
-                  </TouchableOpacity>
+                )}
+              </View>
             )}
+            {order.status === 'shipping' && (
+    <View style={styles.card}>
+      <View style={styles.headerContainer}>
+        <Icon name="camera-alt" size={20} color="#5f3c1e" />
+        <Text style={styles.headerText}>Ảnh giao hàng</Text>
+      </View>
+
+      {proofImage ? (
+        <View style={styles.imageContainer}>
+          <TouchableOpacity
+            style={styles.imageWrapper}
+            onPress={() => setSelectedImage(proofImage)}
+            activeOpacity={0.8}>
+            <Image source={{ uri: proofImage }} style={styles.proofImage} />
+            <View style={styles.imageOverlay}>
+              <Icon name="zoom-in" size={24} color="white" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Cho phép remove khi đang shipping */}
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={removeImage}
+            activeOpacity={0.8}>
+            <Icon name="close" size={16} color="white" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={styles.uploadButton}
+          onPress={showImageOptions}
+          activeOpacity={0.7}>
+          <View style={styles.uploadIconContainer}>
+            <Icon name="add" size={24} color="#5f3c1e" />
+          </View>
+          <Text style={styles.uploadText}>Thêm ảnh giao hàng</Text>
+          <Text style={styles.uploadSubtext}>Chạm để chọn ảnh</Text>
+        </TouchableOpacity>
+      )}
+       </View>
+      )}
 
             {/* Full Screen Modal */}
             <Modal

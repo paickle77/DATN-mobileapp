@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -15,37 +14,58 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { BASE_URL } from '../../services/api';
+import {
+  fetchShipperInfo,
+  Shipper,
+  updateShipperProfile,
+  updateShipperStatus
+} from '../../services/ShipService';
 import { clearUserData, getUserData } from '../utils/storage';
-// import LinearGradient from 'react-native-linear-gradient';
-// Hoặc nếu dùng Expo:
-// import { LinearGradient } from 'expo-linear-gradient';
 
-// Constants
-// Thay đổi theo domain của bạn
-
-// Types & Interfaces
-interface ShipperStats {
-  completedOrders: number;
-  onTimeRate: number;
-  totalEarnings: number;
-  status: 'online' | 'offline' | 'busy';
+interface ProfileItemProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  isEditing: boolean;
+  onChange: (value: string) => void;
+  keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  multiline?: boolean;
 }
 
-interface VehicleInfo {
-  type: string;
-  plate: string;
-}
+const ProfileItem: React.FC<ProfileItemProps> = ({
+    icon,
+    label,
+    value,
+    isEditing,
+    onChange,
+    keyboardType = 'default',
+    multiline = false,
+  }) => (
+    <View style={styles.profileItem}>
+      <View style={styles.profileItemHeader}>
+        <Ionicons name={icon} size={18} color="#6B7280" />
+        <View style={styles.profileItemContent}>
+          <Text style={styles.profileLabel}>{label}</Text>
+          {isEditing ? (
+            <TextInput
+              style={[styles.profileInput, multiline && styles.profileTextArea]}
+              value={value}
+              onChangeText={onChange}
+              keyboardType={keyboardType}
+              multiline={multiline}
+              numberOfLines={multiline ? 3 : 1}
+              placeholder={`Nhập ${label.toLowerCase()}`}
+            />
+          ) : (
+            <Text style={styles.profileValue} numberOfLines={multiline ? 0 : 1}>
+              {value}
+            </Text>
+          )}
+        </View>
+      </View>
+    </View>
+  );
 
-interface ShipperData {
-  _id: string;
-  account_id: string;
-  full_name: string;
-  phone: string;
-  license_number: string | null;
-  vehicle_type: string | null;
-  is_online: 'offline' | 'online' | 'busy';
-}
 
 interface ShipperProfile {
   id: string;
@@ -56,24 +76,6 @@ interface ShipperProfile {
   licenseNumber: string;
   isOnline: 'offline' | 'online' | 'busy';
   accountId: string;
-}
-
-
-interface StatCardProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  value: string | number;
-  color: string;
-}
-
-interface ProfileItemProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-  isEditing: boolean;
-  onChange: (value: string) => void;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad';
-  multiline?: boolean;
 }
 
 const defaultShipperData: ShipperProfile = {
@@ -87,67 +89,17 @@ const defaultShipperData: ShipperProfile = {
   accountId: '',
 };
 
-
-// Components
-const StatCard: React.FC<StatCardProps> = ({ icon, title, value, color }) => (
-  <View style={styles.statCard}>
-    <View style={[styles.statIcon, { backgroundColor: `${color}20` }]}>
-      <Ionicons name={icon} size={20} color={color} />
-    </View>
-    <View style={styles.statContent}>
-      <Text style={styles.statTitle}>{title}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-    </View>
-  </View>
-);
-
-const ProfileItem: React.FC<ProfileItemProps> = ({
-  icon,
-  label,
-  value,
-  isEditing,
-  onChange,
-  keyboardType = 'default',
-  multiline = false,
-}) => (
-  <View style={styles.profileItem}>
-    <View style={styles.profileItemHeader}>
-      <Ionicons name={icon} size={18} color="#6B7280" />
-      <View style={styles.profileItemContent}>
-        <Text style={styles.profileLabel}>{label}</Text>
-        {isEditing ? (
-          <TextInput
-            style={[styles.profileInput, multiline && styles.profileTextArea]}
-            value={value}
-            onChangeText={onChange}
-            keyboardType={keyboardType}
-            multiline={multiline}
-            numberOfLines={multiline ? 3 : 1}
-            placeholder={`Nhập ${label.toLowerCase()}`}
-          />
-        ) : (
-          <Text style={styles.profileValue} numberOfLines={multiline ? 0 : 1}>
-            {value}
-          </Text>
-        )}
-      </View>
-    </View>
-  </View>
-);
-
-const mapToShipperProfile = (item: any): ShipperProfile => ({
-  id: item._id,
-  full_name: item.full_name || '',
-  phone: item.phone || '',
-  image: item.image || 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
-  vehicleType: item.vehicle_type || '',
-  licenseNumber: item.license_number || '',
-  isOnline: item.is_online || 'offline',
-  accountId: item.account_id || '',
+const mapToShipperProfile = (s: Shipper): ShipperProfile => ({
+  id: s._id,
+  full_name: s.full_name || '',
+  phone: s.phone || '',
+  image: s.image || 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
+  vehicleType: s.vehicle_type || '',
+  licenseNumber: s.license_number || '',
+  isOnline: s.is_online || 'offline',
+  accountId: s.account_id || '',
 });
 
-
-// Main Component
 const ShipProfileScreen: React.FC = () => {
   const [shipperData, setShipperData] = useState<ShipperProfile>(defaultShipperData);
   const [isEditing, setIsEditing] = useState(false);
@@ -155,98 +107,69 @@ const ShipProfileScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const navigation = useNavigation();
 
-  const [shipperId, setShipperId] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
 
-   useFocusEffect(
-      useCallback(() => {
-        const fetchData = async () => {
-          const Id = await getUserData('userData');
-          if (Id) {
-            fetchShipperData(Id);
-          }
-        };
-        fetchData();
-      }, [])
-    );
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        const id = await getUserData('userData');
+        if (id) fetchShipperData(id);
+      };
+      fetchData();
+    }, [])
+  );
 
-  // Lấy ID người dùng 1 lần duy nhất
   useEffect(() => {
     const loadUserId = async () => {
       const id = await getUserData('userData');
-      if (!id) {
-        Alert.alert('Lỗi', 'Không tìm thấy thông tin đăng nhập');
-        return;
-      }
       setAccountId(id);
     };
     loadUserId();
   }, []);
 
- 
-
-  // Fetch API từ MongoDB
   const fetchShipperData = async (id: string) => {
     try {
       setIsLoading(true);
-      const res = await axios.get(`${BASE_URL}/shippers`);
-      const data = res.data?.data;
-
-      if (!Array.isArray(data)) throw new Error('Dữ liệu không hợp lệ');
-
-     
-      if (!id) throw new Error('Không tìm thấy ID người dùng');
-
-
-      const found = data.find((s: any) => s.account_id === id);
-      if (!found) throw new Error('Không tìm thấy shipper phù hợp');
-
-      const transformed = mapToShipperProfile(found);
-      setShipperData(transformed);
-      setShipperId(transformed.id);
-      console.log('✅ Shipper :', transformed.id);
-      console.log('✅ Shipper data loaded:', transformed);
+      const shipper = await fetchShipperInfo();
+      if (!shipper) throw new Error('Không tìm thấy shipper');
+      setShipperData(mapToShipperProfile(shipper));
     } catch (err: any) {
-      console.error('❌ fetchShipperData error:', err);
       Alert.alert('Lỗi', err.message || 'Không thể tải thông tin shipper');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const updateShipperProfile = async (updated: ShipperProfile): Promise<boolean> => {
+  const handleSaveProfile = async () => {
     try {
-      const payload = {
-        full_name: updated.full_name,
-        phone: updated.phone,
-        license_number: updated.licenseNumber,
-        vehicle_type: updated.vehicleType,
-        image: updated.image, // base64 string "data:image/jpeg;base64,...."
-      };
-
-      const res = await axios.put(`${BASE_URL}/shippers/${shipperId}`, payload, {
-        headers: { 'Content-Type': 'application/json' },
+      if (!shipperData.id) return;
+      setIsSaving(true);
+      const success = await updateShipperProfile(shipperData.id, {
+        full_name: shipperData.full_name,
+        phone: shipperData.phone,
+        license_number: shipperData.licenseNumber,
+        vehicle_type: shipperData.vehicleType,
+        image: shipperData.image,
       });
-
-      if (res.status === 200 || res.status === 201) {
+      if (success) {
+        setIsEditing(false);
         Alert.alert('✅ Thành công', 'Cập nhật thành công!');
-        return true;
       } else {
-        throw new Error('Cập nhật không thành công');
+        Alert.alert('❌ Lỗi', 'Không thể lưu thông tin');
       }
-    } catch (error: any) {
-      console.error('❌ updateShipperProfile error:', error?.message || error);
-      Alert.alert('Lỗi khi cập nhật', error?.message || 'Đã xảy ra lỗi');
-      return false;
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleEdit = () => setIsEditing(true);
-
-  const handleSave = async () => {
-    const success = await updateShipperProfile(shipperData);
-    if (success) setIsEditing(false);
+  const handleToggleStatus = async () => {
+    if (!shipperData.id) return;
+    const newStatus = shipperData.isOnline === 'online' ? 'offline' : 'online';
+    const success = await updateShipperStatus(shipperData.id, newStatus);
+    if (success) setShipperData({ ...shipperData, isOnline: newStatus });
   };
+
+  const handleEdit = () => setIsEditing(true);
 
   const handleCancel = () => {
     setIsEditing(false);
@@ -269,21 +192,11 @@ const ShipProfileScreen: React.FC = () => {
         onPress: async () => {
           await clearUserData('userData');
           await clearUserData('shipperID');
-
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' as never }],
-          });
-          Alert.alert('Thành công', 'Đã đăng xuất');
+          navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
         },
       },
     ]);
   };
-
-  
-
-  
-
   const getStatusText = (status: 'online' | 'offline' | 'busy') => {
   switch (status) {
     case 'online': return 'Đang hoạt động';
@@ -404,46 +317,9 @@ const ShipProfileScreen: React.FC = () => {
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{shipperData.full_name}</Text>
               <Text style={styles.profileId}>ID: {shipperData.id}</Text>
-              {/* <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={14} color="#FFC107" />
-                <Text style={styles.ratingValue}>{shipperData.rating}</Text>
-                <Text style={styles.ratingCount}>({shipperData.totalOrders} đơn)</Text>
-              </View> */}
             </View>
           </View>
         </View>
-
-        {/* Stats Grid */}
-        {/* <View style={styles.statsContainer}>
-          <View style={styles.statsGrid}>
-            <StatCard
-              icon="checkmark-circle-outline"
-              title="Hoàn thành"
-              value={shipperData.stats.completedOrders}
-              color="#10B981"
-            />
-            <StatCard
-              icon="time-outline"
-              title="Đúng giờ"
-              value={`${shipperData.stats.onTimeRate}%`}
-              color="#3B82F6"
-            />
-          </View>
-          <View style={styles.statsGrid}>
-            <StatCard
-              icon="wallet-outline"
-              title="Thu nhập"
-              value={`${(shipperData.stats.totalEarnings / 1000000).toFixed(1)}M`}
-              color="#F59E0B"
-            />
-            <StatCard
-              icon="pulse-outline"
-              title="Trạng thái"
-              value={getStatusText(shipperData.stats.status)}
-              color={getStatusColor(shipperData.stats.status)}
-            />
-          </View>
-        </View> */}
 
         {/* Profile Details */}
         <View style={styles.detailsCard}>
@@ -494,7 +370,7 @@ const ShipProfileScreen: React.FC = () => {
             <View style={styles.actionButtons}>
               <TouchableOpacity
                 style={[styles.button, styles.primaryButton]}
-                onPress={handleSave}
+                onPress={handleSaveProfile}
                 disabled={isSaving}
               >
                 {isSaving ? (
@@ -529,17 +405,6 @@ const ShipProfileScreen: React.FC = () => {
   );
 };
 
-// Mock API function - xóa dòng này khi đã implement API thật
-// const updateShipperProfile = async (profile: ShipperProfile): Promise<void> => {
-//   return new Promise((resolve) => {
-//     setTimeout(() => {
-//       console.log('Profile updated:', profile);
-//       resolve();
-//     }, 1000);
-//   });
-// };
-
-// Styles
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
@@ -833,5 +698,5 @@ const styles = StyleSheet.create({
 });
 
 export default ShipProfileScreen;
-export type { ShipperProfile, ShipperStats, VehicleInfo };
+export type { ShipperProfile };
 

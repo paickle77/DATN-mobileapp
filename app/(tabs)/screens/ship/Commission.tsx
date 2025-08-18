@@ -4,13 +4,13 @@ import axios from 'axios';
 import moment from 'moment';
 import React, { useCallback, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { BASE_URL } from '../../services/api';
 import { getUserData } from '../utils/storage';
@@ -22,7 +22,7 @@ export default function CommissionScreen() {
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM'));
   const [totalCommission, setTotalCommission] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(false); 
 
   const fetchOrders = async () => {
     try {

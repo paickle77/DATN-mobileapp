@@ -17,11 +17,11 @@ import {
 } from 'react-native';
 import {
   assignOrderToShipper,
-  cancelOrder,
-  completeOrder,
   fetchAllBills,
   fetchShipperInfo,
-  updateShipperStatus
+  OrderDetail,
+  Shipper,
+  updateShipperStatus,
 } from '../../services/ShipService';
 import { getUserData } from '../utils/storage';
 
@@ -35,31 +35,6 @@ type RootStackParamList = {
   ShipOrderDetail: { orderId: string };
 };
 
-interface Order {
-  _id: string;
-  status: string;
-  createdAt: string;
-  total: number;
-  Account_id: string;
-  address_id: string | null;
-  address_snapshot?: {
-    name: string;
-    phone: string;
-    detail: string;
-    ward: string;
-    district: string;
-    city: string;
-  };
-  shipper_id?: string;
-  shipping_method?: string;
-}
-
-interface Shipper {
-  _id: string;
-  account_id: string;
-  is_online: 'offline' | 'online' | 'busy';
-}
-
 interface FilterOption {
   label: string;
   value: string;
@@ -68,9 +43,9 @@ interface FilterOption {
 
 const DeliveredOrders = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderDetail[]>([]);
   const [isOnline, setIsOnline] = useState<"online" | "offline" | "busy">("offline");
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<OrderDetail[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
@@ -97,8 +72,9 @@ const DeliveredOrders = () => {
   const loadOrders = async () => {
     try {
       const data = await fetchAllBills();
-      const filtered = (data || []).filter((order: Order) =>
-        order.Account_id && order.address_snapshot && order.shipping_method !== 'Nhận tại cửa hàng'
+      const filtered = (data || []).filter(
+        (order: OrderDetail) =>
+          order.Account_id && order.address_snapshot && order.shipping_method !== 'Nhận tại cửa hàng'
       );
       setOrders(filtered);
     } catch (error) {
@@ -109,7 +85,7 @@ const DeliveredOrders = () => {
 
   const loadShipperStatus = async () => {
     try {
-      const shipper = await fetchShipperInfo();
+      const shipper: Shipper | null = await fetchShipperInfo();
       setIsOnline(shipper?.is_online || 'offline');
     } catch (error) {
       console.error('Lỗi khi lấy thông tin shipper:', error);
@@ -127,24 +103,38 @@ const DeliveredOrders = () => {
   const filterOrders = async () => {
     const shipperID = await getUserData('shipperID');
 
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
     const filtered = orders.filter(order => {
       if (order.shipping_method === 'Nhận tại cửa hàng') return false;
 
       const matchesSearch =
         order.address_snapshot?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         order._id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.address_snapshot?.detail?.toLowerCase().includes(searchQuery.toLowerCase()) || '';
+        order.address_snapshot?.detail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        '';
 
-      const isReady = order.status === 'ready';
+      // chỉ đơn ready trong ngày hôm nay
+      const orderDate = new Date(order.updatedAt);
+      const isToday =
+        orderDate >= startOfToday && orderDate < startOfTomorrow;
+
+      const isReady = order.status === 'ready' && isToday;
+
       const isOwnedByShipper =
         ['shipping', 'done', 'failed'].includes(order.status) &&
-        (order as any).shipper_id === shipperID;
+        order.shipper_id === shipperID;
 
-      const matchesFilter =
-        selectedFilter === 'all'
-          ? isReady || isOwnedByShipper
-          : order.status === selectedFilter &&
-            (order.status === 'ready' || (order as any).shipper_id === shipperID);
+     const matchesFilter =
+      selectedFilter === 'all'
+        ? isReady || isOwnedByShipper
+        : selectedFilter === 'ready'
+          ? isReady
+          : order.status === selectedFilter && order.shipper_id === shipperID;
+
 
       return matchesSearch && matchesFilter;
     });
@@ -155,7 +145,17 @@ const DeliveredOrders = () => {
   const updateFilterOptions = async () => {
     const shipperID = await getUserData('shipperID');
 
-    const countReady = orders.filter(o => o.status === 'ready').length;
+    const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+      const todayOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.updatedAt);
+        return orderDate >= startOfToday && orderDate < startOfTomorrow;
+      });
+
+    const countReady = todayOrders.filter(o => o.status === 'ready').length;
     const countShipping = orders.filter(o => o.status === 'shipping' && o.shipper_id === shipperID).length;
     const countDone = orders.filter(o => o.status === 'done' && o.shipper_id === shipperID).length;
     const countCancelled = orders.filter(o => o.status === 'failed' && o.shipper_id === shipperID).length;
@@ -210,45 +210,6 @@ const DeliveredOrders = () => {
     }
   };
 
-  const handleCompleteOrder = async (orderId: string) => {
-    if (isOnline !== 'online') {
-      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hoàn thành đơn hàng.');
-      return;
-    }
-    try {
-      const shipperID = await getUserData('shipperID');
-      const res = await completeOrder(orderId, shipperID);
-      if (res.success) {
-        Alert.alert('🎉 Thành công', 'Đơn hàng đã được hoàn thành!');
-        loadOrders();
-      } else {
-        Alert.alert('Lỗi', res.message || 'Không thể hoàn thành đơn hàng');
-      }
-    } catch (error) {
-      console.error('Error completing order:', error);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi hoàn thành đơn hàng');
-    }
-  };
-
-  const handleCancelOrder = async (orderId: string) => {
-    if (isOnline !== 'online') {
-      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hủy đơn hàng.');
-      return;
-    }
-    try {
-      const shipperID = await getUserData('shipperID');
-      const res = await cancelOrder(orderId, shipperID);
-      if (res.success) {
-        Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');
-        loadOrders();
-      } else {
-        Alert.alert('Lỗi', res.message || 'Không thể hủy đơn hàng');
-      }
-    } catch (error) {
-      console.error('Error cancelling order:', error);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi hủy đơn hàng');
-    }
-  };
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'ready':
@@ -288,9 +249,17 @@ const DeliveredOrders = () => {
         };
     }
   };
-  const renderOrderCard = ({ item }: { item: Order }) => {
+  
+  const renderOrderCard = ({ item }: { item: OrderDetail }) => {
     const statusConfig = getStatusConfig(item.status);
-    const isReadyOrder = item.status === 'ready';
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+    const orderDate = new Date(item.updatedAt);
+      const isToday =
+        orderDate >= startOfToday && orderDate < startOfTomorrow;
+    const isReadyOrder = item.status === 'ready' && item.shipping_method !== 'Nhận tại cửa hàng' && isToday;
     const isShippingOrder = item.status === 'shipping';
     
     return (
@@ -381,26 +350,6 @@ const DeliveredOrders = () => {
                 </TouchableOpacity>
               )}
               
-              {/* {isShippingOrder && (
-                <View style={styles.shippingActions}>
-                  <TouchableOpacity 
-                    style={styles.cancelButton}
-                    onPress={() => handleCancelOrder(item._id)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.cancelButtonText}>Khách không nhận</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.completeButton}
-                    onPress={() => handleCompleteOrder(item._id)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.completeButtonIcon}>✅</Text>
-                    <Text style={styles.completeButtonText}>Hoàn thành</Text>
-                  </TouchableOpacity>
-                </View>
-              )} */}
             </View>
           </>
         )}
