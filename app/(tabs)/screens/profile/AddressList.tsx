@@ -18,7 +18,7 @@ import AddAddressModal from '../../component/AddAddressModal';
 import EditAddressModal from '../../component/EditAddressModal';
 import { AddressService } from '../../services/AddressService';
 import { BASE_URL } from '../../services/api';
-import { getUserData, removeUserDataByKey, saveUserData } from '../utils/storage';
+import { getUserData, saveUserData } from '../utils/storage';
 
 export interface Address {
   _id: string;
@@ -90,7 +90,7 @@ const AddressListScreen = () => {
       let uid = userId;
 
       if (!uid) {
-        const storedUser = await getUserData('profileId');
+        const storedUser = await getUserData('userId');
         uid = storedUser;
         console.log("ádfgfds", uid)
       }

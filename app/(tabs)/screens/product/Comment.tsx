@@ -21,7 +21,7 @@ const { width } = Dimensions.get('window');
 
 const CommentScreen = () => {
     const route = useRoute();
-    const { productId } = route.params as { ProductId: string };
+    const { productId } = route.params as { productId: string };
   const navigation = useNavigation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [filteredReviews, setFilteredReviews] = useState<Review[]>([]);
@@ -57,14 +57,12 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
     try {
       setLoading(true);
       setError(null);
-      console.log('🆔 ProductID lấy từ AsyncStorage:', productId);
       if (!productId) {
         setError('Không tìm thấy ID sản phẩm');
         return;
       }
 
       if (forceRefresh) {
-        // Refresh cache trước khi load data
         await commentService.refreshCache();
       }
 
@@ -79,21 +77,21 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
   };
 
   const fetchReviewData = async (productId: string, forceRefresh: boolean = false) => {
-  try {
-    const { reviews: reviewsData, summary } = await commentService.refreshProductReviews(productId);
+    try {
+      // Sử dụng cache để load nhanh hơn
+      const { reviews: reviewsData, summary } = await commentService.refreshProductReviews(productId);
 
-    setReviews(reviewsData);
-    setReviewSummary(summary);
+      setReviews(reviewsData);
+      setReviewSummary(summary);
 
-    // Giữ filter & sort hiện tại
-    applyFiltersAndSort(reviewsData, selectedFilter, sortBy);
+      // Apply filter sau khi có data
+      applyFiltersAndSort(reviewsData, selectedFilter, sortBy);
 
-    console.log(`✅ Loaded ${reviewsData.length} reviews with ${forceRefresh ? 'force refresh' : 'cache'}`);
-  } catch (error) {
-    console.error('Error fetching review data:', error);
-    throw error;
-  }
-};
+    } catch (error) {
+      console.error('Error fetching review data:', error);
+      throw error;
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -113,7 +111,6 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
 ) => {
   let filtered = commentService.filterReviewsByRating(reviewsToFilter, filter);
   filtered = commentService.sortReviews(filtered, sort);
-  console.log("Data đã lọc ở Comment :",filtered)
   setFilteredReviews(filtered);
 };
 
@@ -128,16 +125,21 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
   applyFiltersAndSort(reviews, selectedFilter, newSortBy);
 };
 
-  const renderStars = (count: number, size: number = 18) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <FontAwesome
-        key={i}
-        name={i < count ? 'star' : 'star-o'}
-        size={size}
-        color={i < count ? '#FF6B35' : '#E0E0E0'}
-        style={{ marginRight: 3 }}
-      />
-    ));
+  const renderStars = (rating: number, size: number = 18) => {
+    return Array.from({ length: 5 }, (_, i) => {
+      const isFilled = i + 1 <= rating;
+      const isHalf = i + 0.5 <= rating && i + 1 > rating;
+      
+      return (
+        <FontAwesome
+          key={i}
+          name={isFilled ? 'star' : isHalf ? 'star-half-o' : 'star-o'}
+          size={size}
+          color={isFilled || isHalf ? '#FF6B35' : '#E0E0E0'}
+          style={{ marginRight: 3 }}
+        />
+      );
+    });
   };
 
   const renderRatingDistribution = () => {
@@ -308,7 +310,7 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
               {reviewSummary.averageRating.toFixed(1)}
             </Text>
             <View style={styles.averageStars}>
-              {renderStars(Math.round(reviewSummary.averageRating), 20)}
+              {renderStars(reviewSummary.averageRating, 20)}
             </View>
             <Text style={styles.totalReviews}>
               ({reviewSummary.totalReviews} đánh giá)

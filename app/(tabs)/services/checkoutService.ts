@@ -138,7 +138,7 @@ class CheckoutService {
   }
 
   async fetchDefaultAddress(): Promise<CheckoutAddress> {
-    const userId = await getUserData('profileId');
+    const userId = await getUserData('userId');
     const response = await axios.get(`${BASE_URL}/addresses/default/${userId}`);
 
     if (!response.data.success) {

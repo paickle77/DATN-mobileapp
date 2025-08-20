@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -41,7 +41,7 @@ const Detail: React.FC = () => {
     totalReviews: 0,
     reviews: []
   });
-
+  const [reviewsLoaded, setReviewsLoaded] = useState(false);
 
   const HandleNavigatetocomment=(ProductID :String)=>{
 
@@ -66,6 +66,20 @@ const Detail: React.FC = () => {
     calculateTotalPrice();
   }, [quantity, product, selectedSize, sizes]);
 
+  // Refresh review data when screen comes into focus (after review submission)
+  useFocusEffect(
+    useCallback(() => {
+      const refreshReviews = async () => {
+        const productId = await getUserData('productID');
+        if (productId && reviewsLoaded) {
+          console.log('🔄 Product Detail focused - refreshing review data...');
+          fetchReviewSummary(productId);
+        }
+      };
+      refreshReviews();
+    }, [reviewsLoaded])
+  );
+
   const initializeData = async () => {
     try {
       setLoading(true);
@@ -76,12 +90,18 @@ const Detail: React.FC = () => {
         return;
       }
 
+      // Load product, sizes, favorite status ngay lập tức
       await Promise.all([
         fetchProductDetails(productId),
         fetchSizes(productId),
         checkFavoriteStatus(productId),
-        fetchReviewSummary(productId)
       ]);
+
+      // Load review summary sau (lazy loading)
+      setTimeout(() => {
+        fetchReviewSummary(productId);
+      }, 500);
+      
     } catch (err) {
       setError('Lỗi khi tải dữ liệu');
     } finally {
@@ -130,9 +150,10 @@ const Detail: React.FC = () => {
     try {
       const summary = await detailService.getReviewSummary(productId);
       setReviewSummary(summary);
+      setReviewsLoaded(true);
     } catch (error) {
       console.error('Lỗi khi tải tóm tắt đánh giá:', error);
-      // Không throw error để không làm crash app
+      setReviewsLoaded(true);
     }
   };
 
@@ -247,15 +268,20 @@ if (result.exceeded) {
   const formatPrice = (val: number) => val.toLocaleString("vi-VN");
 
   const renderStars = (rating: number, size: number = 14) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Ionicons
-        key={i}
-        name={i < Math.floor(rating) ? 'star' : i < rating ? 'star-half' : 'star-outline'}
-        size={size}
-        color={i < rating ? '#FFD700' : '#E0E0E0'}
-        style={{ marginRight: 2 }}
-      />
-    ));
+    return Array.from({ length: 5 }, (_, i) => {
+      const isFilled = i + 1 <= rating;
+      const isHalf = i + 0.5 <= rating && i + 1 > rating;
+      
+      return (
+        <Ionicons
+          key={i}
+          name={isFilled ? 'star' : isHalf ? 'star-half' : 'star-outline'}
+          size={size}
+          color={isFilled || isHalf ? '#FFD700' : '#E0E0E0'}
+          style={{ marginRight: 2 }}
+        />
+      );
+    });
   };
 
   if (loading) return (

@@ -26,6 +26,7 @@ type RootStackParamList = {
   NewPassword: { email: string };
   CompleteProfile: { email: string };
   TabNavigator: undefined;
+  ShipTabNavigator: undefined; 
 };
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -85,10 +86,10 @@ export default function Login() {
       // Lưu profile ID (thay vì user ID)
       if (userData?.profile?._id) {
         await saveUserData({
-          key: 'profileId', 
+          key: 'userId', 
           value: userData.profile._id.toString()
         });
-        console.log('🆔 Profile ID:', userData.profile._id);
+        console.log('🆔 User ID:', userData.profile._id);
       }
 
       // Lưu address ID từ profile

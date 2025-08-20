@@ -56,10 +56,7 @@ async getUserName(userId: string): Promise<string> {
    * Xử lý hiển thị tên user từ review object
    */
  getUserDisplayName(review: Review): string {
-  console.log("Username@@:", review);
-
   if (typeof review.Account_id === 'object' && review.Account_id.email) {
-    // Lấy phần trước dấu @
     return review.Account_id.email.split('@')[0];
   }
   return 'Khách hàng';
@@ -112,7 +109,7 @@ async getUserName(userId: string): Promise<string> {
 
     reviews.forEach(review => {
       if (review.star_rating >= 1 && review.star_rating <= 5) {
-        distribution[review.star_rating]++;
+        distribution[review.star_rating as keyof typeof distribution]++;
       }
     });
 
@@ -205,7 +202,6 @@ async getUserName(userId: string): Promise<string> {
    */
   clearCache(): void {
     detailService.clearCache();
-    console.log('🗑️ CommentService: Đã xóa cache');
   }
 
   /**
@@ -213,7 +209,6 @@ async getUserName(userId: string): Promise<string> {
    */
   async refreshCache(): Promise<void> {
     await detailService.refreshCache();
-    console.log('🔄 CommentService: Đã refresh cache');
   }
 }
 

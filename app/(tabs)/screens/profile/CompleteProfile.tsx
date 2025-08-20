@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateCompleteProfileForm } from '../../utils/validation';
+import { saveUserData } from '../utils/storage'; // ✅ THÊM: Import saveUserData
 
 // Danh sách các tùy chọn giới tính
 const GENDER_OPTIONS = [
@@ -20,6 +21,7 @@ type RootStackParamList = {
   };
   Address: {
     account_id: string;
+    user_id?: string; // ✅ THÊM: Thêm user_id
     fullName?: string;
     phone?: string;
     gender?: string;
@@ -170,6 +172,15 @@ export default function CompleteProfile() {
       console.log('✅ Tạo hồ sơ thành công cho account_id:', account_id);
       console.log('✅ User ID mới:', user._id);
 
+      // ✅ Lưu account_id và user_id vào AsyncStorage ngay sau khi tạo profile thành công
+      await saveUserData({ key: 'accountId', value: account_id });
+      await saveUserData({ key: 'userId', value: user._id });
+      await saveUserData({ key: 'userName', value: fullName.trim() });
+      await saveUserData({ key: 'userPhone', value: formattedPhone });
+      await saveUserData({ key: 'userGender', value: gender });
+      
+      console.log('✅ Đã lưu account_id và user_id vào AsyncStorage');
+
       Alert.alert(
         'Thành công',
         'Tạo hồ sơ thành công',
@@ -177,9 +188,10 @@ export default function CompleteProfile() {
           {
             text: 'OK',
             onPress: () => {
-              // ✅ Chuyển đến màn hình tiếp theo với account_id
+              // ✅ Chuyển đến màn hình tiếp theo với account_id và user_id
               navigation.navigate('Address', {
                 account_id: account_id,
+                user_id: user._id,
                 profile_id: user._id,
                 fullName,
                 phone: formattedPhone,

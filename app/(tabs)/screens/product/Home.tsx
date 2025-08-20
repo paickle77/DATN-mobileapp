@@ -88,6 +88,101 @@ import type { Product } from '../../services/ProductsService';
 import productService from '../../services/ProductsService';
 import { getUserData, saveUserData } from '../utils/storage';
 
+// Component riêng cho Product Item để tránh hook violation
+const ProductItem = ({ 
+  item, 
+  index,
+  rating, 
+  onPress, 
+  onLoadRating 
+}: { 
+  item: Product; 
+  index: number; 
+  rating: number;
+  onPress: () => void;
+  onLoadRating: (productId: string) => void;
+}) => {
+  const hasDiscount = item.discount_price > 0 && item.discount_price < item.price;
+  const displayPrice = hasDiscount ? item.discount_price : item.price;
+  const discountPercent = hasDiscount ? Math.round(((item.price - item.discount_price) / item.price) * 100) : 0;
+  const [hasLoadedRating, setHasLoadedRating] = useState(false);
+
+  // Load rating nếu chưa có - sử dụng useEffect trong component riêng
+  useEffect(() => {
+    if (rating === 0 && !hasLoadedRating) {
+      setHasLoadedRating(true);
+      setTimeout(() => {
+        onLoadRating(item._id);
+      }, Math.floor(index / 2) * 100); // Stagger loading
+    }
+  }, [item._id, rating, hasLoadedRating, onLoadRating, index]);
+
+  return (
+    <View style={styles.productWrapper}>
+      <TouchableOpacity
+        style={styles.modernGridItem}
+        onPress={onPress}
+        activeOpacity={0.95}
+      >
+        {/* Image Container với overlay effects */}
+        <View style={styles.modernImageContainer}>
+          <Image source={{ uri: item.image_url }} style={styles.modernCakeImage} />
+
+          {/* Discount Badge */}
+          {hasDiscount && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>-{discountPercent}%</Text>
+            </View>
+          )}
+
+          {/* Favorite Button */}
+          <TouchableOpacity
+            style={styles.modernFavoriteButton}
+            onPress={() => console.log('Toggle favorite')}
+          >
+            <Ionicons name="heart-outline" size={18} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Overlay Gradient */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.1)']}
+            style={styles.modernImageOverlay}
+          />
+        </View>
+
+        {/* Product Info */}
+        <View style={styles.modernProductInfo}>
+          <Text style={styles.modernCakeName} numberOfLines={2}>
+            {item.name}
+          </Text>
+
+          {/* Price Section */}
+          <View style={styles.modernPriceSection}>
+            <View style={styles.priceRow}>
+              {hasDiscount && (
+                <Text style={styles.modernOriginalPrice}>
+                  {item.price.toLocaleString()}₫
+                </Text>
+              )}
+              <Text style={styles.modernPriceText}>
+                {displayPrice.toLocaleString()}₫
+              </Text>
+            </View>
+
+            {/* Rating Section */}
+            <View style={styles.modernRatingContainer}>
+              <Ionicons name="star" size={14} color="#FFD700" />
+              <Text style={styles.modernRatingText}>
+                {rating > 0 ? rating.toFixed(1) : '0.0'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 export default function Home() {
   const [searchText, setSearchText] = useState('');
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
@@ -98,84 +193,82 @@ export default function Home() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [productRatings, setProductRatings] = useState<{ [key: string]: number }>({});
   const [loading, setLoading] = useState(true);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
 
-  // Tối ưu hóa: Tải tất cả đánh giá một lần
-  const loadAllRatings = async (products: Product[]) => {
+  // Cache cho ratings để tránh load lại
+  const [ratingsCache, setRatingsCache] = useState<{ [key: string]: number }>({});
+  const [loadedRatings, setLoadedRatings] = useState<Set<string>>(new Set());
+
+  // Load rating cho sản phẩm cụ thể (lazy loading)
+  const loadRatingForProduct = async (productId: string) => {
+    if (loadedRatings.has(productId) || ratingsCache[productId] !== undefined) {
+      return ratingsCache[productId] || 0;
+    }
+
     try {
-      // Lấy tất cả reviews một lần duy nhất
-      const allReviewsResponse = await fetch(`${detailService.baseUrl}/GetAllReview`);
-      const allReviewsData = await allReviewsResponse.json();
-      const allReviews = allReviewsData.data || [];
-
-      // Tính toán rating cho từng sản phẩm từ dữ liệu đã có
-      const ratingsMap: { [key: string]: number } = {};
+      const summary = await detailService.getReviewSummary(productId);
+      const rating = summary.averageRating;
       
-      products.forEach(product => {
-        // Lọc reviews của sản phẩm này
-        const productReviews = allReviews.filter((review: any) => {
-          const reviewProductId = typeof review.product_id === 'object' 
-            ? review.product_id._id 
-            : review.product_id;
-          return reviewProductId === product._id;
-        });
-
-        // Tính rating trung bình
-        if (productReviews.length > 0) {
-          const totalRating = productReviews.reduce((sum: number, review: any) => 
-            sum + (review.star_rating || 0), 0);
-          ratingsMap[product._id] = Math.round((totalRating / productReviews.length) * 10) / 10;
-        } else {
-          ratingsMap[product._id] = 0;
-        }
-      });
-
-      return ratingsMap;
+      setRatingsCache(prev => ({ ...prev, [productId]: rating }));
+      setLoadedRatings(prev => new Set([...prev, productId]));
+      setProductRatings(prev => ({ ...prev, [productId]: rating }));
+      
+      return rating;
     } catch (error) {
-      console.error('Lỗi khi tải đánh giá:', error);
-      // Fallback: tạo ratings mặc định
-      const fallbackRatings: { [key: string]: number } = {};
-      products.forEach(product => {
-        fallbackRatings[product._id] = 0;
-      });
-      return fallbackRatings;
+      console.error(`Lỗi khi tải rating cho sản phẩm ${productId}:`, error);
+      return 0;
     }
   };
 
-  // Fetch products và ratings
+  // Load ratings cho các sản phẩm hiện tại hiển thị (batch loading)
+  const loadVisibleRatings = async (visibleProducts: Product[]) => {
+    const productsToLoad = visibleProducts.filter(p => !loadedRatings.has(p._id));
+    
+    if (productsToLoad.length === 0) return;
+
+    setRatingsLoading(true);
+    
+    try {
+      // Load parallel nhưng giới hạn số lượng
+      const batchSize = 5;
+      for (let i = 0; i < productsToLoad.length; i += batchSize) {
+        const batch = productsToLoad.slice(i, i + batchSize);
+        await Promise.all(batch.map(product => loadRatingForProduct(product._id)));
+      }
+    } catch (error) {
+      console.error('Lỗi khi load batch ratings:', error);
+    } finally {
+      setRatingsLoading(false);
+    }
+  };
+
+  // Fetch products nhanh hơn - không load ratings ngay
   useEffect(() => {
-    const fetchProductsAndRatings = async () => {
+    const fetchProducts = async () => {
       try {
         setLoading(true);
-        
-        // Bước 1: Tải danh sách sản phẩm
-        console.log('🔄 Đang tải danh sách sản phẩm...');
         const products = await productService.getAllProducts();
         setData(products);
         
-        // Bước 2: Tải tất cả ratings một lần
-        console.log('🔄 Đang tải đánh giá sản phẩm...');
-        const ratings = await loadAllRatings(products);
-        setProductRatings(ratings);
-        
-        console.log('✅ Tải dữ liệu hoàn tất!');
-        console.log(`📊 Đã tải ${products.length} sản phẩm và ${Object.keys(ratings).length} đánh giá`);
+        // Load ratings cho 10 sản phẩm đầu tiên
+        const initialProducts = products.slice(0, 10);
+        loadVisibleRatings(initialProducts);
         
       } catch (error) {
         console.error('❌ Lỗi khi tải dữ liệu:', error);
         setData([]);
-        setProductRatings({});
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProductsAndRatings();
+    fetchProducts();
   }, []);
 
   // User data
   useEffect(() => {
     const fetchData = async () => {
-      const user = await getUserData('userData');
+      const user = await getUserData('userId');
       if (user) {
         console.log('User ID:', user);
       }
@@ -199,7 +292,9 @@ export default function Home() {
 
     let filtered = data.filter((item) => {
       const name = item.name.toLowerCase();
-      const categoryName = item.category_id?.name?.toLowerCase() || '';
+      const categoryName = typeof item.category_id === 'object' && item.category_id 
+        ? item.category_id.name?.toLowerCase() || ''
+        : '';
 
       const matchesSearch = name.includes(searchText.toLowerCase().trim());
 
@@ -221,97 +316,56 @@ export default function Home() {
     return filtered;
   }, [searchText, selectedFilter, data, productRatings]);
 
+  // Load ratings cho sản phẩm visible khi filter thay đổi
+  useEffect(() => {
+    if (filteredCakes.length > 0) {
+      const visibleProducts = filteredCakes.slice(0, 20); // Load cho 20 sản phẩm đầu
+      loadVisibleRatings(visibleProducts);
+    }
+  }, [filteredCakes]);
+
   // Render product item với UI hiện đại hơn - Tối ưu hóa
   const renderCakeItem = ({ item, index }: { item: Product; index: number }) => {
-    // Lấy rating từ state thay vì gọi API
     const rating = productRatings[item._id] || 0;
-    const hasDiscount = item.discount_price > 0 && item.discount_price < item.price;
-    const displayPrice = hasDiscount ? item.discount_price : item.price;
-    const discountPercent = hasDiscount ? Math.round(((item.price - item.discount_price) / item.price) * 100) : 0;
 
     return (
-      <View style={styles.productWrapper}>
-        <TouchableOpacity
-          style={styles.modernGridItem}
-          onPress={async () => {
-            await saveUserData({ value: item._id, key: 'productID' });
-            console.log("item._id products:", item._id);
-            navigation.navigate('Detail');
-          }}
-          activeOpacity={0.95}
-        >
-          {/* Image Container với overlay effects */}
-          <View style={styles.modernImageContainer}>
-            <Image source={{ uri: item.image_url }} style={styles.modernCakeImage} />
-
-            {/* Discount Badge */}
-            {hasDiscount && (
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>-{discountPercent}%</Text>
-              </View>
-            )}
-
-            {/* Favorite Button */}
-            <TouchableOpacity
-              style={styles.modernFavoriteButton}
-              onPress={() => console.log('Toggle favorite')}
-            >
-              <Ionicons name="heart-outline" size={18} color="#fff" />
-            </TouchableOpacity>
-
-            {/* Overlay Gradient */}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.1)']}
-              style={styles.modernImageOverlay}
-            />
-          </View>
-
-          {/* Product Info */}
-          <View style={styles.modernProductInfo}>
-            <Text style={styles.modernCakeName} numberOfLines={2}>
-              {item.name}
-            </Text>
-
-            {/* Price Section */}
-            <View style={styles.modernPriceSection}>
-              <View style={styles.priceRow}>
-                {hasDiscount && (
-                  <Text style={styles.modernOriginalPrice}>
-                    {item.price.toLocaleString()}₫
-                  </Text>
-                )}
-                <Text style={styles.modernPriceText}>
-                  {displayPrice.toLocaleString()}₫
-                </Text>
-              </View>
-
-              {/* Rating Section */}
-              <View style={styles.modernRatingContainer}>
-                <Ionicons name="star" size={14} color="#FFD700" />
-                <Text style={styles.modernRatingText}>
-                  {rating > 0 ? rating.toFixed(1) : '0.0'}
-                </Text>
-              </View>
-            </View>
-
-          </View>
-        </TouchableOpacity>
-      </View>
+      <ProductItem
+        item={item}
+        index={index}
+        rating={rating}
+        onPress={async () => {
+          await saveUserData({ value: item._id, key: 'productID' });
+          (navigation as any).navigate('Detail');
+        }}
+        onLoadRating={loadRatingForProduct}
+      />
     );
   };
 
   const handleNotification = () => {
-    navigation.navigate('NotificationScreen');
+    (navigation as any).navigate('NotificationScreen');
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Đang tải sản phẩm và đánh giá...</Text>
-        <Text style={styles.loadingSubText}>Vui lòng chờ một chút</Text>
+        <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+        <Text style={styles.loadingSubText}>Chỉ mất vài giây thôi!</Text>
       </View>
     );
   }
+
+  const renderSkeletonItem = () => (
+    <View style={styles.productWrapper}>
+      <View style={[styles.modernGridItem, { backgroundColor: '#f0f0f0' }]}>
+        <View style={[styles.modernImageContainer, { backgroundColor: '#e0e0e0' }]} />
+        <View style={styles.modernProductInfo}>
+          <View style={{ height: 16, backgroundColor: '#e0e0e0', marginBottom: 8, borderRadius: 4 }} />
+          <View style={{ height: 12, backgroundColor: '#e0e0e0', width: '60%', borderRadius: 4 }} />
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.screen}>
@@ -369,7 +423,7 @@ export default function Home() {
                 activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={banner.gradient}
+                  colors={banner.gradient as any}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.bannerGradient}
@@ -420,11 +474,11 @@ export default function Home() {
               activeOpacity={0.8}
               onPress={async () => {
                 await saveUserData({ value: cat.label, key: 'categoryID' });
-                navigation.navigate('Category');
+                (navigation as any).navigate('Category');
               }}
             >
               <LinearGradient
-                colors={cat.gradient}
+                colors={cat.gradient as any}
                 style={styles.categoryIconContainer}
               >
                 <Text style={styles.categoryEmoji}>{cat.icon}</Text>
@@ -474,11 +528,27 @@ export default function Home() {
           </View>
 
           <View style={styles.modernGridContainer}>
-            {filteredCakes.map((item, index) => (
-              <View key={item._id}>
-                {renderCakeItem({ item, index })}
-              </View>
-            ))}
+            {filteredCakes.length > 0 ? (
+              filteredCakes.map((item, index) => (
+                <View key={item._id}>
+                  {renderCakeItem({ item, index })}
+                </View>
+              ))
+            ) : (
+              // Show skeleton while ratings are loading
+              ratingsLoading ? (
+                Array.from({ length: 6 }, (_, index) => (
+                  <View key={`skeleton-${index}`}>
+                    {renderSkeletonItem()}
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>Không tìm thấy sản phẩm</Text>
+                  <Text style={styles.emptySubText}>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</Text>
+                </View>
+              )
+            )}
           </View>
         </View>
       </ScrollView>

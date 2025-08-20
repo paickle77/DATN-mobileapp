@@ -13,7 +13,8 @@ type RootStackParamList = {
         phone?: string;
         gender?: string;
         avatar?: string;
-        id: string;
+        account_id: string;
+        user_id?: string;
     };
     ManualAddress: {
         email?: string;
@@ -22,7 +23,8 @@ type RootStackParamList = {
         phone?: string;
         gender?: string;
         avatar?: string;
-        id: string;
+        account_id: string;
+        user_id?: string;
     };
 };
 
@@ -108,13 +110,15 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
       
       console.log('[ManualAddress] Navigating back to Address with:', {
         address: fullAddress,
-        id: route.params?.id
+        account_id: route.params?.account_id,
+        user_id: route.params?.user_id
       });
 
       (navigation as any).navigate('Address', {
         address: fullAddress,
         // Đảm bảo truyền lại tất cả thông tin bao gồm ID
-        id: route.params?.id,
+        account_id: route.params?.account_id,
+        user_id: route.params?.user_id,
         email: route.params?.email,
         password: route.params?.password,
         fullName: route.params?.fullName,

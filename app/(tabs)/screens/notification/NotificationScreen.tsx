@@ -17,7 +17,7 @@ const NotificationScreen = () => {
 
   const fetchNotifications = async () => {
     try {
-      const UserID  = await getUserData('profileId');
+      const UserID  = await getUserData('userId');
 
       const currentUserId = UserID;
       console.log('Current User ID:', currentUserId);

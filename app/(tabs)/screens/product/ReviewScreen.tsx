@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { BASE_URL } from '../../services/api';
-import detailService from '../../services/DetailService';
+import reviewService from '../../services/ReviewService';
 import { getUserData } from '../utils/storage';
 
 // Import các component đã redesign
@@ -45,7 +45,7 @@ type ProductDataType = {
 const ReviewScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { ProductID } = route.params as { ProductId: string };
+  const { ProductID } = route.params as { ProductID: string };
 
   // States
   const [rating, setRating] = useState(0);
@@ -139,16 +139,7 @@ const slideAnim = useRef(new Animated.Value(30)).current;
       );
       return;
     }
-    //  const userData = await getUserData('userData');
-    //  const payload123= {
-    //     product_id: ProductID,
-    //     star_rating: rating,
-    //     content: reviewText.trim(),
-    //     // image: imageBase64,
-    //     review_date:
-    //     Account_id: userData,
-    //   };
-      // console.log("payloadddd:",payload123)
+
     try {
       setSubmitting(true);
       const userData = await getUserData('userData');
@@ -161,13 +152,12 @@ const slideAnim = useRef(new Animated.Value(30)).current;
         Account_id: userData,
       };
 
-      const response = await axios.post(`${BASE_URL}/reviews`, payload);
-      console.log("payloadddd:",payload)
-      console.log('Review submitted:', response.data);
-
-      // Refresh cache
-      await detailService.refreshCache();
+      // Sử dụng ReviewService để submit (đã handle cache clearing internally)
+      await reviewService.submitReview(payload);
+      console.log('Review submitted successfully - all caches cleared automatically');
+      
       await saveUserData({ key: 'productID', value: ProductID });
+      
       Alert.alert(
         '🎉 Thành công!', 
         'Cảm ơn bạn đã chia sẻ! Đánh giá của bạn đã được gửi thành công và sẽ giúp người khác có thêm thông tin hữu ích.',

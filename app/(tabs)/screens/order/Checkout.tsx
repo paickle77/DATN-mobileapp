@@ -239,7 +239,7 @@ const Checkout = ({
     useCallback(() => {
       const fetchInitialAddress = async () => {
         try {
-          const selected = await getUserData('addressId');
+          const selected = await getUserData('defaultAddress');
           console.log('📍 Địa chỉ đã chọn:', selected);
 
           if (selected) {
@@ -370,7 +370,7 @@ const Checkout = ({
           setSelectedVoucher(null);
           setNameCode('');
           setPercent(0);
-          saveUserData({ key: 'discount_percent', value: 0 });
+          saveUserData({ key: 'discount_percent', value: '0' });
         }
       },
     });

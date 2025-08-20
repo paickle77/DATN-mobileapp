@@ -1,7 +1,7 @@
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,8 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import OrderItemDetail from '../../component/CheckOutComponent/OrderItemDetail';
 import { BASE_URL } from '../../services/api';
+import reviewService, { BillReviewStatus } from '../../services/ReviewService';
+import { getUserData } from '../utils/storage';
 
 type BillDetailItemType = {
   _id: string;
@@ -74,7 +76,8 @@ const OrderDetails = () => {
   const [billInfo, setBillInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasReviewed] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<BillReviewStatus | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null);
 
   console.log('✅✅✅Order ID từ params:', orderId);
 
@@ -82,6 +85,10 @@ const OrderDetails = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Lấy account ID từ storage
+      const userData = await getUserData('userData');
+      setAccountId(userData);
       
       // Lấy thông tin bill và bill details
       const [billResponse, billDetailsResponse] = await Promise.all([
@@ -108,6 +115,18 @@ const OrderDetails = () => {
       console.log('✅ Dữ liệu chi tiết đơn hàng (đã lọc):', filteredData);
       setData(filteredData);
       
+      // Nếu có userData và orderId, lấy review status
+      if (userData && orderId) {
+        try {
+          const reviewStatusData = await reviewService.checkBillReviewStatus(orderId, userData);
+          setReviewStatus(reviewStatusData);
+          console.log('✅ Review status:', reviewStatusData);
+        } catch (reviewError) {
+          console.error('Lỗi khi tải trạng thái đánh giá:', reviewError);
+          // Không throw error này để không ảnh hưởng đến việc hiển thị đơn hàng
+        }
+      }
+      
     } catch (err) {
       console.error('Lỗi khi tải chi tiết đơn hàng:', err);
       setError('Không thể tải chi tiết đơn hàng. Vui lòng thử lại sau.');
@@ -124,6 +143,16 @@ const OrderDetails = () => {
       setError('Không tìm thấy ID đơn hàng để hiển thị.');
     }
   }, [orderId]);
+
+  // Refresh data when screen comes into focus (when returning from ReviewScreen)
+  useFocusEffect(
+    useCallback(() => {
+      if (orderId) {
+        console.log('🔄 OrderDetails focused - refreshing data...');
+        fetchData();
+      }
+    }, [orderId])
+  );
 
   const formatPrice = (price?: number | null) => {
     const safePrice = Number(price);
@@ -230,32 +259,41 @@ const OrderDetails = () => {
 
   const isOrderCompleted = () => {
     const status = getOrderStatus();
-    return status === 'delivered' || status === 'done';
+    return status === 'done';
+  };
+
+  const canShowReviewButton = () => {
+    return isOrderCompleted() && reviewStatus && reviewStatus.canReview;
+  };
+
+  const getProductReviewStatus = (billDetailId: string) => {
+    if (!reviewStatus) {
+      console.log('❌ No reviewStatus available');
+      return null;
+    }
+    
+    console.log(`🔍 Looking for billDetailId: ${billDetailId}`);
+    console.log('🔍 Available products:', reviewStatus.products.map(p => ({
+      billDetailId: p.billDetailId, 
+      hasReviewed: p.hasReviewed, 
+      canReview: p.canReview
+    })));
+    
+    const found = reviewStatus.products.find(p => p.billDetailId === billDetailId);
+    console.log(`🔍 Found product review status:`, found);
+    
+    return found;
   };
 
   const navigateToReview = async (productId?: string) => {
+    if (!productId) {
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin sản phẩm để đánh giá');
+      return;
+    }
+
     try {
-      let targetProductId = productId;
-      console.log("PRODUCTID!!!: ",productId)
-      if (!targetProductId && data.length > 0) {
-        // Try to get product ID from either structure
-        const firstItem = data[0];
-        if (firstItem.product_id?._id) {
-          targetProductId = firstItem.product_id._id;
-        } else if (firstItem.product_snapshot) {
-          // For new structure, we might need to use a different identifier
-          // You may need to adjust this based on your backend implementation
-          targetProductId = firstItem._id; // or another identifier
-        }
-      }
-
-      if (targetProductId) {
-      console.log("targetProductId", targetProductId);
-navigation.navigate('Review' as never, { ProductID: targetProductId } as never);
-
-      } else {
-        Alert.alert('Lỗi', 'Không tìm thấy thông tin sản phẩm để đánh giá');
-      }
+      console.log("Navigating to review with productId:", productId);
+      (navigation as any).navigate('ReviewScreen', { ProductID: productId });
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể chuyển đến trang đánh giá');
       console.error('Error navigating to review:', error);
@@ -267,25 +305,54 @@ navigation.navigate('Review' as never, { ProductID: targetProductId } as never);
     return item.product_id;
   };
 
-  const renderProductItem = (item: BillDetailItemType) => (
-    <View key={item._id} style={styles.productItemContainer}>
-      <OrderItemDetail 
-        orderItem={item}
-        showReviewButton={false}
-      />
-      
-      {/* Individual Review Button for completed orders */}
-      {isOrderCompleted() && !hasReviewed && (
-        <TouchableOpacity 
-          style={styles.individualReviewButton}
-          onPress={() => navigateToReview(item.product_id)}
-        >
-          <Icon name="star-outline" size={16} color="#5C4033" />
-          <Text style={styles.individualReviewButtonText}>Đánh giá bánh này</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  const renderProductItem = (item: BillDetailItemType) => {
+    const productReviewStatus = getProductReviewStatus(item._id);
+    // Lấy productId từ reviewStatus nếu item.product_id không có
+    const productId = item.product_id?._id || productReviewStatus?.productId;
+
+    console.log(`🔍 Rendering product item:`, {
+      billDetailId: item._id,
+      productIdFromItem: item.product_id?._id,
+      productIdFromReviewStatus: productReviewStatus?.productId,
+      finalProductId: productId,
+      productReviewStatus,
+      isOrderCompleted: isOrderCompleted()
+    });
+
+    return (
+      <View key={item._id} style={styles.productItemContainer}>
+        <OrderItemDetail 
+          orderItem={item}
+          showReviewButton={false}
+        />
+        
+        {/* Review Status & Button */}
+        {isOrderCompleted() && productId && (
+          <View style={styles.reviewSection}>
+            {productReviewStatus?.hasReviewed ? (
+              <View style={styles.reviewedStatus}>
+                <Icon name="checkmark-circle" size={20} color="#28A745" />
+                <Text style={styles.reviewedText}>Đã đánh giá</Text>
+              </View>
+            ) : productReviewStatus?.canReview ? (
+              <TouchableOpacity 
+                style={styles.individualReviewButton}
+                onPress={() => navigateToReview(productId)}
+              >
+                <Icon name="star-outline" size={16} color="#5C4033" />
+                <Text style={styles.individualReviewButtonText}>Đánh giá sản phẩm này</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.cantReviewStatus}>
+                <Icon name="lock-closed-outline" size={16} color="#999" />
+                <Text style={styles.cantReviewText}>Chưa thể đánh giá</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   if (loading) {
     return (
@@ -485,23 +552,34 @@ navigation.navigate('Review' as never, { ProductID: targetProductId } as never);
           </View>
         )}
 
-        {/* Action Buttons */}
-        {isOrderCompleted() && !hasReviewed && (
-          <View style={styles.actionSection}>
-            <TouchableOpacity 
-              style={styles.reviewAllButton}
-              onPress={() => navigateToReview()}
-            >
-              <Icon name="star" size={20} color="#FFFFFF" />
-              <Text style={styles.reviewButtonText}>Đánh giá tất cả bánh</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {hasReviewed && (
-          <View style={styles.reviewedSection}>
-            <Icon name="checkmark-circle" size={24} color="#34C759" />
-            <Text style={styles.reviewedText}>Bạn đã đánh giá đơn hàng này</Text>
+        {/* Review Status Section */}
+        {isOrderCompleted() && reviewStatus && (
+          <View style={styles.reviewStatusSection}>
+            {reviewStatus.allReviewed ? (
+              <View style={styles.allReviewedStatus}>
+                <Icon name="checkmark-circle" size={24} color="#28A745" />
+                <Text style={styles.allReviewedText}>Đơn này đã được đánh giá hoàn tất</Text>
+                <Text style={styles.reviewStatsText}>
+                  Đã đánh giá {reviewStatus.reviewedProducts}/{reviewStatus.totalProducts} sản phẩm
+                </Text>
+              </View>
+            ) : reviewStatus.canReview ? (
+              <View style={styles.actionSection}>
+                <Text style={styles.reviewPromptText}>
+                  Hãy đánh giá từng sản phẩm để chia sẻ trải nghiệm của bạn!
+                </Text>
+                <Text style={styles.reviewStatsText}>
+                  Đã đánh giá {reviewStatus.reviewedProducts}/{reviewStatus.totalProducts} sản phẩm
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.cantReviewSection}>
+                <Icon name="information-circle-outline" size={20} color="#999" />
+                <Text style={styles.cantReviewSectionText}>
+                  Chỉ có thể đánh giá khi đơn hàng đã hoàn thành
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -858,6 +936,86 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     marginTop: 12,
+  },
+  // Review styles
+  reviewSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  reviewedStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  cantReviewStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8F9FA',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  cantReviewText: {
+    color: '#999',
+    fontSize: 14,
+    marginLeft: 6,
+  },
+  reviewStatusSection: {
+    marginTop: 16,
+    marginBottom: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  allReviewedStatus: {
+    alignItems: 'center',
+  },
+  allReviewedText: {
+    color: '#166534',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  reviewStatsText: {
+    color: '#6B7280',
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  reviewPromptText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  cantReviewSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cantReviewSectionText: {
+    color: '#999',
+    fontSize: 14,
+    marginLeft: 8,
+    textAlign: 'center',
   },
 });
 

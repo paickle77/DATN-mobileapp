@@ -19,7 +19,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ addresses, onPress }) =
         <View style={styles.addressInfo}>
           {addresses.length > 0 ? (
             addresses.map((addr) => (
-              <View key={addr._id} style={{ marginBottom: 12 }}>
+              <View key={addr._id || `address-${addr.name}-${addr.phone}`} style={{ marginBottom: 12 }}>
                 <View style={styles.addressHeader}>
                   <Text style={styles.addressName}>{addr.name}</Text>
                   <Text style={styles.addressPhone}>{addr.phone}</Text>

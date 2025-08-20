@@ -23,6 +23,7 @@ type RootStackParamList = {
     gender?: string;
     avatar?: string;
     account_id: string;
+    user_id?: string; // ✅ THÊM: Thêm user_id
     latitude?: string;
     longitude?: string;
     address?: string;
@@ -45,7 +46,7 @@ const AddressScreen = () => {
     if (route.params) {
       const {
         account_id,
-        id,
+        user_id,
         fullName,
         phone,
         avatar,
@@ -60,8 +61,10 @@ const AddressScreen = () => {
         address: address || ''
       });
 
-      const finalAccountId = account_id || id; // Sử dụng account_id hoặc id
-      console.log('ID nhận được từ CompleteProfile:', finalAccountId);
+      const finalAccountId = account_id; // ✅ Sử dụng account_id
+      const finalUserId = user_id || route.params?.profile_id; // ✅ Sử dụng user_id hoặc profile_id
+      console.log('Account ID nhận được từ CompleteProfile:', finalAccountId);
+      console.log('User ID nhận được từ CompleteProfile:', finalUserId);
       console.log('Vĩ độ (latitude):', latitude);
       console.log('Kinh độ (longitude):', longitude);
     }
@@ -98,7 +101,7 @@ const AddressScreen = () => {
 
       console.log('🔼 Dữ liệu gửi lên API:', JSON.stringify(addressData, null, 2));
 
-      const finalAccountId = route.params?.account_id || route.params?.id;
+      const finalAccountId = route.params?.account_id;
       if (!finalAccountId) {
         Alert.alert('Lỗi', 'Không tìm thấy account ID. Vui lòng thử lại!');
         return;
@@ -110,6 +113,9 @@ const AddressScreen = () => {
     console.log('📦 Địa chỉ mới:',newAddress);
       // ✅ Lưu toàn bộ ID vào AsyncStorage
       await saveUserData({ key: 'accountId', value: finalAccountId });
+      if (route.params?.user_id) {
+        await saveUserData({ key: 'userId', value: route.params.user_id });
+      }
       if (route.params?.profile_id) {
         await saveUserData({ key: 'profileId', value: route.params.profile_id });
       }
@@ -117,10 +123,12 @@ const AddressScreen = () => {
       await saveUserData({ key: 'userPhone', value: phone || '' });
       await saveUserData({ key: 'userEmail', value: route.params?.email || '' });
 
-      // ✅ Lưu luôn addressId mới tạo
-      if (newAddress) {
-        await saveUserData({ key: 'addressId', value: newAddress });
-        console.log('📦 newAddress từ API:', JSON.stringify(newAddress._id,));
+      // ✅ Lưu full address object và addressId
+      if (newAddress && newAddress._id) {
+        await saveUserData({ key: 'addressId', value: newAddress._id });
+        await saveUserData({ key: 'defaultAddress', value: JSON.stringify(newAddress) }); // ✅ Lưu full object
+        console.log('📦 Address ID từ API:', newAddress._id);
+        console.log('📦 Full Address từ API:', JSON.stringify(newAddress, null, 2));
       }
 
       Alert.alert('Thành công', 'Địa chỉ đã được lưu thành công!', [
@@ -157,7 +165,8 @@ const AddressScreen = () => {
         <TouchableOpacity
           style={styles.button}
           onPress={() => {
-            const accountId = route.params?.account_id || route.params?.id;
+            const accountId = route.params?.account_id;
+            const userId = route.params?.user_id || route.params?.profile_id;
             navigation.navigate('ManualAddress', {
               email: route.params?.email,
               password: route.params?.password,
@@ -165,8 +174,8 @@ const AddressScreen = () => {
               phone: route.params?.phone,
               gender: route.params?.gender,
               avatar: route.params?.avatar,
-              id: accountId,
-              account_id: accountId, // Đảm bảo cả 2 tham số
+              account_id: accountId,
+              user_id: userId,
             });
           }}
         >
