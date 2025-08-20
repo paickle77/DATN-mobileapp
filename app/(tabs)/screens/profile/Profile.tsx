@@ -26,6 +26,7 @@ type RootStackParamList = {
     OrderHistoryScreen: { userId: string } | undefined;
     VoucherScreen: { userId: string } | undefined;
     Login: undefined;
+    Message: { userId: string } | undefined;
 };
 
 const ProfileScreen = () => {
@@ -150,6 +151,11 @@ const ProfileScreen = () => {
                     )} />
                 <MenuItem icon={<Feather name="settings" size={22} color="#222" />} label="Cài đặt"
                     onPress={() => navigation.navigate('Settings',
+                        { userId: userProfile?._id ?? '' },
+
+                    )} />
+                <MenuItem icon={<Feather name="message-circle" size={22} color="#222" />} label="Trò chuyện với admin"
+                    onPress={() => navigation.navigate('Message',
                         { userId: userProfile?._id ?? '' },
 
                     )} />

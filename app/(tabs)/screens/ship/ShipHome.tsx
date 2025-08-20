@@ -1,13 +1,27 @@
+import { useActionSheet } from '@expo/react-native-action-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from 'expo-router';
+import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BASE_URL } from '../../services/api';
-import { getUserData, saveUserData } from '../utils/storage';
-
+import {
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import {
+  assignOrderToShipper,
+  fetchAllBills,
+  fetchShipperInfo,
+  updateShipperStatus
+} from '../../services/ShipService';
+import { getUserData } from '../utils/storage';
 
 type RootStackParamList = {
   DeliveredOrders: undefined;
@@ -15,7 +29,7 @@ type RootStackParamList = {
   ShipHome: undefined;
   ShipOrderDetail: { orderId: string };
 };
-// Types
+
 interface OrderStats {
   pending: number;
   confirmed: number;
@@ -35,53 +49,19 @@ interface QuickAction {
 }
 
 interface RecentOrder {
-  __v: number;
   _id: string;
-  address_id: {
-    __v: number;
-    _id: string;
-    city: string;
-    detail_address: string;
-    district: string;
-    isDefault: boolean;
-    latitude: string;
-    longitude: string;
+  address_snapshot?: {
     name: string;
     phone: string;
-    user_id: string;
+    detail: string;
     ward: string;
+    district: string;
+    city: string;
   };
-  createdAt: string;
   created_at: string;
-  note: string;
-  payment_method: string;
   shipping_method: string;
   status: string;
-  total: number;
-  updatedAt: string;
-  user_id: {
-    _id: string;
-    account_id: {
-      _id: string;
-      email: string;
-      password: string;
-      role: string;
-      is_lock: boolean;
-      provider: string;
-      google_id: string | null;
-      facebook_id: string | null;
-      created_at: string | null;
-      updated_at: string | null;
-      __v: number;
-    };
-    name: string;
-    phone: string;
-    image: string | null;
-    address_id: string | null;
-    created_at: string;
-    updated_at: string;
-    __v: number;
-  };
+  total: number
 }
 
 interface ShipperInfo {
@@ -92,171 +72,182 @@ interface ShipperInfo {
   image: string;
   license_number: string;
   vehicle_type: string;
-  is_online: boolean;
+  is_online: 'offline' | 'online' | 'busy';
 }
 
 const ShipHome: React.FC = () => {
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState<'online' | 'offline' | 'busy'>('offline');
   const [refreshing, setRefreshing] = useState(false);
   const [shipperInfo, setShipperInfo] = useState<ShipperInfo | null>(null);
   const [todayStats, setTodayStats] = useState<OrderStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [address, setAddress] = useState<string | null>(null);
-
+  const { showActionSheetWithOptions } = useActionSheet();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  type OnlineStatus = 'online' | 'offline' | 'busy';
 
-  const fetchShipperInfo = async () => {
+  useFocusEffect(
+    useCallback(() => {
+      loadShipperInfo();
+    }, [])
+  );
+
+  const loadShipperInfo = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/shippers`);
-      const shippers = res.data?.data;
-      const account_id = await getUserData('userData');
-      if (!account_id) {
-        throw new Error('Không tìm thấy ID người dùng');
-      }
-      
-
-      const shipper = shippers.find((s: ShipperInfo) => s.account_id === account_id);
-      if (!shipper) {
-        throw new Error('Không tìm thấy thông tin shipper');
-      }
-      await saveUserData({ key: 'shipperID', value: shipper._id });
+      const shipper = await fetchShipperInfo();
+      if (!shipper) throw new Error('Không tìm thấy thông tin shipper');
       setShipperInfo(shipper);
-      setIsOnline(shipper?.is_online ?? false)
+      setIsOnline(shipper.is_online ?? 'offline');
     } catch (error) {
       console.error('❌ Lỗi khi lấy thông tin shipper:', error);
       Alert.alert('Lỗi', 'Không thể tải thông tin shipper.');
     }
   };
 
+  const loadTodayStats = async () => {
+    try {
+      const orders = await fetchAllBills();
+      const shipperId = await getUserData('shipperID');
 
-const fetchTodayStats = async () => {
-  try {
-    const res = await axios.get(`${BASE_URL}/GetAllBills`);
-    const orders = res.data?.data || [];
-    const readyOrders = orders.filter((order: any) => order.status === 'ready');
-    const pendingOrders = orders.filter((order: any) => order.status === 'pending').length;
-    const confirmedOrders = orders.filter((order: any) => order.status === 'confirmed').length;
-    const shippingOrders = orders.filter((order: any) => order.status === 'shipping').length;
-    const deliveredOrders = orders.filter((order: any) => order.status === 'delivered').length;
-    const doneOrders = orders.filter((order: any) => order.status === 'done').length;
-    const totalEarnings = orders
-      .filter((order: any) => order.status === 'done')
-      .reduce((sum: number, order: any) => sum + (order.total || 0), 0);
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
-    const todayStatsData: OrderStats = {
-      pending: pendingOrders,
-      confirmed: confirmedOrders,
-      ready: readyOrders.length,
-      shipping: shippingOrders,
-      delivered: deliveredOrders,
-      done: doneOrders,
-      totalEarnings: totalEarnings,
-    };
+      const todayOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.updatedAt);
+        return orderDate >= startOfToday && orderDate < startOfTomorrow;
+      });
 
-    setTodayStats(todayStatsData);
-    setRecentOrders(readyOrders.slice(0, 5))
-  } catch (error) {
-    console.error('❌ Lỗi khi lấy thống kê hôm nay:', error);
-    Alert.alert('Lỗi', 'Không thể tải thống kê.');
-  }
-};
+      const pendingOrders = todayOrders.filter((o: any) => o.status === 'pending').length;
+      const confirmedOrders = todayOrders.filter((o: any) => o.status === 'confirmed').length;
+      const readyOrders = todayOrders.filter(
+        (o: any) => o.status === 'ready' && o.shipping_method !== 'Nhận tại cửa hàng'
+      );
+      const deliveredOrders = todayOrders.filter((o: any) => o.status === 'delivered').length;
+      const shippingOrders = todayOrders.filter(
+        (o: any) => o.status === 'shipping' && o.shipper_id === shipperId
+      ).length;
+      const doneOrders = todayOrders.filter(
+        (o: any) => o.status === 'done' && o.shipper_id === shipperId
+      );
+      const totalCommissionToday = doneOrders.reduce(
+        (sum: number, order: any) => sum + ((order.shipping_fee || 0) * 0.5),
+        0
+      );
 
-  const fetchData = async () => {
+      const todayStatsData: OrderStats = {
+        pending: pendingOrders,
+        confirmed: confirmedOrders,
+        ready: readyOrders.length,
+        shipping: shippingOrders,
+        delivered: deliveredOrders,
+        done: doneOrders.length,
+        totalEarnings: totalCommissionToday,
+      };
+
+      setTodayStats(todayStatsData);
+      setRecentOrders(
+        readyOrders.slice(0, 5).map((order: any) => ({
+          _id: order._id,
+          address_snapshot: order.address_snapshot,
+          created_at: order.created_at,
+          shipping_method: order.shipping_method,
+          status: order.status,
+          total: order.total,
+        }))
+      );
+    } catch (error) {
+      console.error('❌ Lỗi khi lấy thống kê hôm nay:', error);
+      Alert.alert('Lỗi', 'Không thể tải thống kê.');
+    }
+  };
+
+  const loadData = async () => {
     setLoading(true);
-    await fetchShipperInfo();
-    await fetchTodayStats();
+    await loadShipperInfo();
+    await loadTodayStats();
     setLoading(false);
   };
 
-
   useEffect(() => {
-    fetchData();
+    loadData();
   }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData().finally(() => setRefreshing(false));
+    loadData().finally(() => setRefreshing(false));
   }, []);
 
   const handleAcceptOrder = async (billId: string) => {
     if (!shipperInfo?._id) return;
-
-    if (!isOnline) {
+    if (isOnline === 'offline') {
       Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }
-
+    if (isOnline === 'busy') {
+      Alert.alert('Thông báo', 'Bạn đang có đơn, không thể nhận đơn hàng này.');
+      return;
+    }
     try {
-        const shipperID = await getUserData('shipperID');
-        
-        Alert.alert(
-          'Xác nhận nhận đơn',
-          'Bạn có chắc chắn muốn nhận đơn hàng này?',
-          [
-            {
-              text: 'Hủy',
-              style: 'cancel',
-            },
-            {
-              text: 'Nhận đơn',
-              onPress: async () => {
-                            try {
-                              
-                              const res = await axios.put(`${BASE_URL}/bills/${billId}/assign-shipper`, {
-                                shipper_id: shipperID,
-                              });
-
-                              Alert.alert('Thành công', 'Bạn đã nhận đơn hàng.');
-                              // Cập nhật lại danh sách đơn hàng sau khi nhận
-                              fetchData();
-                            } catch (error: any) {
-                              console.error('❌ Lỗi khi nhận đơn:', error);
-                              Alert.alert('Lỗi', error?.response?.data?.msg || 'Không thể nhận đơn hàng.');
-                            }
-                          },
-                        },
-                      ],
-                      { cancelable: false }
-                    );
-      } catch (error) {
-        console.error('Error getting shipper ID:', error);
-        Alert.alert('Lỗi', 'Không thể lấy thông tin shipper');
-      }
+      const shipperID = await getUserData('shipperID');
+      await assignOrderToShipper(billId, shipperID);
+      Alert.alert('Thành công', 'Bạn đã nhận đơn hàng.');
+      await setBusyStatus();
+      await loadData();
+    } catch (error: any) {
+      console.error('❌ Lỗi khi nhận đơn:', error);
+      Alert.alert('Lỗi', error?.response?.data?.msg || 'Không thể nhận đơn hàng.');
+    }
   };
 
-
-  const toggleOnlineStatus = () => {
-    setIsOnline(!isOnline);
-    Alert.alert(
-      'Trạng thái thay đổi',
-      `Bạn đã ${!isOnline ? 'bật' : 'tắt'} chế độ nhận đơn`
-    );
-    // Gửi yêu cầu cập nhật trạng thái online nếu cần
-    axios.post(`${BASE_URL}/shippers/updateStatus`, {
-      _id: shipperInfo?._id,
-      is_online: !isOnline
-    }).catch(error => {
+  const toggleOnlineStatus = async () => {
+    const newStatus: OnlineStatus = isOnline === 'offline' ? 'online' : 'offline';
+    try {
+      await updateShipperStatus(shipperInfo?._id || '', newStatus);
+      setIsOnline(newStatus);
+      Alert.alert(
+        'Trạng thái thay đổi',
+        `Bạn đã ${newStatus === 'online' ? 'bật chế độ nhận đơn' : 'tắt chế độ nhận đơn'}`
+      );
+    } catch (error) {
       console.error('❌ Lỗi khi cập nhật trạng thái online:', error);
       Alert.alert('Lỗi', 'Không thể cập nhật trạng thái online.');
-    });
+    }
   };
 
+  const setBusyStatus = async () => {
+    try {
+      await updateShipperStatus(shipperInfo?._id || '', 'busy');
+      setIsOnline('busy');
+    } catch (error) {
+      console.error('❌ Lỗi khi cập nhật trạng thái busy:', error);
+      Alert.alert('Lỗi', 'Không thể cập nhật trạng thái online.');
+    }
+  };
+  if (loading || !shipperInfo || !todayStats) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={{ marginTop: 12 }}>Đang tải dữ liệu...</Text>
+      </View>
+    );
+  }
   const quickActions: QuickAction[] = [
     {
       id: '1',
       title: 'Danh sách đơn',
       icon: 'list-outline',
       color: '#4F46E5',
-      onPress: () => navigation.navigate('ShipTabNavigator', { screen: 'Delivered' } as never)
+      onPress: () => navigation.navigate('ShipTabNavigator', { screen: 'DeliveredOrders' } as never)
     },
     {
       id: '4',
       title: 'Thống kê',
       icon: 'stats-chart-outline',
       color: '#7C2D12',
-      onPress: () => Alert.alert('Chuyển đến', 'Thống kê cá nhân')
+      onPress: () => navigation.navigate('Commission' as never)
     }
   ];
 
@@ -323,15 +314,30 @@ const fetchTodayStats = async () => {
             </View>
           </View>
           
-          <TouchableOpacity 
-            style={[styles.onlineToggle, { backgroundColor: isOnline ? '#10B981' : '#6B7280' }]}
+          <TouchableOpacity
+            style={[
+              styles.onlineToggle,
+              {
+                backgroundColor:
+                  isOnline === "online"
+                    ? "#10B981" // xanh lá
+                    : isOnline === "busy"
+                    ? "#F59E0B" // cam
+                    : "#6B7280" // xám
+              }
+            ]}
             onPress={toggleOnlineStatus}
           >
             <View style={styles.toggleIndicator} />
             <Text style={styles.onlineText}>
-              {isOnline ? 'Online' : 'Offline'}
+              {isOnline === "online"
+                ? "Online"
+                : isOnline === "busy"
+                ? "Busy"
+                : "Offline"}
             </Text>
           </TouchableOpacity>
+
         </View>
       </LinearGradient>
 
@@ -355,12 +361,12 @@ const fetchTodayStats = async () => {
               <Text style={styles.statLabel}>Đang giao</Text>
             </View>
             <View style={[styles.statCard, { borderLeftColor: '#10B981' }]}>
-              <Text style={styles.statNumber}>{todayStats.delivered}</Text>
+              <Text style={styles.statNumber}>{todayStats.done}</Text>
               <Text style={styles.statLabel}>Hoàn thành</Text>
             </View>
             <View style={[styles.statCard, { borderLeftColor: '#DC2626' }]}>
               <Text style={styles.statNumber}>{formatCurrency(todayStats.totalEarnings)}</Text>
-              <Text style={styles.statLabel}>Doanh thu</Text>
+              <Text style={styles.statLabel}>Tiền hoa hồng</Text>
             </View>
           </View>
         </View>
@@ -409,11 +415,11 @@ const fetchTodayStats = async () => {
               </View>
 
               <View style={styles.orderDetails}>
-                <Text style={styles.address}>Tên khách hàng: {order.address_id.name || 'Ẩn tên'}</Text>
-                <Text style={styles.address}>SĐT: {order.address_id.phone}</Text>
+                <Text style={styles.address}>Tên khách hàng: {order.address_snapshot?.name || 'Ẩn tên'}</Text>
+                <Text style={styles.address}>SĐT: {order.address_snapshot?.phone}</Text>
                 <View style={styles.addressContainer}>
                   <Ionicons name="location-outline" size={16} color="#6B7280" />
-                  <Text style={styles.address}>{order.address_id?.detail_address +', '+ order.address_id?.ward +', '+ order.address_id?.district +', '+ order.address_id?.city || 'Chưa xác định'}</Text> 
+                  <Text style={styles.address}>{order.address_snapshot?.detail +', '+ order.address_snapshot?.ward +', '+ order.address_snapshot?.district +', '+ order.address_snapshot?.city || 'Chưa xác định'}</Text> 
                   {/* Có thể thay bằng địa chỉ thực nếu bạn fetch từ address table */}
                 </View>
 

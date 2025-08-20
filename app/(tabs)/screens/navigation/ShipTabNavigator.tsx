@@ -1,27 +1,47 @@
-import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import React from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+  BottomTabBarProps,
+  createBottomTabNavigator,
+} from '@react-navigation/bottom-tabs';
+import React, { useEffect, useRef } from 'react';
+import {
+  AppState,
+  AppStateStatus,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 // Các màn hình Ship
-import DeliveredOrdersScreen from '../ship/DeliveredOrders';
+import DeliveredOrders from '../ship/DeliveredOrders';
 import ShipHomeScreen from '../ship/ShipHome';
 import ShipProfileScreen from '../ship/ShipProfile';
 
 // Icon
-import iconDelivered from '../../../../assets/images/iconDelivered.png'; // Đặt icon phù hợp cho "Đơn đã ship"
+import axios from 'axios';
+import iconDelivered from '../../../../assets/images/iconDelivered.png';
 import iconHome from '../../../../assets/images/iconhome.png';
 import iconProfile from '../../../../assets/images/iconprofile.png';
+import { BASE_URL } from '../../services/api';
+import { getUserData } from '../utils/storage';
 
 const Tab = createBottomTabNavigator();
 
 // Custom TabBar cho ship
 const CustomShipTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
-  const currentRoute = state.routes[state.index];
+  // Bảo vệ lỗi nếu state chưa có routes hợp lệ
+  if (!state?.routes?.length || state.index >= state.routes.length) {
+    return null;
+  }
 
   return (
     <View style={styles.tabBarContainer}>
       {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
+        if (!route) return null; // tránh route null
+
+        const descriptor = descriptors[route.key];
+        if (!descriptor) return null; // tránh descriptor null
+
         const isFocused = state.index === index;
 
         const onPress = () => {
@@ -32,16 +52,17 @@ const CustomShipTabBar = ({ state, descriptors, navigation }: BottomTabBarProps)
           });
 
           if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
+            navigation.navigate(route.name as never);
           }
         };
 
-        let iconSource;
+        // Gán icon theo tên screen
+        let iconSource = iconHome; // default
         switch (route.name) {
           case 'ShipHome':
             iconSource = iconHome;
             break;
-          case 'Delivered':
+          case 'DeliveredOrders': // đồng bộ đúng tên tab
             iconSource = iconDelivered;
             break;
           case 'ShipProfile':
@@ -70,6 +91,39 @@ const CustomShipTabBar = ({ state, descriptors, navigation }: BottomTabBarProps)
 };
 
 export default function ShipTabNavigator() {
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    let shipperId: string | null = null;
+
+    // Lấy ID khi mount
+    (async () => {
+      const id = await getUserData('shipperID');
+      shipperId = id;
+    })();
+
+    const subscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
+      if (appState.current.match(/active/) && nextAppState.match(/background|inactive/)) {
+        if (shipperId) {
+          try {
+            await axios.post(`${BASE_URL}/shippers/updateStatus`, {
+              _id: shipperId,
+              is_online: 'offline',
+            });
+            console.log('📴 App chuyển offline');
+          } catch (error) {
+            console.error('❌ Lỗi set offline:', error);
+          }
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  
+  
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomShipTabBar {...props} />}
@@ -77,7 +131,7 @@ export default function ShipTabNavigator() {
       initialRouteName="ShipHome"
     >
       <Tab.Screen name="ShipHome" component={ShipHomeScreen} />
-      <Tab.Screen name="Delivered" component={DeliveredOrdersScreen} />
+      <Tab.Screen name="DeliveredOrders" component={DeliveredOrders} />
       <Tab.Screen name="ShipProfile" component={ShipProfileScreen} />
     </Tab.Navigator>
   );

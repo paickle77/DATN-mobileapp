@@ -15,6 +15,7 @@ import Register from './screens/auth/Register';
 import Splash from './screens/auth/Splash';
 import Welcom from './screens/auth/Welcom';
 import ChatScreen from './screens/chat/Chat';
+import Message from './screens/message/Message';
 import ShipTabNavigator from './screens/navigation/ShipTabNavigator';
 import TabNavigator from './screens/navigation/TabNavigator';
 import NotificationDemo from './screens/notification/NotificationDemo';
@@ -38,6 +39,7 @@ import ProfileScreen from './screens/profile/Profile';
 import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
 import VoucherScreen from './screens/profile/VoucherScreen';
+import CommissionScreen from './screens/ship/Commission';
 import DeliveredOrders from './screens/ship/DeliveredOrders';
 import ShipHome from './screens/ship/ShipHome';
 import OrderDetailPage from './screens/ship/ShipOrderDetail';
@@ -80,8 +82,7 @@ export default function TabLayout() {
       <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CategoryItem" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Cart" component={Cart} options={{ headerShown: false }} />
-
-      
+      <Stack.Screen name="Message" component={Message} options={{ headerShown: false }} />
 
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}
       <Stack.Screen name="TabNavigator" component={TabNavigator} options={{ headerShown: false }} />
@@ -104,6 +105,9 @@ export default function TabLayout() {
       <Stack.Screen name="DeliveredOrders" component={DeliveredOrders} options={{ headerShown: false }} />
       <Stack.Screen name="ShipProfile" component={ShipProfile} options={{ headerShown: false }} />
       <Stack.Screen name="ShipOrderDetail" component={OrderDetailPage} options={{ headerShown: false }} />
+      <Stack.Screen name="Commission" component={CommissionScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
+    
   );
+
 }
