@@ -17,10 +17,10 @@ import {
   View
 } from "react-native";
 import { io } from "socket.io-client";
-import { BASE_URL } from "../../services/api";
+import { BASE_URL, BASE_URL1 } from "../../services/api";
 import { getUserData } from "../utils/storage";
 
-const socket = io("http://192.168.0.102:3002");
+const socket = io(`${BASE_URL1}`);
 
 const ChatScreen = () => {
   const [message, setMessage] = useState("");
@@ -51,7 +51,24 @@ const ChatScreen = () => {
     })();
 
     socket.on("receiveMessage", (msg) => {
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => {
+        // Kiểm tra xem tin nhắn đã tồn tại chưa (dựa vào _id hoặc timestamp)
+        const isDuplicate = prev.some(existingMsg => 
+          existingMsg._id === msg._id || 
+          (existingMsg.senderId === msg.senderId && 
+           existingMsg.receiverId === msg.receiverId && 
+           existingMsg.message === msg.message && 
+           existingMsg.imageUrl === msg.imageUrl &&
+           Math.abs(new Date(existingMsg.timestamp || existingMsg.createdAt).getTime() - 
+                   new Date(msg.timestamp || msg.createdAt).getTime()) < 1000)
+        );
+        
+        if (isDuplicate) {
+          return prev;
+        }
+        
+        return [...prev, msg];
+      });
     });
 
     // Simulate online status
@@ -73,10 +90,9 @@ const ChatScreen = () => {
     };
 
     try {
+      // Chỉ emit socket, không thêm vào state ngay
+      // Socket service sẽ lưu DB và emit lại cho cả sender và receiver
       socket.emit("sendMessage", msg);
-      const res = await axios.post(`${BASE_URL}/messages`, msg);
-      console.log("💾 Saved to DB:", res.data);
-      setMessages((prev) => [...prev, res.data]);
       setMessage("");
     } catch (err) {
       console.error("❌ Lỗi khi gửi tin nhắn:", err);
@@ -94,10 +110,9 @@ const ChatScreen = () => {
     };
 
     try {
+      // Chỉ emit socket, không thêm vào state ngay
+      // Socket service sẽ lưu DB và emit lại cho cả sender và receiver
       socket.emit("sendMessage", imageMsg);
-      const res = await axios.post(`${BASE_URL}/messages`, imageMsg);
-      console.log("📸 Ảnh đã gửi:", res.data);
-      setMessages((prev) => [...prev, res.data]);
     } catch (err) {
       console.error("❌ Lỗi khi gửi ảnh:", err);
     }
