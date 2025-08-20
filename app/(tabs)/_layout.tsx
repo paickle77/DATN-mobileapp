@@ -15,6 +15,7 @@ import Register from './screens/auth/Register';
 import Splash from './screens/auth/Splash';
 import Welcom from './screens/auth/Welcom';
 import ChatScreen from './screens/chat/Chat';
+import Message from './screens/message/Message';
 import ShipTabNavigator from './screens/navigation/ShipTabNavigator';
 import TabNavigator from './screens/navigation/TabNavigator';
 import NotificationDemo from './screens/notification/NotificationDemo';
@@ -81,8 +82,7 @@ export default function TabLayout() {
       <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CategoryItem" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Cart" component={Cart} options={{ headerShown: false }} />
-
-      
+      <Stack.Screen name="Message" component={Message} options={{ headerShown: false }} />
 
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}
       <Stack.Screen name="TabNavigator" component={TabNavigator} options={{ headerShown: false }} />

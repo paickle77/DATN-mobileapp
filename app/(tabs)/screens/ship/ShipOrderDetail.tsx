@@ -443,7 +443,7 @@ const screenWidth = Dimensions.get('window').width;
             <View style={styles.cardHeader}>
               <Text style={styles.cardIcon}>📍</Text>
               <Text style={styles.cardTitle}>Địa chỉ giao hàng</Text>
-            </View>
+            </View> 
             
             <View style={styles.cardContent}>
               <View style={styles.addressContainer}>
