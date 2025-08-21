@@ -36,7 +36,7 @@ export interface CheckoutAddress {
   latitude: string;
   longitude: string;
   name: string;
-  phone: string;
+  phone: string | number; // ✅ Hỗ trợ cả string và number
 }
 
 interface CheckoutRouteParams {
@@ -63,10 +63,10 @@ const Checkout = ({
   const [addresses, setAddresses] = useState<CheckoutAddress[]>([]);
   const [listCart, setListCart] = useState<CartItem[]>([]);
   const [fullPaymentObject, setFullPaymentObject] = useState<any>(null);
-  const [voucher, setVoucher] = useState();
+  const [voucher, setVoucher] = useState<any>();
   const [percent, setPercent] = useState<number>(0);
   const [nameCode, setNameCode] = useState('');
-  const [notification, setNotification] = useState({ visible: false, message: '', type: 'info' });
+  const [notification, setNotification] = useState<{ visible: boolean; message: string; type: 'info' | 'error' | 'warning' | 'success' }>({ visible: false, message: '', type: 'info' });
   // const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [shippingError, setShippingError] = useState(false);
@@ -160,35 +160,63 @@ const Checkout = ({
     loadVoucher();
   }, []);
 
-  // Load selected address
+  // Load selected address - XỬ LÝ KHI QUAY LẠI TỪ ADDRESSLIST
   useFocusEffect(
     useCallback(() => {
-      const selected = route.params?.selectedAddress;
-      console.log('📍 Địa chỉ đã chọn từ route:', selected);
-
-      if (selected && selected._id) {
-        setAddresses([selected]);
-        saveUserData({ key: 'addressId', value: selected._id});
-        navigation.setParams({ selectedAddress: null });
-      }
-    }, [route.params?.selectedAddress])
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      const loadSelectedAddress = async () => {
+      const loadAddressOnFocus = async () => {
         try {
-          const address = await getUserData('addressId');
-          if (address) {
-            setAddresses([address]);
+          // 1. Ưu tiên địa chỉ từ route params (khi navigate trực tiếp)
+          const selectedFromRoute = route.params?.selectedAddress;
+          if (selectedFromRoute && selectedFromRoute._id) {
+            console.log('📍 Sử dụng địa chỉ từ route params:', selectedFromRoute);
+            setAddresses([selectedFromRoute as CheckoutAddress]);
+            saveUserData({ key: 'selectedAddressId', value: selectedFromRoute._id });
+            navigation.setParams({ selectedAddress: null });
+            return;
           }
+
+          // 2. Khi quay lại từ AddressList, load địa chỉ đã chọn
+          const savedAddressId = await getUserData('selectedAddressId');
+          if (savedAddressId && addresses.length > 0) {
+            // Kiểm tra xem địa chỉ hiện tại có đúng với ID đã lưu không
+            if (addresses[0]._id !== savedAddressId) {
+              console.log('📍 Địa chỉ đã thay đổi, load địa chỉ mới:', savedAddressId);
+              const allAddresses: CheckoutAddress[] = await checkoutService.fetchAllAddresses();
+              const savedAddress = allAddresses.find(addr => addr._id === savedAddressId);
+              
+              if (savedAddress) {
+                console.log('📍 Load địa chỉ đã chọn:', savedAddress);
+                setAddresses([savedAddress]);
+                return;
+              } else {
+                // Địa chỉ đã lưu không còn tồn tại, xóa khỏi storage
+                await removeUserDataByKey('selectedAddressId');
+              }
+            }
+          }
+
+          // 3. Nếu chưa có địa chỉ nào, load địa chỉ mặc định (lần đầu vào)
+          if (addresses.length === 0) {
+            console.log('📍 Lần đầu vào, load địa chỉ mặc định');
+            const defaultAddress = await checkoutService.fetchDefaultAddress();
+            setAddresses([defaultAddress]);
+          }
+          
         } catch (err) {
-          console.error('❌ Lỗi lấy địa chỉ đã chọn:', err);
+          console.error('❌ Lỗi lấy địa chỉ:', err);
+          // Chỉ hiển thị error nếu chưa có địa chỉ nào
+          if (addresses.length === 0) {
+            setNotification({
+              visible: true,
+              message: 'Không thể lấy địa chỉ giao hàng. Vui lòng chọn thủ công.',
+              type: 'error',
+            });
+          }
         }
       };
 
-      loadSelectedAddress();
-    }, [])
+      loadAddressOnFocus();
+    }, [route.params?.selectedAddress, addresses.length])
   );
 
   // Fetch voucher data
@@ -219,11 +247,11 @@ const Checkout = ({
       setSizeQuantityList(extractedData);
 
       console.log("📦 Size & Quantity list:", extractedData);
-      cartItems.forEach((item, index) => {
-        console.log(`🛍️ Size_id of item ${index}:`, item.Size_id);
-        console.log(`🛍️ Size_id of item :`, cartItems);
-        setSizeID(item.Size_id);
-      });
+      // cartItems.forEach((item, index) => {
+      //   console.log(`🛍️ Size_id of item ${index}:`, item.Size_id);
+      //   console.log(`🛍️ Size_id of item :`, cartItems);
+      //   setSizeID(item.Size_id);
+      // });
     } catch (error) {
       console.error('Lỗi lấy giỏ hàng:', error);
       setNotification({
@@ -234,44 +262,18 @@ const Checkout = ({
     }
   };
 
-  // Load initial data
+  // Load initial data (chỉ load khi chưa có địa chỉ nào)
   useFocusEffect(
     useCallback(() => {
-      const fetchInitialAddress = async () => {
-        try {
-          const selected = await getUserData('defaultAddress');
-          console.log('📍 Địa chỉ đã chọn:', selected);
-
-          if (selected) {
-            const latestAddresses: CheckoutAddress[] = await checkoutService.fetchAllAddresses(); // 👈 bạn cần viết thêm API này trong service
-            const found = latestAddresses.find(addr => addr._id === selected._id);
-
-            if (found) {
-              setAddresses([found]);
-            } else {
-              // await removeUserDataByKey('selectedAddress');
-              const defaultAddress = await checkoutService.fetchDefaultAddress();
-              setAddresses([defaultAddress]);
-            }
-          } else {
-            const defaultAddress = await checkoutService.fetchDefaultAddress();
-            setAddresses([defaultAddress]);
-          }
-        } catch (err) {
-          console.error('❌ Lỗi lấy địa chỉ mặc định:', err);
-          setNotification({
-            visible: true,
-            message: 'Không thể lấy địa chỉ giao hàng. Vui lòng chọn thủ công.',
-            type: 'error',
-          });
+      const fetchInitialData = async () => {
+        // Chỉ fetch dữ liệu cart và voucher, không touch vào địa chỉ
+        if (selectedItemIds.length > 0) {
+          fetchCartData();
         }
+        fetchVoucherData();
       };
 
-      fetchInitialAddress();
-      if (selectedItemIds.length > 0) {
-        fetchCartData();
-      }
-      fetchVoucherData();
+      fetchInitialData();
     }, [selectedItemIds])
   );
 
@@ -457,11 +459,11 @@ const Checkout = ({
         voucher_User: selectedVoucher?._id || '', // ✅ TRUYỀN ID CUA VOUCHER_USER, KHÔNG PHẢI VOUCHER GỐC
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Lỗi tạo đơn hàng:', error);
       setNotification({
         visible: true,
-        message: error.message || 'Không thể tạo đơn hàng. Vui lòng thử lại.',
+        message: error?.message || 'Không thể tạo đơn hàng. Vui lòng thử lại.',
         type: 'error'
       });
     } finally {

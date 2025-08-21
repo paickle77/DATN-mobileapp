@@ -18,7 +18,7 @@ import AddAddressModal from '../../component/AddAddressModal';
 import EditAddressModal from '../../component/EditAddressModal';
 import { AddressService } from '../../services/AddressService';
 import { BASE_URL } from '../../services/api';
-import { getUserData, saveUserData } from '../utils/storage';
+import { getUserData, removeUserDataByKey, saveUserData } from '../utils/storage';
 
 export interface Address {
   _id: string;
@@ -92,9 +92,8 @@ const AddressListScreen = () => {
       if (!uid) {
         const storedUser = await getUserData('userId');
         uid = storedUser;
-        console.log("ádfgfds", uid)
+        console.log("User ID:", uid)
       }
-      console.log("ádfgfds", uid)
 
       if (!uid) {
         Alert.alert('Lỗi', 'Không tìm thấy người dùng');
@@ -104,10 +103,13 @@ const AddressListScreen = () => {
       setCurrentUserId(uid); // ✅ Lưu vào state
       await fetchAddresses(uid);
 
+      // ✅ Load địa chỉ đã chọn trước đó nếu đang ở mode select
       if (mode === 'select') {
-        const selected = await getUserData('addressId');
-        if (selected && selected._id) {
-          setSelectedAddressId(selected._id);
+        const selectedAddressId = await getUserData('selectedAddressId');
+        console.log('📍 Địa chỉ đã chọn trước đó:', selectedAddressId);
+        
+        if (selectedAddressId) {
+          setSelectedAddressId(selectedAddressId);
         }
       }
     };
@@ -148,10 +150,12 @@ const AddressListScreen = () => {
             if (currentUserId) {
               await fetchAddresses(currentUserId);
             }
-            if (addressId === id) {
-              // await removeUserDataByKey('selectedAddress');
+            // ✅ Xóa địa chỉ đã chọn nếu đang chọn địa chỉ này
+            const selectedAddressId = await getUserData('selectedAddressId');
+            if (selectedAddressId === id) {
+              await removeUserDataByKey('selectedAddressId');
               setSelectedAddressId(null);
-              console.log('Đã xóa địa chỉ đã chọn ở local storage', addressId);
+              console.log('Đã xóa địa chỉ đã chọn ở local storage', id);
             }
             Alert.alert('Thành công', 'Đã xóa địa chỉ');
           } catch (error: any) {
@@ -164,9 +168,13 @@ const AddressListScreen = () => {
   };
 
   const handleSelectAddress = async (address: Address) => {
+    console.log('📍 Đã chọn địa chỉ:', address);
     setSelectedAddressId(address._id);
-    await saveUserData({ key: 'addressId', value: address });
-    // Có thể thêm delay nhỏ để user thấy animation
+    
+    // Lưu ID địa chỉ đã chọn để Checkout có thể load lại
+    await saveUserData({ key: 'selectedAddressId', value: address._id });
+    
+    // Quay lại màn hình trước (Checkout) với địa chỉ được chọn
     setTimeout(() => {
       navigation.goBack();
     }, 200);

@@ -1,12 +1,14 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 
 interface ItemCart {
   name: string;
-  price: number;
+  price: string;
   image: string;
-  Size:number;
+  Size: string | number;
   quantily: number;
   Uptoquantily:(NewQuantily:number)=>void;
   Dowtoquantily:(NewQuantily:number)=>void
@@ -23,11 +25,7 @@ const CartItem: React.FC<ItemCart> = ({
   Uptoquantily,
   onRemove
 }) => {
-    
-
-
-
-
+  const swipeableRef = useRef<Swipeable>(null);
 
   const handlePressDown = () => {
     if (quantily > 1) {
@@ -39,29 +37,54 @@ const CartItem: React.FC<ItemCart> = ({
     Uptoquantily(quantily + 1);
   };
 
+  const handleDelete = () => {
+    onRemove();
+    // Đóng swipeable sau khi xóa
+    swipeableRef.current?.close();
+  };
 
+  // Render right action (delete button) - hiện khi vuốt sang trái
+  const renderRightAction = () => {
+    return (
+      <Animated.View style={styles.deleteAction}>
+        <TouchableOpacity style={styles.deleteContainer} onPress={handleDelete}>
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+          <Text style={styles.deleteText}>Xóa</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <Image source={{ uri: image }} style={styles.image} />
-      <View style={styles.details}>
-        <Text style={styles.name}>{name}</Text>
-        <Text style={styles.size}>{Size} </Text>
-        <Text style={styles.price}>{price}</Text>
-        <View style={styles.quantityRow}>
-          <TouchableOpacity style={styles.button} onPress={handlePressDown}>
-            <Feather name="minus" size={16} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.quantity}>{quantily}</Text>
-          <TouchableOpacity style={[styles.button, styles.addButton]} onPress={handlePressUp}>
-            <Feather name="plus" size={16} color="#fff" />
-          </TouchableOpacity>
+    <Swipeable 
+      ref={swipeableRef}
+      renderRightActions={renderRightAction}
+      rightThreshold={20}
+      overshootRight={false}
+      friction={2}
+    >
+      <View style={styles.container}>
+        <Image source={{ uri: image }} style={styles.image} />
+        <View style={styles.details}>
+          <Text style={styles.name} numberOfLines={2}>{name}</Text>
+          <Text style={styles.size}>Size: {Size}</Text>
+          <Text style={styles.price}>{price}</Text>
+          <View style={styles.quantityRow}>
+            <TouchableOpacity 
+              style={[styles.button, quantily === 1 && styles.buttonDisabled]} 
+              onPress={handlePressDown}
+              disabled={quantily === 1}
+            >
+              <Feather name="minus" size={16} color={quantily === 1 ? "#ccc" : "#333"} />
+            </TouchableOpacity>
+            <Text style={styles.quantity}>{quantily}</Text>
+            <TouchableOpacity style={[styles.button, styles.addButton]} onPress={handlePressUp}>
+              <Feather name="plus" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-      <TouchableOpacity style={styles.removeButton} onPress={onRemove}>
-        <Ionicons name="trash-outline" size={20} color="#aa0000" />
-      </TouchableOpacity>
-    </View>
+    </Swipeable>
   );
 };
 
@@ -69,20 +92,19 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 10,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    elevation: 1,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   image: {
-    width: 90,
-    height: 90,
-    borderRadius: 10,
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     marginRight: 12,
   },
   details: {
@@ -90,21 +112,22 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-      fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 4,
-    
+    color: '#2c3e50',
+    lineHeight: 20,
   },
   price: {
-    fontSize: 14,
-    color: 'red',
+    fontSize: 16,
+    color: '#e74c3c',
     marginBottom: 8,
-    fontWeight:'bold'
+    fontWeight: '700',
   },
-   size: {
+  size: {
     fontSize: 14,
-    color: 'black',
-    marginBottom: 8,
-    // fontWeight:'bold'
+    color: '#7f8c8d',
+    marginBottom: 6,
+    fontWeight: '500',
   },
   quantityRow: {
     flexDirection: 'row',
@@ -112,20 +135,49 @@ const styles = StyleSheet.create({
   },
   quantity: {
     fontSize: 16,
-    marginHorizontal: 10,
+    marginHorizontal: 12,
     minWidth: 20,
     textAlign: 'center',
+    fontWeight: '600',
+    color: '#2c3e50',
   },
   button: {
-    backgroundColor: '#eee',
-    padding: 6,
-    borderRadius: 6,
+    backgroundColor: '#ecf0f1',
+    padding: 8,
+    borderRadius: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  buttonDisabled: {
+    backgroundColor: '#f8f9fa',
+    opacity: 0.5,
   },
   addButton: {
     backgroundColor: '#5C4033',
   },
-  removeButton: {
-    paddingLeft: 10,
+  deleteAction: {
+    backgroundColor: '#fa071cff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+    width: 80,
+    marginLeft: 8,
+  },
+  deleteContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    width: '100%',
+    borderRadius: 10,
+  },
+  deleteText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginTop: 2,
   },
 });
 

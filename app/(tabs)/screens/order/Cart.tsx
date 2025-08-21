@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import axios from 'axios';
 import React, { useCallback, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import CartItem from '../../component/CartItem';
 import NotificationComponent from '../../component/NotificationComponent';
 import { BASE_URL } from '../../services/api';
@@ -237,7 +238,7 @@ const updateQuantity = async (item: any, newQuantity: number) => {
   };
 
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       {notification.visible && (
         <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center', zIndex: 999 }}>
           <NotificationComponent
@@ -402,7 +403,7 @@ const updateQuantity = async (item: any, newQuantity: number) => {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -586,13 +587,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    marginHorizontal: 8,
-    marginVertical: 4,
+    marginHorizontal: 12,
+    marginVertical: 6,
     borderRadius: 12,
-    elevation: 1,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
   },
 

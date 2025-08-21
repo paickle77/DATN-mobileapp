@@ -10,6 +10,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -54,6 +55,8 @@ const UserProfileScreen = () => {
 
     // State cho loading
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false); // ✅ Track initialization
     const [user, setUser] = useState<User | null>(null);
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
@@ -74,14 +77,23 @@ const UserProfileScreen = () => {
     // ✅ FIX: Tách riêng state cho input editing
     const [editingName, setEditingName] = useState('');
 
-    // API call để lấy thông tin user
-    const fetchUserData = async (userId: string) => {
+    // API call để lấy thông tin user - Tối ưu hóa
+    const fetchUserData = useCallback(async (userId: string) => {
         try {
             const response = await axios.get(`${BASE_URL}/users/${userId}`);
             if (response.data && response.data.success !== false) {
-                setUser(response.data.data); // ✅ cập nhật user
-                const FectEmail= await axios.get(`${BASE_URL}/account/${response.data.data.account_id}`)
-                SetEmail(FectEmail.data.data.email)
+                setUser(response.data.data);
+                
+                // ✅ Chỉ fetch email nếu chưa có hoặc khác
+                if (!email || response.data.data.account_id) {
+                    try {
+                        const emailResponse = await axios.get(`${BASE_URL}/account/${response.data.data.account_id}`);
+                        SetEmail(emailResponse.data.data.email);
+                    } catch (emailError) {
+                        console.warn('⚠️ Không thể lấy email:', emailError);
+                    }
+                }
+                
                 return response.data.data;
             } else {
                 console.error('❌ Error loading user:', response.data.message);
@@ -89,24 +101,20 @@ const UserProfileScreen = () => {
             }
         } catch (error) {
             console.error('❌ Error fetching user:', error);
-            Alert.alert('Lỗi', 'Không thể tải thông tin người dùng');
+            // ✅ Chỉ hiện alert khi loading lần đầu
             return null;
         }
-    };
+    }, [email]);
 
-    // API call để lấy danh sách địa chỉ
-    const fetchAddresses = async (userId: string) => {
+    // API call để lấy danh sách địa chỉ - Tối ưu hóa
+    const fetchAddresses = useCallback(async (userId: string) => {
         try {
-            console.log('🔼 Fetching addresses for User ID:', userId);
             const response = await axios.get(`${BASE_URL}/GetAllAddress`);
-            // console.log('✅ Tất cả địa chỉ đã tải:', response.data);
-
             const allData = response.data?.data ?? [];
             // Lọc địa chỉ theo user_id._id
             const filtered = allData.filter((item: Address) => item.user_id?._id === userId);
 
             setAddresses(filtered);
-            // console.log('✅ Địa chỉ của user:', filtered);
 
             // Tìm địa chỉ mặc định
             const defaultAddr = filtered.find((addr: Address) => addr.isDefault);
@@ -115,10 +123,10 @@ const UserProfileScreen = () => {
             return filtered;
         } catch (error) {
             console.error('❌ Lỗi lấy địa chỉ:', error);
-            Alert.alert('Lỗi', 'Không thể tải địa chỉ. Vui lòng thử lại sau.');
+            // ✅ Chỉ hiện alert khi cần thiết
             return [];
         }
-    };
+    }, []);
 
     // Hàm format địa chỉ
     const formatAddress = (address: Address | null): string => {
@@ -141,54 +149,75 @@ const UserProfileScreen = () => {
         return addresses.find(addr => addr.isDefault) || addresses[0] || null;
     };
 
-    // useEffect để load dữ liệu khi component mount
-    useEffect(() => {
-        const loadData = async () => {
-            if (!userId) {
-                Alert.alert('Lỗi', 'Không tìm thấy ID người dùng');
-                navigation.goBack();
-                return;
-            }
+    // ✅ Hàm load dữ liệu tối ưu - tách riêng để dùng cho cả initial load và refresh
+    const loadData = useCallback(async (showInitialLoading: boolean = false) => {
+        if (!userId) {
+            Alert.alert('Lỗi', 'Không tìm thấy ID người dùng');
+            navigation.goBack();
+            return;
+        }
 
+        if (showInitialLoading) {
             setLoading(true);
-            try {
-                // Gọi API song song - user và addresses
-                const [userData, addressData] = await Promise.all([
-                    fetchUserData(userId),
-                    fetchAddresses(userId)
-                ]);
+        } else {
+            setRefreshing(true);
+        }
 
-                if (userData) {
-                    // Cập nhật profileData
-                    const newProfileData = {
-                        _id: userData._id,
-                        image: userData.image || '',
-                        avatar: userData.image
-                            ? { uri: `data:image/jpeg;base64,${userData.image}` }
-                            : { uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQqMZXi12fBQGZpQvD27ZJvSGmn-oNCXI9Etw&s' },
-                        fullName: userData.name || '',
-                        email: userData.email || '',
-                        phone: userData.phone || '',
-                        address: addressData.length > 0 ? formatAddress(addressData.find((addr: Address) => addr.isDefault) || addressData[0]) : 'Chưa có địa chỉ',
-                    };
+        try {
+            // Gọi API song song - user và addresses
+            const [userData, addressData] = await Promise.all([
+                fetchUserData(userId),
+                fetchAddresses(userId)
+            ]);
 
-                    setProfileData(newProfileData);
-                    // ✅ FIX: Set editing name state
-                    setEditingName(newProfileData.fullName);
-                }
-            } catch (error) {
-                console.error('❌ Error loading data:', error);
-                Alert.alert('Lỗi', 'Không thể tải dữ liệu');
-            } finally {
-                setLoading(false);
+            if (userData) {
+                // Cập nhật profileData
+                const newProfileData = {
+                    _id: userData._id,
+                    image: userData.image || '',
+                    avatar: userData.image
+                        ? { uri: `data:image/jpeg;base64,${userData.image}` }
+                        : { uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQqMZXi12fBQGZpQvD27ZJvSGmn-oNCXI9Etw&s' },
+                    fullName: userData.name || '',
+                    email: userData.email || '',
+                    phone: userData.phone || '',
+                    address: addressData.length > 0 ? formatAddress(addressData.find((addr: Address) => addr.isDefault) || addressData[0]) : 'Chưa có địa chỉ',
+                };
+
+                setProfileData(newProfileData);
+                // ✅ FIX: Set editing name state
+                setEditingName(newProfileData.fullName);
+                setIsInitialized(true); // ✅ Mark as initialized
             }
-        };
+        } catch (error) {
+            console.error('❌ Error loading data:', error);
+            if (showInitialLoading) {
+                Alert.alert('Lỗi', 'Không thể tải dữ liệu');
+            }
+            // Không hiện alert khi refresh để tránh spam
+        } finally {
+            if (showInitialLoading) {
+                setLoading(false);
+            } else {
+                setRefreshing(false);
+            }
+        }
+    }, [userId, navigation, fetchUserData, fetchAddresses]);
 
-        loadData();
-    }, [userId]);
+    // ✅ Hàm xử lý pull to refresh
+    const onRefresh = useCallback(() => {
+        loadData(false);
+    }, [loadData]);
 
-    // Hàm chọn ảnh từ thư viện
-    const pickImage = async () => {
+    // ✅ CHỈ load dữ liệu lần đầu khi mount, KHÔNG load lại khi focus
+    useEffect(() => {
+        if (!isInitialized) {
+            loadData(true);
+        }
+    }, [loadData, isInitialized]);
+
+    // ✅ Optimize image picker functions với useCallback
+    const pickImage = useCallback(async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (permissionResult.granted === false) {
@@ -210,10 +239,10 @@ const UserProfileScreen = () => {
                 image: result.assets[0].uri
             }));
         }
-    };
+    }, []);
 
-    // Hàm chụp ảnh
-    const takePhoto = async () => {
+    // ✅ Optimize take photo function
+    const takePhoto = useCallback(async () => {
         const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
         if (permissionResult.granted === false) {
@@ -234,10 +263,10 @@ const UserProfileScreen = () => {
                 image: result.assets[0].uri
             }));
         }
-    };
+    }, []);
 
-    // Hiển thị tùy chọn thay đổi ảnh
-    const showImageOptions = () => {
+    // ✅ Optimize image options
+    const showImageOptions = useCallback(() => {
         Alert.alert(
             'Thay đổi ảnh đại diện',
             'Chọn cách bạn muốn thay đổi ảnh đại diện',
@@ -247,9 +276,10 @@ const UserProfileScreen = () => {
                 { text: 'Chụp ảnh mới', onPress: takePhoto },
             ]
         );
-    };
+    }, [pickImage, takePhoto]);
 
-    const handleSave = async () => {
+    // ✅ Optimize handleSave với useCallback
+    const handleSave = useCallback(async () => {
         if (!user) return;
         
         // ✅ Thêm validation
@@ -290,23 +320,13 @@ const UserProfileScreen = () => {
                 setProfileData(prev => ({
                     ...prev,
                     fullName: editingName.trim(),
+                    avatar: prev.avatar, // Giữ nguyên avatar đã thay đổi
                 }));
                 
                 setIsEditing(false);
                 
-                // ✅ Fetch lại data trong background
-                const updatedUser = await fetchUserData(user._id);
-                if (updatedUser) {
-                    setProfileData(prev => ({
-                        ...prev,
-                        fullName: updatedUser.name || '',
-                        image: updatedUser.image || '',
-                        avatar: updatedUser.image
-                            ? { uri: `data:image/jpeg;base64,${updatedUser.image}` }
-                            : prev.avatar
-                    }));
-                    setEditingName(updatedUser.name || '');
-                }
+                // ✅ Refresh data trong background để đồng bộ với server
+                loadData(false);
             } else {
                 Alert.alert('Thất bại', response.data.message || 'Không thể cập nhật thông tin.');
             }
@@ -314,13 +334,13 @@ const UserProfileScreen = () => {
             console.error('❌ Lỗi cập nhật:', error);
             Alert.alert('Lỗi', 'Không thể kết nối đến máy chủ.');
         }
-    };
+    }, [user, editingName, profileData.image, profileData.avatar, loadData]);
 
-    // ✅ FIX: Optimize handleCancel
-    const handleCancel = () => {
+    // ✅ FIX: Optimize handleCancel với useCallback
+    const handleCancel = useCallback(() => {
         setEditingName(profileData.fullName);
         setIsEditing(false);
-    };
+    }, [profileData.fullName]);
 
     // ✅ FIX: Thêm useCallback để tránh re-render không cần thiết
     const handleNameChange = useCallback((text: string) => {
@@ -364,8 +384,8 @@ const UserProfileScreen = () => {
         </View>
     ));
 
-    // Hiển thị loading
-    if (loading) {
+    // Hiển thị loading - ✅ Chỉ hiện khi thực sự chưa có dữ liệu
+    if (loading && !isInitialized) {
         return (
             <View style={styles.container}>
                 <View style={styles.header}>
@@ -414,7 +434,20 @@ const UserProfileScreen = () => {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                style={styles.content} 
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#795548']}
+                        tintColor={'#795548'}
+                        title="Kéo để làm mới..."
+                        titleColor={'#795548'}
+                    />
+                }
+            >
                 {/* Avatar Section */}
                 <View style={styles.avatarSection}>
                     <View style={styles.avatarWrapper}>
