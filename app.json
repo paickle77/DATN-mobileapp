@@ -1,5 +1,9 @@
 {
   "expo": {
+      "notification": {
+      "icon": "./assets/images/messi.png",
+      "color": "#5C4033" 
+    },
     "name": "CakeShop",
     "slug": "CakeShop",
     "version": "1.0.0",
@@ -16,7 +20,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.cakeshop.app"
     },
     "web": {
       "bundler": "metro",
@@ -33,10 +38,17 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1a9bc34d-8875-4b17-89a9-325dc2fd7673"
+      }
     }
   }
 }

@@ -1,11 +1,23 @@
-// screens/Login.tsx
+// Login.tsx (đã sửa - thay Alert bằng Snackbar, note bên dưới)
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import CustomSnackbar from '../../../(tabs)/component/CustomSnackbar'; // ✅ ĐÃ THÊM COMPONENT SNACKBAR
 import { loginAuthService } from '../../services/LoginAuthService';
 import { validateLoginForm } from '../../utils/validation';
+import { clearAllStorage, saveUserData } from '../utils/storage';
+// Kiểu dữ liệu navigation
 
 type RootStackParamList = {
   Login: undefined;
@@ -14,6 +26,7 @@ type RootStackParamList = {
   NewPassword: { email: string };
   CompleteProfile: { email: string };
   TabNavigator: undefined;
+  ShipTabNavigator: undefined; 
 };
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -23,67 +36,171 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({
-    email: '',
-    password: '',
-  });
+  const [errors, setErrors] = useState({ email: '', password: '' });
+
+  const [snackbarVisible, setSnackbarVisible] = useState(false); // ✅ SNACKBAR STATE
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState<'success' | 'error'>('success');
 
   const navigation = useNavigation<LoginNavigationProp>();
 
   const handleLogin = async () => {
-    // Reset errors
-    setErrors({
-      email: '',
-      password: '',
-    });
+   await clearAllStorage();
+  if (!email || !password) {
+    setSnackbarMessage('Vui lòng nhập email và mật khẩu');
+    setSnackbarType('error');
+    setSnackbarVisible(true);
+    return;
+  }
 
-    const { isValid, errors: validationErrors } = validateLoginForm(email, password);
+  setLoading(true);
+  const result = await loginAuthService.login(email, password);
+        await Notifications.scheduleNotificationAsync({
+           content: {
+             title: ' Đăng nhập thành công!',
+             body: `Bạn được chuyển tới trang chủ`,
+             sound: 'default',
+           },
+           trigger: null, // Gửi ngay lập tức
+         });
+  // ✅ In rõ role lấy được
+  const role = result?.data?.account?.role;
+  console.log('🔍 Role lấy được:', role);
 
-    if (!isValid) {
-      setErrors({
-        email: validationErrors.email || '',
-        password: validationErrors.password || '',
-      });
-      return;
-    }
+  setLoading(false);
 
-    setLoading(true);
-
+  if (result.success) {
     try {
-      const result = await loginAuthService.login(email, password);
+      // ✅ Lưu tất cả thông tin quan trọng vào AsyncStorage
+      const userData = result.data;
       
-      if (result.success) {
-        Alert.alert('Thành công', result.message);
-        navigation.navigate('TabNavigator');
-      } else {
-        Alert.alert('Lỗi', result.message);
+      // Lưu account ID
+      if (userData?.account?._id) {
+        await saveUserData({
+          key: 'accountId',
+          value: userData.account._id.toString()
+        });
+        console.log('🆔 Account ID:', userData.account._id);
       }
-    } catch (error) {
-      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
+
+      // Lưu profile ID (thay vì user ID)
+      if (userData?.profile?._id) {
+        await saveUserData({
+          key: 'userId', 
+          value: userData.profile._id.toString()
+        });
+        console.log('🆔 User ID:', userData.profile._id);
+      }
+
+      // Lưu address ID từ profile
+      if (userData?.profile?.address_id) {
+        await saveUserData({
+          key: 'addressId',
+          value: userData.profile.address_id.toString()
+        });
+        console.log('🆔 Address ID:', userData.profile.address_id);
+      }
+
+      // Lưu role
+      if (userData?.account?.role) {
+        await saveUserData({
+          key: 'userRole',
+          value: userData.account.role
+        });
+      }
+
+      // Lưu email
+      if (userData?.account?.email) {
+        await saveUserData({
+          key: 'userEmail',
+          value: userData.account.email
+        });
+      }
+
+      // Lưu thông tin profile
+      if (userData?.profile?.name) {
+        await saveUserData({
+          key: 'userName',
+          value: userData.profile.name
+        });
+      }
+
+      if (userData?.profile?.phone) {
+        await saveUserData({
+          key: 'userPhone',
+          value: userData.profile.phone
+        });
+      }
+
+      // Lưu token
+      if (userData?.token) {
+        await saveUserData({
+          key: 'authToken',
+          value: userData.token
+        });
+        console.log('🔑 Auth Token:', userData.token);
+      }
+
+      // Lưu toàn bộ user data để backup
+      await saveUserData({
+        key: 'fullUserData',
+        value: JSON.stringify(userData)
+      });
+
+    } catch (storageError) {
+      console.error('❌ Lỗi khi lưu data vào storage:', storageError);
     }
-  };
+
+    setSnackbarMessage(result.message);
+    setSnackbarType('success');
+    setSnackbarVisible(true);
+
+    setTimeout(() => {
+      setSnackbarVisible(false);
+
+      if (role === 'shipper') {
+        console.log('👉 Điều hướng vào ShipTabNavigator');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'ShipTabNavigator' }],
+        });
+      } else {
+        
+        console.log('👉 Điều hướng vào TabNavigator');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'TabNavigator' }],
+        });
+      }
+    }, 1000);
+  } else {
+    setSnackbarMessage(result.message || 'Đăng nhập thất bại');
+    setSnackbarType('error');
+    setSnackbarVisible(true);
+    setTimeout(() => setSnackbarVisible(false), 2000);
+  }
+};
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập email trước khi quên mật khẩu');
+      setSnackbarMessage('Vui lòng nhập email trước khi quên mật khẩu');
+      setSnackbarType('error');
+      setSnackbarVisible(true);
+      setTimeout(() => setSnackbarVisible(false), 2000);
       return;
     }
 
-
-
-    // Validate email format
     const emailValidation = validateLoginForm(email, 'dummy').errors.email;
     if (emailValidation) {
-      Alert.alert('Lỗi', emailValidation);
+      setSnackbarMessage(emailValidation);
+      setSnackbarType('error');
+      setSnackbarVisible(true);
+      setTimeout(() => setSnackbarVisible(false), 2000);
       return;
     }
 
     setLoading(true);
-    
     navigation.navigate('OtpVerification', { email });
-    
     setLoading(false);
   };
 
@@ -108,9 +225,7 @@ export default function Login() {
           value={email}
           onChangeText={(text) => {
             setEmail(text);
-            if (errors.email) {
-              setErrors(prev => ({ ...prev, email: '' }));
-            }
+            if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
           }}
           editable={!loading}
         />
@@ -127,9 +242,7 @@ export default function Login() {
           value={password}
           onChangeText={(text) => {
             setPassword(text);
-            if (errors.password) {
-              setErrors(prev => ({ ...prev, password: '' }));
-            }
+            if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
           }}
           editable={!loading}
         />
@@ -143,38 +256,34 @@ export default function Login() {
         {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
       </View>
 
-      {/* Link Quên mật khẩu */}
-      <TouchableOpacity onPress={handleForgotPassword} disabled={loading}>
-        <Text style={[styles.forgotText, loading && styles.disabledText]}>
-          Forgot Password ?
-        </Text>
-      </TouchableOpacity>
+      {/* Quên mật khẩu */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', width: '100%' }}>
+        <TouchableOpacity onPress={handleForgotPassword} disabled={loading}>
+          <Text style={[styles.forgotText, loading && styles.disabledText]}>Forgot Password ?</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Nút Đăng nhập */}
+      {/* Nút đăng nhập */}
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleLogin}
         disabled={loading}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.buttonText}>Đăng nhập</Text>
-        )}
+        {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Đăng nhập</Text>}
       </TouchableOpacity>
 
-      {/* Dòng ngăn cách "Hoặc" */}
+      {/* Hoặc */}
       <View style={styles.separatorContainer}>
         <View style={styles.separatorLine} />
         <Text style={styles.separatorText}>Hoặc</Text>
         <View style={styles.separatorLine} />
       </View>
 
-      {/* Nút Social Login */}
+      {/* Nút Social */}
       <View style={styles.socialContainer}>
         <TouchableOpacity
           style={[styles.socialButton, loading && styles.buttonDisabled]}
-          onPress={() => { /* TODO: Google login */ }}
+          onPress={() => { }}
           disabled={loading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
@@ -182,7 +291,7 @@ export default function Login() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.socialButton, loading && styles.buttonDisabled]}
-          onPress={() => { /* TODO: Facebook login */ }}
+          onPress={() => { }}
           disabled={loading}
         >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />
@@ -190,15 +299,16 @@ export default function Login() {
         </TouchableOpacity>
       </View>
 
-      {/* Footer: Chưa có tài khoản? */}
+      {/* Tạo tài khoản */}
       <View style={styles.footerContainer}>
         <Text style={styles.footerText}>Bạn không có tài khoản </Text>
         <TouchableOpacity onPress={handleGoToRegister} disabled={loading}>
-          <Text style={[styles.footerLink, loading && styles.disabledText]}>
-            Tạo tài khoản
-          </Text>
+          <Text style={[styles.footerLink, loading && styles.disabledText]}>Tạo tài khoản</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ✅ Gắn Snackbar vào cuối layout */}
+      <CustomSnackbar visible={snackbarVisible} message={snackbarMessage} type={snackbarType} />
     </View>
   );
 }

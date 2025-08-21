@@ -2,6 +2,8 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryItem from '../(tabs)/component/category';
+import Odercomponent from './component/Odercomponent';
+import VoucherCardList from './component/VoucherCardList';
 import AddressScreen from './screens/address/Address';
 import ManualAddress from './screens/address/manual-address';
 import MapAddress from './screens/address/MapAddress';
@@ -13,34 +15,54 @@ import Register from './screens/auth/Register';
 import Splash from './screens/auth/Splash';
 import Welcom from './screens/auth/Welcom';
 import ChatScreen from './screens/chat/Chat';
+import Message from './screens/message/Message';
+import ShipTabNavigator from './screens/navigation/ShipTabNavigator';
 import TabNavigator from './screens/navigation/TabNavigator';
+import NotificationDemo from './screens/notification/NotificationDemo';
 import NotificationScreen from './screens/notification/NotificationScreen';
-import CartScreen from './screens/order/Cart';
+import testPushTokenService from './screens/notification/testPushTokenService';
+import CartScreen, { default as Cart } from './screens/order/Cart';
 import Checkout from './screens/order/Checkout';
-import CheckoutCard from './screens/order/CheckoutCardScreen';
-import CheckoutSuccess from './screens/order/CheckoutSuccessScreen';
+import ConfirmationScreen from './screens/order/confirmationScreen';
+import { default as OderDetails, default as OrderDetails } from './screens/order/OrderDetails';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
 import CategoryScreen from './screens/product/CategoryScreen';
+import CommentScreen from './screens/product/Comment';
 import Detail from './screens/product/Detail';
 import Home from './screens/product/Home';
 import ReviewScreen from './screens/product/ReviewScreen';
 import AddressList from './screens/profile/AddressList';
 import CompleteProfile from './screens/profile/CompleteProfile';
+import PaymentScreen from './screens/profile/Payement';
 import ProfileScreen from './screens/profile/Profile';
-import Settings from './screens/profile/Settings';
+import Settings from './screens/profile/Settings/Settings';
 import UserProfile from './screens/profile/UserProfile';
-
+import VoucherScreen from './screens/profile/VoucherScreen';
+import CommissionScreen from './screens/ship/Commission';
+import DeliveredOrders from './screens/ship/DeliveredOrders';
+import ShipHome from './screens/ship/ShipHome';
+import OrderDetailPage from './screens/ship/ShipOrderDetail';
+import ShipProfile from './screens/ship/ShipProfile';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
 
   return (
-    <Stack.Navigator initialRouteName="Welcom">
+    <Stack.Navigator initialRouteName="Welcom" screenOptions={{ headerShown: false }}>
       {/* Screens không có tab bar */}
+       <Stack.Screen name="VoucherCardList" component={VoucherCardList} options={{ headerShown: false }} />
+      <Stack.Screen name="testPushTokenService" component={testPushTokenService} options={{ headerShown: false }} />
+      <Stack.Screen name="NotificationDemo" component={NotificationDemo} options={{ headerShown: false }} />
+      <Stack.Screen name="payment" component={PaymentScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="comment" component={CommentScreen} options={{ headerShown: false }} />      
+        <Stack.Screen name="OderDetails" component={OderDetails} options={{ headerShown: false }} />
        <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
+       <Stack.Screen name="Odercomponent" component={Odercomponent} options={{ headerShown: false }} />
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="OrderHistoryScreen" component={OrderHistoryScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ConfirmationScreen" component={ConfirmationScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="OrderDetails" component={OrderDetails} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
@@ -56,10 +78,11 @@ export default function TabLayout() {
       <Stack.Screen name="NewPassword" component={NewPassword} options={{ headerShown: false }} />
       <Stack.Screen name="CompleteProfile" component={CompleteProfile} options={{ headerShown: false }} />
       <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false }} />
-      <Stack.Screen name="CheckoutSuccess" component={CheckoutSuccess} options={{ headerShown: false }} />
-      <Stack.Screen name="CheckoutCard" component={CheckoutCard} options={{ headerShown: false }} />
       <Stack.Screen name="CartScreen" component={CartScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CategoryItem" component={CategoryItem} options={{ headerShown: false }} />
+      <Stack.Screen name="Cart" component={Cart} options={{ headerShown: false }} />
+      <Stack.Screen name="Message" component={Message} options={{ headerShown: false }} />
 
       {/* Tab Navigator - chứa Home, Cart, Favourite, Profile */}
       <Stack.Screen name="TabNavigator" component={TabNavigator} options={{ headerShown: false }} />
@@ -74,6 +97,17 @@ export default function TabLayout() {
       <Stack.Screen name="UserProfile" component={UserProfile} options={{ headerShown: false }} />
       <Stack.Screen name="PaymentMethods" component={PaymentMethods} options={{ headerShown: false }} />
       <Stack.Screen name="AddressList" component={AddressList} options={{ headerShown: false }} />
+      <Stack.Screen name="VoucherScreen" component={VoucherScreen} options={{ headerShown: false }} />
+
+      {/* Ship  Screen */}
+      <Stack.Screen name="ShipTabNavigator" component={ShipTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipHome" component={ShipHome} options={{ headerShown: false }} />
+      <Stack.Screen name="DeliveredOrders" component={DeliveredOrders} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipProfile" component={ShipProfile} options={{ headerShown: false }} />
+      <Stack.Screen name="ShipOrderDetail" component={OrderDetailPage} options={{ headerShown: false }} />
+      <Stack.Screen name="Commission" component={CommissionScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
+    
   );
+
 }

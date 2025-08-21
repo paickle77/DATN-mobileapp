@@ -1,5 +1,5 @@
 import { AntDesign, Feather, FontAwesome5 } from '@expo/vector-icons';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, RouteProp, useRoute } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -7,12 +7,29 @@ import AddPaymentModal from '../../component/AddPaymentModal';
 
 type PaymentMethod = {
   id: string;
-  type: 'momo' | 'zalopay' | 'vnpay' | 'card';
+  type: 'momo' | 'VNPAY' | 'ZaloPay' | 'card';
   name: string;
   accountNumber?: string;
   cardNumber?: string;
   expiryDate?: string;
   isDefault: boolean;
+};
+
+type PaymentMethodsRouteParams = {
+  selectedPaymentMethod?: {
+    id: string;
+    type: string;
+    name: string;
+    accountNumber?: string;
+    cardNumber?: string;
+  };
+  onSelectPayment: (payment: {
+    id: string;
+    type: string;
+    name: string;
+    accountNumber?: string;
+    cardNumber?: string;
+  }) => void;
 };
 
 type RootStackParamList = {
@@ -39,21 +56,26 @@ const PaymentMethodsScreen = () => {
     },
     {
       id: '2',
-      type: 'zalopay',
-      name: 'ZaloPay',
+      type: 'VNPAY',
+      name: 'VNPAY',
       accountNumber: '0123456789',
       isDefault: false,
     },
   ]);
+
+
   
-  const [selectedPaymentId, setSelectedPaymentId] = useState<string>('cod');
-  
+
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedType, setSelectedType] = useState<'momo' | 'zalopay' | 'vnpay' | 'card'>('momo');
+  const [selectedType, setSelectedType] = useState<'momo' | 'VNPAY' | 'ZaloPay' | 'card'>('momo');
   const [accountNumber, setAccountNumber] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cardholderName, setCardholderName] = useState('');
+  const route = useRoute<RouteProp<Record<string, PaymentMethodsRouteParams>, string>>();
+  const initialSelectedId = route.params?.selectedPaymentMethod?.id ?? 'cod';
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string>(initialSelectedId);
+
 
   const getPaymentIcon = (type: string) => {
     switch (type) {
@@ -61,11 +83,11 @@ const PaymentMethodsScreen = () => {
         return <View style={[styles.paymentIcon, { backgroundColor: '#D82D8B' }]}>
           <Text style={styles.iconText}>M</Text>
         </View>;
-      case 'zalopay':
+      case 'VNPAY':
         return <View style={[styles.paymentIcon, { backgroundColor: '#0068FF' }]}>
           <Text style={styles.iconText}>Z</Text>
         </View>;
-      case 'vnpay':
+      case 'ZaloPay':
         return <View style={[styles.paymentIcon, { backgroundColor: '#1BA8FF' }]}>
           <Text style={styles.iconText}>V</Text>
         </View>;
@@ -81,8 +103,8 @@ const PaymentMethodsScreen = () => {
   const getPaymentName = (type: string) => {
     switch (type) {
       case 'momo': return 'Ví MoMo';
-      case 'zalopay': return 'ZaloPay';
-      case 'vnpay': return 'VNPay';
+      case 'VNPAY': return 'VNPAY';
+      case 'ZaloPay': return 'ZaloPay';
       case 'card': return 'Thẻ tín dụng/ghi nợ';
       default: return '';
     }
@@ -146,7 +168,7 @@ const PaymentMethodsScreen = () => {
 
   const handleComplete = () => {
     let selectedPaymentMethod;
-    
+
     if (selectedPaymentId === 'cod') {
       selectedPaymentMethod = {
         id: 'cod',
@@ -168,11 +190,9 @@ const PaymentMethodsScreen = () => {
       }
     }
 
-    if (selectedPaymentMethod) {
-      // Navigate back to Checkout with selected payment method
-      navigation.navigate('Checkout', {
-        selectedPaymentMethod
-      });
+    if (selectedPaymentMethod && route.params?.onSelectPayment) {
+      route.params.onSelectPayment(selectedPaymentMethod); // Gửi dữ liệu về
+      navigation.goBack(); // Quay về màn Checkout
     }
   };
 
@@ -189,11 +209,11 @@ const PaymentMethodsScreen = () => {
 
       <ScrollView style={styles.content}>
         {/* Cash on Delivery Option */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.paymentItem,
             selectedPaymentId === 'cod' && styles.selectedPaymentItem
-          ]} 
+          ]}
           onPress={() => setSelectedPaymentId('cod')}
         >
           <View style={styles.paymentInfo}>
@@ -238,8 +258,8 @@ const PaymentMethodsScreen = () => {
           /* Payment Methods List */
           <View style={styles.paymentList}>
             {paymentMethods.map((method) => (
-              <TouchableOpacity 
-                key={method.id} 
+              <TouchableOpacity
+                key={method.id}
                 style={[
                   styles.paymentItem,
                   selectedPaymentId === method.id && styles.selectedPaymentItem
@@ -259,7 +279,7 @@ const PaymentMethodsScreen = () => {
                       styles.paymentAccount,
                       selectedPaymentId === method.id && styles.selectedPaymentSubText
                     ]}>
-                      {method.accountNumber 
+                      {method.accountNumber
                         ? `•••• •••• ${method.accountNumber.slice(-4)}`
                         : `•••• •••• •••• ${method.cardNumber?.slice(-4)}`
                       }
@@ -321,7 +341,7 @@ const PaymentMethodsScreen = () => {
         cardholderName={cardholderName}
         setCardholderName={setCardholderName}
         handleAddPayment={handleAddPayment}
-        />
+      />
     </View>
   );
 };

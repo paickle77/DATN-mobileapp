@@ -13,7 +13,8 @@ type RootStackParamList = {
         phone?: string;
         gender?: string;
         avatar?: string;
-        id: string;
+        account_id: string;
+        user_id?: string;
     };
     ManualAddress: {
         email?: string;
@@ -22,7 +23,8 @@ type RootStackParamList = {
         phone?: string;
         gender?: string;
         avatar?: string;
-        id: string;
+        account_id: string;
+        user_id?: string;
     };
 };
 
@@ -55,8 +57,11 @@ interface Props {
 }
 
 const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
+
+  const haNoi = data.find((p) => p.Name === 'Thành phố Hà Nội') || null;
+
   const [selectedAddress, setSelectedAddress] = useState<AddressSelection>({
-    province: null,
+    province: haNoi,
     district: null,
     ward: null,
     detail: '',
@@ -105,13 +110,15 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
       
       console.log('[ManualAddress] Navigating back to Address with:', {
         address: fullAddress,
-        id: route.params?.id
+        account_id: route.params?.account_id,
+        user_id: route.params?.user_id
       });
 
       (navigation as any).navigate('Address', {
         address: fullAddress,
         // Đảm bảo truyền lại tất cả thông tin bao gồm ID
-        id: route.params?.id,
+        account_id: route.params?.account_id,
+        user_id: route.params?.user_id,
         email: route.params?.email,
         password: route.params?.password,
         fullName: route.params?.fullName,
@@ -159,10 +166,6 @@ const HierarchicalAddressSelector: React.FC<Props> = ({ onAddressChange }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Chọn địa chỉ</Text>
       
-      {/* Debug info */}
-      <View style={styles.debugContainer}>
-        <Text style={styles.debugText}>Debug - User ID: {route.params?.id}</Text>
-      </View>
 
       <Text style={styles.label}>Tỉnh/Thành phố</Text>
       <TouchableOpacity style={styles.selectBox} onPress={() => setModalType('province')}>

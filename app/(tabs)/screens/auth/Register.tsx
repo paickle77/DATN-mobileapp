@@ -1,14 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateRegisterForm } from '../../utils/validation';
+import { clearAllStorage } from '../utils/storage';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type RootStackParamList = {
   CompleteProfile: {
-    id: string;
+    account_id: string; // ✅ SỬA: Đổi từ id thành account_id
   };
   Login: undefined;
 };
@@ -30,9 +34,10 @@ export default function Register() {
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  // Xử lý đăng ký
+  // ✅ SỬA: Xử lý đăng ký
   const handleRegister = async () => {
     // Reset errors
+     await clearAllStorage();
     setErrors({
       email: '',
       password: '',
@@ -58,20 +63,18 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Gọi service để đăng ký
-      const newUser = await RegisterAuthService.registerUser({
-        email: email.trim().toLowerCase(),
-        password
-      });
+      // ✅ Gọi service để đăng ký - nhận về account
+      const account = await RegisterAuthService.registerUser({ email, password });
 
-      console.log('Đăng ký thành công. ID:', newUser._id);
-      
-      // Chuyển đến màn hình hoàn thiện hồ sơ
-      navigation.navigate('CompleteProfile', { id: newUser._id });
+      console.log('✅ Đăng ký thành công. Account ID:', account._id);
+
+      // ✅ Điều hướng sang CompleteProfile với account_id
+      console.log('🔁 Điều hướng sang CompleteProfile với account_id:', account._id);
+      navigation.navigate('CompleteProfile', { account_id: account._id });
 
     } catch (error) {
-      console.error('Lỗi khi đăng ký:', error);
-      
+      console.error('❌ Lỗi khi đăng ký:', error);
+
       // Hiển thị lỗi cụ thể
       if (error instanceof Error) {
         Alert.alert('Lỗi', error.message);
@@ -81,6 +84,16 @@ export default function Register() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Xử lý đăng ký với Google (placeholder)
+  const handleGoogleRegister = async () => {
+    Alert.alert('Thông báo', 'Tính năng đăng ký Google đang phát triển');
+  };
+
+  // Xử lý đăng ký với Facebook (placeholder)
+  const handleFacebookRegister = async () => {
+    Alert.alert('Thông báo', 'Tính năng đăng ký Facebook đang phát triển');
   };
 
   return (
@@ -206,7 +219,7 @@ export default function Register() {
       <View style={styles.socialContainer}>
         <TouchableOpacity 
           style={styles.socialButton} 
-          onPress={() => { /* TODO: Google login */ }}
+          onPress={handleGoogleRegister}
           disabled={isLoading}
         >
           <Ionicons name="logo-google" size={24} color="#DB4437" />
@@ -214,7 +227,7 @@ export default function Register() {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.socialButton} 
-          onPress={() => { /* TODO: Facebook login */ }}
+          onPress={handleFacebookRegister}
           disabled={isLoading}
         >
           <Ionicons name="logo-facebook" size={24} color="#4267B2" />

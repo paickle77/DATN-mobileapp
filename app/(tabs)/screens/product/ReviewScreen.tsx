@@ -1,278 +1,528 @@
+import { useRoute } from '@react-navigation/native';
+import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { BASE_URL } from '../../services/api';
+import reviewService from '../../services/ReviewService';
+import { getUserData } from '../utils/storage';
+
+// Import các component đã redesign
 import DetailedReview from '../../component/DetailedReview';
 import ProductCard from '../../component/ProductCard';
 import StarRating from '../../component/StarRating';
+import { saveUserData } from '../utils/storage';
+const { width, height } = Dimensions.get('window');
 
-const { width } = Dimensions.get('window');
+type ProductDataType = {
+  _id: string;
+  name: string;
+  description: string;
+  image_url: string;
+  price: number;
+  category_id: {
+    _id: string;
+    name: string;
+  };
+};
 
 const ReviewScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  const { ProductID } = route.params as { ProductID: string };
+
+  // States
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
-  const [image, setImage] = useState(null);
+  const [image, setImage] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [data, setData] = useState<ProductDataType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-    });
+  // Animation values
+const fadeAnim = useRef(new Animated.Value(0)).current;
+const slideAnim = useRef(new Animated.Value(30)).current;
 
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
+  useEffect(() => {
+    console.log("ProductId123",ProductID)
+    if (ProductID) {
+      fetchProductData();
+    }
+    
+    // Start animations
+    Animated.stagger(200, [
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, [ProductID]);
+
+  const fetchProductData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${BASE_URL}/productbyID/${ProductID}`);
+      const productData: ProductDataType = response.data.data;
+     console.log('✅ Product data fetched:', productData);
+      setData(productData);
+    } catch (error) {
+      console.error('Error fetching product data:', error);
+      Alert.alert('⚠️ Lỗi', 'Không thể tải thông tin sản phẩm. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSubmit = () => {
-    if (rating === 0 || reviewText === '') {
-      Alert.alert('Vui lòng nhập đầy đủ đánh giá và chọn số sao!');
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert('🔐 Quyền truy cập', 'Bạn cần cấp quyền truy cập thư viện ảnh để tải ảnh lên!');
       return;
     }
 
-    console.log('Đánh giá:', { rating, reviewText, image });
-    Alert.alert('Đánh giá của bạn đã được gửi thành công!');
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsMultipleSelection: false,
+      base64: true,
+      aspect: [4, 3],
+      allowsEditing: true,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0];
+      setImage(asset.uri);
+      setImageBase64(asset.base64 ?? null);
+    }
   };
 
-  const handleCancel = () => {
-    setRating(0);
-    setReviewText('');
-    setImage(null);
-    navigation.goBack()
+  const handleSubmit = async () => {
+    // Validation với UI hiện đại
+    if (rating === 0) {
+      Alert.alert(
+        '⭐ Thiếu đánh giá', 
+        'Vui lòng chọn số sao đánh giá trước khi gửi!',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+    
+    if (reviewText.trim() === '') {
+      Alert.alert(
+        '📝 Thiếu nội dung', 
+        'Vui lòng chia sẻ trải nghiệm của bạn về sản phẩm!',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const userData = await getUserData('userData');
+      
+      const payload = {
+        product_id: ProductID,
+        star_rating: rating,
+        content: reviewText.trim(),
+        image: imageBase64,
+        Account_id: userData,
+      };
+
+      // Sử dụng ReviewService để submit (đã handle cache clearing internally)
+      await reviewService.submitReview(payload);
+      console.log('Review submitted successfully - all caches cleared automatically');
+      
+      await saveUserData({ key: 'productID', value: ProductID });
+      
+      Alert.alert(
+        '🎉 Thành công!', 
+        'Cảm ơn bạn đã chia sẻ! Đánh giá của bạn đã được gửi thành công và sẽ giúp người khác có thêm thông tin hữu ích.',
+        [
+          {
+            text: '✨ Tuyệt vời!',
+            style: 'default',
+            onPress: () => {
+              // Reset form với animation
+              Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+              }).start(() => {
+                setRating(0);
+                setReviewText('');
+                setImage(null);
+                setImageBase64(null);
+                navigation.goBack();
+              });
+            }
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      Alert.alert(
+        '❌ Lỗi kết nối', 
+        'Không thể gửi đánh giá lúc này. Vui lòng kiểm tra kết nối mạng và thử lại.',
+        [{ text: 'Thử lại', style: 'default' }]
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <LinearGradient
+        colors={['#5C4033', '#a78661ff']}
+        style={styles.loadingContainer}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.loadingText}>Đang tải thông tin sản phẩm...</Text>
+          <Text style={styles.loadingSubText}>Vui lòng chờ trong giây lát</Text>
+        </View>
+      </LinearGradient>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#FFF8E7', '#FFFFFF']}
-        style={styles.backgroundGradient}
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
       
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+      {/* Modern Header */}
+      <LinearGradient
+        colors={['#4b3d36ff', '#9b764fff']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        {/* Header Section */}
-        <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>Đánh giá sản phẩm</Text>
-          <Text style={styles.headerSubtitle}>Chia sẻ trải nghiệm của bạn</Text>
-        </View>
-
-        {/* Product Card Container */}
-        <View style={styles.productCardContainer}>
-          <ProductCard
-            imageUrl={'https://moderncook.com.vn/recipes/wp-content/uploads/2022/03/e768118c3024fc7aa535-1024x682.jpg'}
-            name={'Bánh gato kiểu pháp'}
-            category={'Bánh sinh nhật'}
-            description={'Spider Plant |'}
-            price={'515.000'}
-          />
-        </View>
-
-        {/* Rating Section */}
-        <View style={styles.ratingSection}>
-          <Text style={styles.sectionTitle}>Đánh giá của bạn</Text>
-          <View style={styles.ratingContainer}>
-            <StarRating rating={rating} setRating={setRating} />
-            {rating > 0 && (
-              <Text style={styles.ratingText}>
-                {rating === 1 ? 'Rất tệ' : 
-                 rating === 2 ? 'Tệ' : 
-                 rating === 3 ? 'Bình thường' : 
-                 rating === 4 ? 'Tốt' : 'Xuất sắc'}
-              </Text>
-            )}
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <Icon name="arrow-back" size={24} color="#FFF" />
+          </TouchableOpacity>
+          
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Viết Đánh Giá</Text>
+            <Text style={styles.headerSubtitle}>Chia sẻ trải nghiệm của bạn</Text>
+          </View>
+          
+          <View style={styles.headerIcon}>
+            <Icon name="star" size={20} color="#FFD700" />
           </View>
         </View>
+      </LinearGradient>
 
-        {/* Review Content Section */}
-        <View style={styles.reviewSection}>
-          <Text style={styles.sectionTitle}>Chi tiết đánh giá</Text>
-          <DetailedReview
-            onImageAdd={pickImage}
-            onTextChange={setReviewText}
-            image={image}
-          />
-        </View>
-      </ScrollView>
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          {/* Product Card */}
+          {data && (
+            <Animated.View style={[
+              styles.sectionContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}>
+              <ProductCard
+                imageUrl={data.image_url}
+                category={data.category_id?.name || 'Chưa phân loại'}
+                name={data.name}
+                price={data.price}
+              />
+            </Animated.View>
+          )}
 
-      {/* Fixed Bottom Buttons */}
-      <View style={styles.bottomContainer}>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Hủy bỏ</Text>
-          </TouchableOpacity>
+          {/* Star Rating */}
+          <Animated.View style={[
+            styles.sectionContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}>
+            <StarRating
+              rating={rating}
+              setRating={setRating}
+            />
+          </Animated.View>
 
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <LinearGradient
-              colors={['#D2691E', '#8B4513']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitButtonGradient}
+          {/* Detailed Review */}
+          <Animated.View style={[
+            styles.sectionContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}>
+            <DetailedReview
+              reviewText={reviewText}
+              onTextChange={setReviewText}
+              onImageAdd={pickImage}
+              uploadedImage={image}
+            />
+          </Animated.View>
+
+          {/* Submit Button */}
+          <Animated.View style={[
+            styles.submitContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}>
+            <TouchableOpacity 
+              style={[
+                styles.submitButton,
+                (submitting || rating === 0 || reviewText.trim() === '') && styles.submitButtonDisabled
+              ]} 
+              onPress={handleSubmit}
+              disabled={submitting || rating === 0 || reviewText.trim() === ''}
+              activeOpacity={0.9}
             >
-              <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
+              <LinearGradient
+                colors={
+                  (submitting || rating === 0 || reviewText.trim() === '') 
+                    ? ['#BDC3C7', '#95A5A6'] 
+                    : ['#FF6B35', '#F7931E', '#E67E22']
+                }
+                style={styles.submitGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {submitting ? (
+                  <>
+                    <ActivityIndicator color="#FFF" size="small" />
+                    <Text style={styles.submitButtonText}>Đang gửi...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Icon name="send" size={18} color="#FFF" />
+                    <Text style={styles.submitButtonText}>Gửi Đánh Giá</Text>
+                    <Icon name="arrow-forward" size={16} color="#FFF" />
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Submit Info */}
+            <View style={styles.submitInfo}>
+              <Icon name="shield-checkmark" size={14} color="#4CAF50" />
+              <Text style={styles.submitInfoText}>
+                Đánh giá của bạn sẽ được kiểm duyệt và hiển thị công khai
+              </Text>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
 
-export default ReviewScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F7FA',
   },
-  backgroundGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+
+  loadingContent: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 20,
+    padding: 32,
+    marginHorizontal: 40,
+  },
+
+  loadingText: {
+    marginTop: 20,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+
+  loadingSubText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+  },
+
+  // Header
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 25,
+    paddingBottom: 20,
+    elevation: 12,
+    shadowColor: '#5C4033',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+  },
+
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Keyboard Container
+  keyboardContainer: {
+    flex: 1,
+  },
+
+  // Scroll View
   scrollView: {
     flex: 1,
   },
+
   scrollContent: {
-    paddingBottom: 100, // Space for fixed bottom buttons
+    paddingBottom: 40,
   },
-  headerSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    alignItems: 'center',
+
+  sectionContainer: {
+    marginBottom: 8,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#8B4513',
-    marginBottom: 4,
+
+  // Submit Section
+  submitContainer: {
+    marginTop: 16,
+    paddingHorizontal: 16,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#666666',
-    textAlign: 'center',
-  },
-  productCardContainer: {
-    marginHorizontal: 16,
-    marginVertical: 20,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  ratingSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  reviewSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#8B4513',
-    marginBottom: 16,
-  },
-  ratingContainer: {
-    alignItems: 'center',
-  },
-  ratingText: {
-    marginTop: 12,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#D2691E',
-  },
-  bottomContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 32,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+
   submitButton: {
-    flex: 2,
-    borderRadius: 12,
-    overflow: 'hidden',
+    borderRadius: 28,
+    elevation: 8,
+    shadowColor: '#5C4033',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    marginBottom: 12,
   },
-  submitButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+
+  submitButtonDisabled: {
+    elevation: 2,
+    shadowOpacity: 0.1,
+  },
+
+  submitGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 28,
+    gap: 8,
   },
+
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+
+  submitInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    paddingHorizontal: 16,
   },
-  cancelButtonText: {
-    color: '#666666',
-    fontSize: 16,
-    fontWeight: '600',
+
+  submitInfoText: {
+    fontSize: 11,
+    color: '#7F8C8D',
+    marginLeft: 6,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
+
+export default ReviewScreen;

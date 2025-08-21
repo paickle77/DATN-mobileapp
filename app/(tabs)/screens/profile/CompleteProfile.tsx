@@ -3,9 +3,10 @@ import { NavigationProp, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RegisterAuthService } from '../../services/RegisterAuthService';
 import { validateCompleteProfileForm } from '../../utils/validation';
+import { saveUserData } from '../utils/storage'; // ✅ THÊM: Import saveUserData
 
 // Danh sách các tùy chọn giới tính
 const GENDER_OPTIONS = [
@@ -16,16 +17,22 @@ const GENDER_OPTIONS = [
 
 type RootStackParamList = {
   CompleteProfile: {
-    id: string;
+    account_id: string; // ✅ SỬA: Đổi từ id thành account_id
   };
   Address: {
-    id: string;
+    account_id: string;
+    user_id?: string; // ✅ THÊM: Thêm user_id
+    fullName?: string;
+    phone?: string;
+    gender?: string;
+    avatar?: string;
+    profile_id?: string; // ✅ THÊM: Thêm profile_id vào params
   };
 };
 
 export default function CompleteProfile() {
   const route = useRoute();
-  const { id } = route.params as { id: string };
+  const { account_id } = route.params as { account_id: string }; // ✅ SỬA: Đổi từ id
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   // State cho form
@@ -37,6 +44,7 @@ export default function CompleteProfile() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarBase64, setAvatarBase64] = useState(''); // ✅ THÊM: Lưu base64 của avatar
 
   const [errors, setErrors] = useState({
     fullName: '',
@@ -44,28 +52,34 @@ export default function CompleteProfile() {
     gender: '',
   });
 
-  // Load thông tin user hiện tại (nếu có)
+  // ✅ SỬA: Load thông tin user hiện tại (nếu có)
   useEffect(() => {
     const loadUserData = async () => {
-      if (!id) return;
+      if (!account_id) return;
 
       try {
         setIsLoadingUser(true);
-        const user = await RegisterAuthService.getUserById(id);
-        
+
+        // ✅ Gọi API mới để lấy user theo account_id
+        const user = await RegisterAuthService.getUserByAccountId(account_id);
+
+        // Nếu user đã có profile thì load data
         if (user) {
           setFullName(user.name || '');
           setPhone(user.phone || '');
           setGender(user.gender || '');
-          
-          // Xử lý avatar - lấy full URL
+
           if (user.avatar && user.avatar !== 'avatarmacdinh.png') {
             const avatarUrl = RegisterAuthService.getAvatarUrl(user.avatar);
             setAvatar(avatarUrl);
           }
+
+          console.log('✅ Đã load thông tin user:', user._id);
+        } else {
+          console.log('ℹ️ User chưa có profile, sẽ tạo mới');
         }
       } catch (error) {
-        console.error('Lỗi khi lấy thông tin user:', error);
+        console.error('❌ Lỗi khi lấy thông tin user:', error);
         // Không hiển thị alert ở đây vì có thể là user mới chưa có thông tin
       } finally {
         setIsLoadingUser(false);
@@ -73,7 +87,7 @@ export default function CompleteProfile() {
     };
 
     loadUserData();
-  }, [id]);
+  }, [account_id]);
 
   // Chọn ảnh từ thư viện
   const pickImage = async () => {
@@ -91,16 +105,20 @@ export default function CompleteProfile() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
-        exif: false, // Không cần metadata
+        exif: false,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedImage = result.assets[0];
         setAvatar(selectedImage.uri);
-        console.log('Đã chọn ảnh:', selectedImage.uri);
+        setAvatarBase64(selectedImage.base64 ?? ''); // ✅ Lưu base64
+        setIsUploadingAvatar(false); // ✅ Không cần upload ngay
+
+        console.log('✅ Đã chọn ảnh:', selectedImage.uri);
       }
     } catch (error) {
-      console.error('Lỗi khi chọn ảnh:', error);
+      console.error('❌ Lỗi khi chọn ảnh:', error);
       Alert.alert('Lỗi', 'Không thể chọn ảnh. Vui lòng thử lại.');
     }
   };
@@ -115,7 +133,7 @@ export default function CompleteProfile() {
     }
   };
 
-  // Xử lý submit form
+  // ✅ SỬA: Xử lý submit form
   const handleSubmit = async () => {
     // Reset lỗi trước khi validate
     setErrors({
@@ -143,36 +161,55 @@ export default function CompleteProfile() {
       // Format phone number
       const formattedPhone = RegisterAuthService.formatPhoneNumber(phone.trim());
 
-      // Cập nhật hồ sơ (avatar sẽ được xử lý trong service)
-      await RegisterAuthService.updateUserProfile(id, {
+      // ✅ Tạo hồ sơ với account_id
+      const user = await RegisterAuthService.createUserProfile(account_id, {
         name: fullName.trim(),
         phone: formattedPhone,
         gender,
-        avatar: avatar || undefined
+        avatar: avatarBase64 || undefined // ✅ Gửi base64 thay vì URI
       });
 
-      console.log('Cập nhật hồ sơ thành công cho user ID:', id);
+      console.log('✅ Tạo hồ sơ thành công cho account_id:', account_id);
+      console.log('✅ User ID mới:', user._id);
+
+      // ✅ Lưu account_id và user_id vào AsyncStorage ngay sau khi tạo profile thành công
+      await saveUserData({ key: 'accountId', value: account_id });
+      await saveUserData({ key: 'userId', value: user._id });
+      await saveUserData({ key: 'userName', value: fullName.trim() });
+      await saveUserData({ key: 'userPhone', value: formattedPhone });
+      await saveUserData({ key: 'userGender', value: gender });
+      
+      console.log('✅ Đã lưu account_id và user_id vào AsyncStorage');
+
       Alert.alert(
-        'Thành công', 
-        'Cập nhật hồ sơ thành công',
+        'Thành công',
+        'Tạo hồ sơ thành công',
         [
           {
             text: 'OK',
             onPress: () => {
-              // Chuyển đến màn hình tiếp theo
-              navigation.navigate('Address', { id });
+              // ✅ Chuyển đến màn hình tiếp theo với account_id và user_id
+              navigation.navigate('Address', {
+                account_id: account_id,
+                user_id: user._id,
+                profile_id: user._id,
+                fullName,
+                phone: formattedPhone,
+                gender,
+                avatar: avatar ?? undefined,
+              });
             }
           }
         ]
       );
 
     } catch (error) {
-      console.error('Lỗi khi cập nhật hồ sơ:', error);
-      
+      console.error('❌ Lỗi khi tạo hồ sơ:', error);
+
       if (error instanceof Error) {
         Alert.alert('Lỗi', error.message);
       } else {
-        Alert.alert('Lỗi', 'Không thể cập nhật hồ sơ');
+        Alert.alert('Lỗi', 'Không thể tạo hồ sơ');
       }
     } finally {
       setIsLoading(false);
@@ -186,9 +223,9 @@ export default function CompleteProfile() {
     } else {
       return (
         <View style={styles.avatarPlaceholder}>
-          <Image 
-            source={require('../../../../assets/images/avatarmacdinh.png')} 
-            style={styles.avatar} 
+          <Image
+            source={require('../../../../assets/images/avatarmacdinh.png')}
+            style={styles.avatar}
           />
         </View>
       );
@@ -217,8 +254,8 @@ export default function CompleteProfile() {
       </Text>
 
       {/* Avatar & nút chọn ảnh */}
-      <TouchableOpacity 
-        style={styles.avatarContainer} 
+      <TouchableOpacity
+        style={styles.avatarContainer}
         onPress={pickImage}
         disabled={isLoading || isUploadingAvatar}
       >
@@ -287,8 +324,8 @@ export default function CompleteProfile() {
       </View>
 
       {/* Nút Hoàn thành hồ sơ */}
-      <TouchableOpacity 
-        style={[styles.button, isLoading && styles.buttonDisabled]} 
+      <TouchableOpacity
+        style={[styles.button, isLoading && styles.buttonDisabled]}
         onPress={handleSubmit}
         disabled={isLoading}
       >
