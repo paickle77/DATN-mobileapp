@@ -391,7 +391,67 @@ const Checkout = ({
     setShippingError(false);
   };
 
-  // Handle place order - tạo pending bill với sản phẩm đã chọn
+  // Xử lý thanh toán online - Flow mới: KHÔNG tạo đơn hàng trước
+  const handleOnlinePayment = async () => {
+    try {
+      const { paymentService } = require('../../services/paymentService');
+
+      // Lấy thông tin user hiện tại
+      const currentUser = await getUserData('userAccount');
+      const selectedShipping = shippingMethods.find(m => m.id === selectedShippingMethod);
+      const selectedShippingName = selectedShipping?.name || '';
+      const shippingFee = selectedShipping?.price || 0;
+      
+      // Chuẩn bị dữ liệu đơn hàng (chưa gửi lên server)
+      const billData = {
+        Account_id: currentUser?.id || currentUser?._id || '',
+        address_id: addresses[0]?._id || '',
+        shipping_method: selectedShippingName,
+        payment_method: selectedPaymentName,
+        original_total: originalTotal,
+        total: finalTotal,
+        discount_amount: discountAmount,
+        voucher_code: selectedVoucher?.voucher_id?.code || '',
+        note: note || '',
+        shipping_fee: shippingFee,
+        address_snapshot: addresses[0] || {},
+        items: listCart.map((item: any) => ({
+          product_id: item.product_id._id || item.product_id,
+          size: item.Size || 'M',
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+      };
+
+      // Tạo link thanh toán VNPay (KHÔNG tạo đơn hàng)
+      if (selectedPaymentName.toLowerCase().includes('vnpay')) {
+        console.log('💳 Creating VNPay payment URL only...');
+        const { paymentUrl } = await paymentService.createVNPayPayment(billData);
+
+        // Chuyển đến WebView với dữ liệu để tạo đơn SAU KHI thanh toán thành công
+        navigation.navigate('VNPayWebView', {
+          paymentUrl,
+          billData, // Dữ liệu để tạo đơn hàng sau khi thanh toán thành công
+          sizeQuantityList,
+        });
+      } else {
+        setNotification({
+          visible: true,
+          message: 'Phương thức thanh toán này đang được phát triển',
+          type: 'warning'
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ Error creating online payment:', error);
+      setNotification({
+        visible: true,
+        message: error.message || 'Không thể tạo link thanh toán',
+        type: 'error'
+      });
+    }
+  };
+
+  // Handle place order - phân biệt COD và Online Payment
   const handlePlaceOrder = async () => {
     try {
       if (!selectedShippingMethod) {
@@ -407,7 +467,7 @@ const Checkout = ({
       if (selectedVoucher) {
         console.log('Voucher đã chọn, voucher_user_id:', selectedVoucher._id);
         console.log('Voucher gốc id:', selectedVoucher.voucher_id?._id);
-        setVoucher_User(selectedVoucher._id); // ✅ SET ID CUA VOUCHER_USER
+        setVoucher_User(selectedVoucher._id);
       } else {
         console.log('Chưa chọn voucher');
       }
@@ -445,30 +505,43 @@ const Checkout = ({
       const selectedShippingName = selectedShipping?.name || '';
       const shippingFee = selectedShipping?.price || 0;
 
-      const pendingOrder = await checkoutService.createPendingBill(
-        addresses,
-        listCart,
-        note,
-        selectedShippingName,
-        selectedPaymentName,
-        originalTotal,
-        finalTotal,
-        discountAmount,
-        nameCode,
-        shippingFee, // ✅ phí ship
-      );
-      console.log(`💰 Tổng tiền thanh toán: ${(finalTotal + shippingFee).toLocaleString('vi-VN')} VND`);
+      // Kiểm tra phương thức thanh toán
+      const requiresOnlinePayment = selectedPaymentName.toLowerCase().includes('vnpay') ||
+        selectedPaymentName.toLowerCase().includes('momo') ||
+        selectedPaymentName.toLowerCase().includes('zalopay');
 
-      console.log('✅ Tạo pending bill thành công:', pendingOrder.billId);
-      navigation.navigate('ConfirmationScreen', {
-        pendingOrder,
-        selectedItemIds,
-        sizeQuantityList, // 👈 Thêm dòng này
-        voucher_User: selectedVoucher?._id || '', // ✅ TRUYỀN ID CUA VOUCHER_USER, KHÔNG PHẢI VOUCHER GỐC
-      });
+      if (requiresOnlinePayment) {
+        // ✅ Flow mới: Thanh toán online KHÔNG tạo đơn hàng trước
+        console.log('💳 Online payment - không tạo đơn hàng trước');
+        await handleOnlinePayment();
+      } else {
+        // ✅ COD: Tạo đơn hàng ngay
+        console.log('💵 COD payment - tạo đơn hàng ngay');
+        
+        const pendingOrder = await checkoutService.createPendingBill(
+          addresses,
+          listCart,
+          note,
+          selectedShippingName,
+          selectedPaymentName,
+          originalTotal,
+          finalTotal,
+          discountAmount,
+          nameCode,
+          shippingFee,
+        );
+
+        console.log('✅ COD order created:', pendingOrder.billId);
+        navigation.navigate('ConfirmationScreen', {
+          pendingOrder,
+          selectedItemIds,
+          sizeQuantityList,
+          voucher_User: selectedVoucher?._id || '',
+        });
+      }
 
     } catch (error: any) {
-      console.error('❌ Lỗi tạo đơn hàng:', error);
+      console.error('❌ Lỗi đặt hàng:', error);
       setNotification({
         visible: true,
         message: error?.message || 'Không thể tạo đơn hàng. Vui lòng thử lại.',

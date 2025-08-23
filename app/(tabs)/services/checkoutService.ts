@@ -302,7 +302,7 @@ class CheckoutService {
     try {
       const userData = await getUserData('accountId');
       const accountId = userData
-      await axios.delete(`${BASE_URL}/carts/user/${accountId}`);
+      await axios.delete(`${BASE_URL}/carts/account/${accountId}`);
     } catch (error) {
       console.error('❌ Lỗi khi xóa giỏ hàng:', error);
     }
@@ -375,6 +375,22 @@ class CheckoutService {
     } catch (error) {
       console.error('❌ Lỗi lấy thông tin bill với snapshot:', error);
       throw new Error('Không thể lấy thông tin đơn hàng');
+    }
+  }
+
+  // ✅ THÊM METHOD để giảm số lượng sản phẩm
+  async decreaseProductQuantity(sizeId: string, quantity: number): Promise<void> {
+    try {
+      const payload = {
+        sizeId: sizeId,
+        quantityToDecrease: quantity,
+      };
+
+      const response = await axios.post(`${BASE_URL}/decrease-quantity`, payload);
+      console.log("✔️ Giảm quantity thành công:", response.data);
+    } catch (error: any) {
+      console.error("❌ Giảm quantity thất bại:", error.response?.data || error.message);
+      throw new Error('Không thể cập nhật số lượng sản phẩm');
     }
   }
 }
