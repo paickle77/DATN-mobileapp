@@ -40,7 +40,7 @@ const ChatScreen = () => {
 
   useEffect(() => {
     (async () => {
-      const user = await getUserData("userData");
+      const user = await getUserData("accountId");
       if (user) { 
         setUserId(user);
         socket.emit("join", user);

@@ -139,13 +139,27 @@ class CheckoutService {
 
   async fetchDefaultAddress(): Promise<CheckoutAddress> {
     const userId = await getUserData('userId');
-    const response = await axios.get(`${BASE_URL}/addresses/default/${userId}`);
+    
+    // ✅ FIX: Sử dụng AddressService để có logic xử lý tốt hơn
+    try {
+      const response = await axios.get(`${BASE_URL}/addresses/default/${userId}`);
 
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Không lấy được địa chỉ mặc định');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Không lấy được địa chỉ mặc định');
+      }
+
+      const defaultAddress = response.data.data;
+      console.log('📍 Lấy địa chỉ mặc định thành công:', {
+        id: defaultAddress._id,
+        name: defaultAddress.name,
+        isDefault: defaultAddress.isDefault
+      });
+
+      return defaultAddress;
+    } catch (error) {
+      console.error('❌ Lỗi lấy địa chỉ mặc định:', error);
+      throw new Error('Không thể lấy địa chỉ mặc định');
     }
-
-    return response.data.data;
   }
 
   async createPendingBill(

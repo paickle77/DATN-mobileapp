@@ -9,6 +9,16 @@ interface AddressSectionProps {
 }
 
 const AddressSection: React.FC<AddressSectionProps> = ({ addresses, onPress }) => {
+  // ✅ DEBUG: Log để kiểm tra địa chỉ hiển thị
+  console.log('🏠 AddressSection render:', {
+    addressCount: addresses.length,
+    firstAddress: addresses.length > 0 ? {
+      id: addresses[0]._id,
+      name: addresses[0].name,
+      isDefault: addresses[0].isDefault
+    } : null
+  });
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>

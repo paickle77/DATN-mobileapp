@@ -210,6 +210,7 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
           console.log("✔️ Giảm thành công:", res.data);
         } catch (err) {
           console.error("❌ Giảm thất bại:", err.response?.data || err.message);
+          console.error("❌ Payload sent:", payload); // Log payload for debugging
         }
       }
 

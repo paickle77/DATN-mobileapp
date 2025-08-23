@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,10 +24,14 @@ type RootStackParamList = {
   Review: { productId: string };
   Cart: undefined;
   comment: { productId: string };
+  Detail: { productId: string } | undefined;
 };
+
+type DetailScreenProps = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
 const Detail: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<DetailScreenProps['route']>();
   const [product, setProduct] = useState<Product | null>(null);
   const [sizes, setSizes] = useState<Size[]>([]);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
@@ -53,22 +57,21 @@ const Detail: React.FC = () => {
     type: 'info' as 'success' | 'error' | 'warning' | 'info',
     visible: false,
   });
+  const [notificationKey, setNotificationKey] = useState(0);
 
   const showNotification = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
     setNotification({ message, type, visible: true });
+    setNotificationKey(prev => prev + 1);
   };
 
   useEffect(() => {
+    console.log('🔄 Detail screen mounted');
     initializeData();
   }, []);
 
-  useEffect(() => {
-    calculateTotalPrice();
-  }, [quantity, product, selectedSize, sizes]);
-
-  // Refresh review data when screen comes into focus (after review submission)
   useFocusEffect(
     useCallback(() => {
+      console.log('🔄 Detail screen focused');
       const refreshReviews = async () => {
         const productId = await getUserData('productID');
         if (productId && reviewsLoaded) {
@@ -83,7 +86,14 @@ const Detail: React.FC = () => {
   const initializeData = async () => {
     try {
       setLoading(true);
-      const productId = await getUserData('productID');
+      
+      // Lấy productId từ route params hoặc từ storage
+      let productId = route.params?.productId;
+      if (!productId) {
+        productId = await getUserData('productID');
+      }
+      
+      console.log('🔄 Detail screen loading productID:', productId);
       
       if (!productId) {
         setError('Không tìm thấy ID sản phẩm');
@@ -104,6 +114,7 @@ const Detail: React.FC = () => {
       
     } catch (err) {
       setError('Lỗi khi tải dữ liệu');
+      console.error('❌ Error in initializeData:', err);
     } finally {
       setLoading(false);
     }
@@ -235,30 +246,21 @@ const Detail: React.FC = () => {
         quantity,
         sizeData.quantity
       );
+      
       if (result.exceeded) {
-        showNotification('Không thể thêm vào giỏ hàng. Số lượng trong giỏ hàng vượt quá số lượng trong kho.', 'error');
+        showNotification(
+          'Không thể thêm vào giỏ hàng. Số lượng trong giỏ hàng vượt quá số lượng trong kho.',
+          'error'
+        );
+        
+        // Giảm quantity về tồn kho tối đa
+        setQuantity(sizeData.quantity);
       } else {
-if (result.exceeded) {
-  showNotification(
-    'Không thể thêm vào giỏ hàng. Số lượng trong giỏ hàng vượt quá số lượng trong kho.',
-    'error'
-  );
-
-  // Giảm quantity về tồn kho tối đa
-  const sizeData = sizes.find(s => s.size === selectedSize);
-  if (sizeData) {
-    setQuantity(sizeData.quantity); // gán về tồn kho hiện tại
-  }
-  return; // thoát hẳn, không chạy tiếp
-}
- else {
-          showNotification(
-            `Đã thêm ${quantity} sản phẩm vào giỏ hàng`,
-            'success'
-          );
-        }
+        showNotification(
+          `Đã thêm ${quantity} sản phẩm vào giỏ hàng`,
+          'success'
+        );
       }
-   
 
     } catch (error) {
       showNotification('Không thể thêm vào giỏ hàng. Vui lòng thử lại.', 'error');
@@ -588,12 +590,13 @@ if (result.exceeded) {
       </View>
       
       {notification.visible && (
-        <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center', zIndex: 999 }}>
+        <View style={styles.notificationContainer}>
           <NotificationComponent
-            key={notification.message + notification.type}
+            key={notificationKey}
             message={notification.message}
             type={notification.type}
             visible={notification.visible}
+            duration={1000}
             onHide={() => setNotification(prev => ({ ...prev, visible: false }))}
             style={{ width: '90%' }}
           />
@@ -1039,5 +1042,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  notificationContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 999,
+    pointerEvents: 'none', // Cho phép tương tác qua notification
+  },
 });
+
 export default Detail;

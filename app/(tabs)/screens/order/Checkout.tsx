@@ -177,21 +177,26 @@ const Checkout = ({
 
           // 2. Khi quay lại từ AddressList, load địa chỉ đã chọn
           const savedAddressId = await getUserData('selectedAddressId');
-          if (savedAddressId && addresses.length > 0) {
-            // Kiểm tra xem địa chỉ hiện tại có đúng với ID đã lưu không
-            if (addresses[0]._id !== savedAddressId) {
-              console.log('📍 Địa chỉ đã thay đổi, load địa chỉ mới:', savedAddressId);
+          console.log('📍 Checking savedAddressId:', savedAddressId, 'Current addresses:', addresses.length);
+          
+          if (savedAddressId) {
+            // ✅ FIX: Luôn kiểm tra và load lại địa chỉ đã chọn từ storage
+            if (addresses.length === 0 || addresses[0]._id !== savedAddressId) {
+              console.log('📍 Địa chỉ cần được load/cập nhật:', savedAddressId);
               const allAddresses: CheckoutAddress[] = await checkoutService.fetchAllAddresses();
               const savedAddress = allAddresses.find(addr => addr._id === savedAddressId);
               
               if (savedAddress) {
-                console.log('📍 Load địa chỉ đã chọn:', savedAddress);
+                console.log('📍 Load địa chỉ đã chọn:', savedAddress._id, savedAddress.name);
                 setAddresses([savedAddress]);
                 return;
               } else {
-                // Địa chỉ đã lưu không còn tồn tại, xóa khỏi storage
+                console.log('📍 Địa chỉ đã lưu không còn tồn tại, xóa khỏi storage');
                 await removeUserDataByKey('selectedAddressId');
               }
+            } else {
+              console.log('📍 Địa chỉ hiện tại đã đúng với savedAddressId');
+              return;
             }
           }
 
@@ -200,6 +205,9 @@ const Checkout = ({
             console.log('📍 Lần đầu vào, load địa chỉ mặc định');
             const defaultAddress = await checkoutService.fetchDefaultAddress();
             setAddresses([defaultAddress]);
+            // ✅ Lưu địa chỉ mặc định vào storage để AddressList có thể hiển thị đúng
+            await saveUserData({ key: 'selectedAddressId', value: defaultAddress._id });
+            console.log('📍 Đã lưu địa chỉ mặc định vào storage:', defaultAddress._id);
           }
           
         } catch (err) {
@@ -216,7 +224,7 @@ const Checkout = ({
       };
 
       loadAddressOnFocus();
-    }, [route.params?.selectedAddress, addresses.length])
+    }, [route.params?.selectedAddress]) // ✅ FIX: Chỉ depend vào route params, không depend vào addresses.length
   );
 
   // Fetch voucher data

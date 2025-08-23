@@ -97,6 +97,22 @@ export class AddressService {
     }
   }
 
+  // ✅ THÊM: Lấy địa chỉ mặc định theo userId
+  static async getDefaultAddressByUserId(userId: string): Promise<Address | null> {
+    try {
+      const response = await axios.get<ApiResponse<Address>>(`${BASE_URL}/addresses/default/${userId}`);
+      
+      if (!response.data.success) {
+        return null;
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Lỗi lấy địa chỉ mặc định:', error);
+      return null;
+    }
+  }
+
   // Cập nhật địa chỉ
   static async updateAddress(id: string, addressData: Partial<Address>): Promise<Address> {
     try {
