@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
 interface NotificationProps {
@@ -16,24 +16,24 @@ const NotificationComponent = ({
   type,
   visible,
   onHide,
-  duration = 4000,
+  duration = 2500,
   style
 }: NotificationProps) => {
-  const slideAnim = new Animated.Value(0);
-  const opacityAnim = new Animated.Value(0);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      // Show animation
+      // Show animation - nhanh hơn
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 1,
-          duration: 150,
+          duration: 200,
           useNativeDriver: true,
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 150,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start();
@@ -51,12 +51,12 @@ const NotificationComponent = ({
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start(() => {

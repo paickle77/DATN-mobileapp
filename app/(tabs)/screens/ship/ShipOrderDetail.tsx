@@ -28,9 +28,6 @@ const screenWidth = Dimensions.get('window').width;
     const navigation = useNavigation();
     const route = useRoute();
     const { orderId } = route.params as { orderId: string };
-    
-    console.log('Order ID:', orderId);
-    
     const [order, setOrder] = useState<OrderDetail | null>(null);
     const [items, setItems] = useState<OrderItem[]>([]);
     const [shipper, setShipper] = useState<Shipper | null>(null);
@@ -51,7 +48,6 @@ const screenWidth = Dimensions.get('window').width;
       try {
         setLoading(true);
         const data = await fetchOrderDetailLikeScreen(orderId);
-
         setOrder(data.order);
         setProofImage(data.proofImage || null);
         setShipper(data.shipper || null);
@@ -95,7 +91,7 @@ const screenWidth = Dimensions.get('window').width;
   const handleAcceptOrder = async () => {
     if (!order) return;
 
-    if (isOnline !== 'online') {
+    if ((isOnline as OnlineStatus) === 'offline') {
       Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }

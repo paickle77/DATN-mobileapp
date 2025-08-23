@@ -5,11 +5,10 @@ import {
 import React, { useEffect, useRef } from 'react';
 import {
   AppState,
-  AppStateStatus,
   Image,
   StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 // Các màn hình Ship
@@ -92,35 +91,30 @@ const CustomShipTabBar = ({ state, descriptors, navigation }: BottomTabBarProps)
 
 export default function ShipTabNavigator() {
   const appState = useRef(AppState.currentState);
+ useEffect(() => {
+  const subscription = AppState.addEventListener("change", async (nextAppState) => {
+    const shipperId = await getUserData("shipperID");
+    if (!shipperId) return;
 
-  useEffect(() => {
-    let shipperId: string | null = null;
+    if (nextAppState === "background" || nextAppState === "inactive") {
+      // App bị ẩn hoặc vuốt bỏ → set offline
+      await axios.post(`${BASE_URL}/shippers/updateStatus`, {
+        _id: shipperId,
+        is_online: "offline",
+      });
+    } else if (nextAppState === "active") {
+      // App bật lại → set online
+      await axios.post(`${BASE_URL}/shippers/updateStatus`, {
+        _id: shipperId,
+        is_online: "online",
+      });
+    }
+  });
 
-    // Lấy ID khi mount
-    (async () => {
-      const id = await getUserData('shipperID');
-      shipperId = id;
-    })();
-
-    const subscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
-      if (appState.current.match(/active/) && nextAppState.match(/background|inactive/)) {
-        if (shipperId) {
-          try {
-            await axios.post(`${BASE_URL}/shippers/updateStatus`, {
-              _id: shipperId,
-              is_online: 'offline',
-            });
-            console.log('📴 App chuyển offline');
-          } catch (error) {
-            console.error('❌ Lỗi set offline:', error);
-          }
-        }
-      }
-      appState.current = nextAppState;
-    });
-
-    return () => subscription.remove();
-  }, []);
+  return () => {
+    subscription.remove();
+  };
+}, []);
 
   
   

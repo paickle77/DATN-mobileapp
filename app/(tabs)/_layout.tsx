@@ -27,7 +27,6 @@ import ConfirmationScreen from './screens/order/confirmationScreen';
 import { default as OderDetails, default as OrderDetails } from './screens/order/OrderDetails';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
-import CategoryScreen from './screens/product/CategoryScreen';
 import CommentScreen from './screens/product/Comment';
 import Detail from './screens/product/Detail';
 import Home from './screens/product/Home';
@@ -90,7 +89,6 @@ export default function TabLayout() {
       {/* Screens có thể được navigate từ tab navigator */}
       <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
-      <Stack.Screen name="Category" component={CategoryScreen} options={{ headerShown: false }} />
 
       {/* Settings Screen - được navigate từ Profile */}
       <Stack.Screen name="Settings" component={Settings} options={{ headerShown: false }} />

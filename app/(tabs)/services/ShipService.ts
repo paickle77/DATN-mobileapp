@@ -213,13 +213,11 @@ export const fetchOrderDetailLikeScreen = async (orderId: string) => {
   const order = bills.find((b) => b._id === orderId) ?? null;
 
 
-  let shipper: Shipper | null = null;
-  let is_online: OnlineStatus = 'offline';
-  if (order?.shipper_id) {
-    const shippers = await fetchAllShippers();
-    shipper = shippers.find((s) => s._id === order.shipper_id) ?? null;
-    if (shipper?.is_online) is_online = shipper.is_online;
-  }
+  const shipper = await fetchShipperInfo();
+  const is_online: OnlineStatus = shipper?.is_online || 'offline';
+  
+
+  
 
   let user: User | null = null;
   if ((order as any)?.user_id) {
@@ -249,7 +247,6 @@ export const fetchOrderItemsLikeScreen = async (
 ): Promise<OrderItem[]> => {
   const allItems = await fetchBillDetails();
   const filtered = allItems.filter((i) => i.bill_id && i.bill_id._id === orderId);
-  console.log('All Items:', filtered);
   return filtered;
 };
 

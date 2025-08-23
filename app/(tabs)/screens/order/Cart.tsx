@@ -64,43 +64,44 @@ export default function CartScreen() {
 
     try {
       const [cartRes, sizeRes] = await Promise.all([
-        axios.get(`${BASE_URL}/GetAllCarts`),
+        axios.get(`${BASE_URL}/GetCartByAccount/${accountId}`), 
         axios.get(`${BASE_URL}/sizes`)
       ]);
 
       const listCart = cartRes.data.data;
       const sizeList = sizeRes.data.data;
 
+      // Log dữ liệu cart để debug
+      console.log("🛒 listCart raw:", listCart);
+
       const formattedData = listCart
-        .filter((item: any) => item.product_id)
+        .filter((item: any) => item.product_id && item.size_id)
         .map((item: any) => {
-          const sizeInfo = sizeList.find((s: any) =>
-            item.size_id &&
-            (s._id === item.size_id._id ||
-              (s.size === item.size_id.size && s.product_id === item.product_id._id))
-          );
-        
-          const priceIncrease = sizeInfo?.price_increase || 0;
-          const basePrice = item.product_id.discount_price || item.product_id.price;
-          const finalPrice = basePrice + priceIncrease;
+          // Tính giá chuẩn theo yêu cầu
+          const basePrice =
+            item.product_id.discount_price > 0
+              ? item.product_id.discount_price
+              : item.product_id.price;
+          const priceIncrease =
+            sizeList.find((s: any) => s._id === item.size_id._id)?.price_increase || 0;
 
           return {
             id: item._id,
             title: item.product_id.name,
             Account_id: item.Account_id,
-            Size: item.size_id?.size,
-            price: finalPrice,
+            Size: item.size_id ? item.size_id.size : '',
+            price: basePrice + priceIncrease,
             image: item.product_id.image_url,
             quantity: item.quantity,
             product_id: item.product_id,
-            selected: false, // Mặc định không được chọn
-            size_id:item.size_id._id,
-            quantitySize:item.size_id.quantity
+            selected: false,
+            size_id: item.size_id ? item.size_id._id : '',
+            quantitySize: item.size_id ? item.size_id.quantity : 0
           };
         });
-      const userCartItems = formattedData.filter((item: any) => item.Account_id === accountId);
-      setList(userCartItems);
-      console.log("✅ Dữ liệu giỏ hàng theo user:", userCartItems);
+
+      setList(formattedData);
+      console.log("✅ Dữ liệu giỏ hàng của user:", formattedData);
 
     } catch (error) {
       console.log("❌ Lỗi API:", error);

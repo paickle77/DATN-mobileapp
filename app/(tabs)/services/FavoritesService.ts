@@ -28,14 +28,28 @@ export interface FavoriteWithNamesResponse {
 }
 
 class FavoriteService {
-  // ✅ Lấy danh sách yêu thích theo account
-  async getFavoritesByAccount(): Promise<FavoriteWithNamesResponse> {
-    const user = await getUserData('userData');
-    const accountId = user?._id || user?.accountId;
-    if (!accountId) throw new Error('Không tìm thấy accountId');
+  // ✅ Lấy danh sách yêu thích theo account ID
+  async getFavoritesByAccount(): Promise<any[]> {
+    try {
+      const accountId = await getUserData('accountId');
+      console.log('Account ID trong getFavoritesByAccount:', accountId);
+      if (!accountId) throw new Error('Không tìm thấy accountId');
 
-    const response = await axios.get(`${BASE_URL}/favorites/account/${accountId}`);
-    return response.data;
+      const response = await axios.get(`${BASE_URL}/favorites/account/${accountId}`);
+      const data = response.data.data || [];
+
+      // Lọc bỏ các item có product_id null hoặc không hợp lệ
+      const validFavorites = data.filter((item: any) => 
+        item.product_id && 
+        typeof item.product_id === 'object' && 
+        item.product_id._id
+      );
+
+      return validFavorites;
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách yêu thích:', error);
+      throw error;
+    }
   }
 
   // ✅ Lấy toàn bộ (nếu là admin)
@@ -53,3 +67,4 @@ class FavoriteService {
 
 export const favoriteService = new FavoriteService();
 export default favoriteService;
+
