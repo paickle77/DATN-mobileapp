@@ -97,26 +97,62 @@ class VoucherService {
   async getAllVouchers(): Promise<VoucherResponse> {
     try {
       const response = await axios.get(`${BASE_URL}/vouchers`);
-      console.log('✅ Lấy danh sách voucher thành công:', response.data);
-      return response.data;
+      let vouchers: Voucher[] = response.data.data;
+
+      // Lọc bỏ voucher đã hết lượt sử dụng
+      vouchers = vouchers.filter(
+        (voucher) => voucher.used_count < voucher.quantity
+      );
+
+      console.log('✅ Lấy danh sách voucher thành công:', vouchers);
+      return { ...response.data, data: vouchers };
     } catch (error: any) {
       console.error('❌ Lỗi khi lấy danh sách voucher:', error);
       throw error;
     }
   }
 
+
   // Lấy danh sách voucher đã lưu theo account
-  async getUserVouchers(): Promise<UserVoucherResponse> {
-    try {
-      const accountId = await this.getAccountId();
-      console.log('🔍 Đang lấy danh sách voucher đã save của account:', accountId);
-      const response = await axios.get(`${BASE_URL}/voucher_users/account/${accountId}`);
-      return response.data;
+  // Lấy danh sách voucher đã lưu theo account
+async getUserVouchers(): Promise<UserVoucherResponse> {
+  try {
+    const accountId = await this.getAccountId();
+    console.log('🔍 Đang lấy danh sách voucher đã save của account:', accountId);
+    const response = await axios.get(`${BASE_URL}/voucher_users/account/${accountId}`);
+    let userVouchers = response.data.data as UserVoucher[];
+
+    const res = await axios.get(`${BASE_URL}/vouchers`);
+    let vouchers: Voucher[] = res.data.data;
+
+    // 👉 Lọc voucher_user: loại bỏ những cái đã hết hạn, hết lượt, hoặc đã dùng
+    const now = new Date();
+      userVouchers = userVouchers.filter((uv) => {
+        const voucher = vouchers.find((v) => v._id === uv.voucher_id);
+        if (!voucher) return false;
+
+        const isExpired = new Date(voucher.end_date) < now;
+        const isOutOfQuantity = voucher.used_count >= voucher.quantity;
+        const isUsed = uv.status === "used";
+
+        return !(isExpired || isOutOfQuantity || isUsed);
+      });
+
+      return {
+        success: true,
+        message: "Lấy danh sách voucher đã lưu thành công",
+        data: userVouchers,
+      };
     } catch (error: any) {
       console.error('❌ Lỗi khi lấy danh sách voucher account:', error);
-      throw error;
+      return {
+        success: false,
+        message: "Không thể lấy danh sách voucher",
+        data: [],
+      };
     }
   }
+
 
   // Lấy voucher chưa lưu
   async getAvailableVouchers(): Promise<VoucherResponse> {
@@ -149,34 +185,38 @@ class VoucherService {
   }
 
   // Lưu voucher vào danh sách với kiểm tra trùng lặp
-  async saveVoucherToList(voucher_id: string): Promise<any> {
-    try {
-      const accountId = await this.getAccountId();
-
-      const payload = {
-        Account_id: accountId,
-        voucher_id
-      };
-
-      console.log('💾 Đang lưu voucher:', payload);
-      const response = await axios.post(`${BASE_URL}/voucher_users/save`, payload);
-      console.log('✅ Lưu voucher thành công:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('❌ Lỗi khi lưu voucher:', error);
-      
-      // Xử lý các lỗi cụ thể
-      if (error.response?.status === 409) {
-        throw new Error('Bạn đã lưu voucher này rồi!');
-      } else if (error.response?.status === 400) {
-        throw new Error(error.response.data.message || 'Voucher không hợp lệ');
-      } else if (error.response?.status === 404) {
-        throw new Error('Voucher không tồn tại hoặc đã bị vô hiệu hóa');
-      }
-      
-      throw error.response?.data || error;
+  async saveVoucherToList(voucher: Voucher): Promise<any> {
+  try {
+    // Kiểm tra trước khi gọi API
+    if (voucher.used_count >= voucher.quantity) {
+      throw new Error('Voucher này đã hết lượt sử dụng!');
     }
+
+    const accountId = await this.getAccountId();
+    const payload = {
+      Account_id: accountId,
+      voucher_id: voucher._id
+    };
+
+    console.log('💾 Đang lưu voucher:', payload);
+    const response = await axios.post(`${BASE_URL}/voucher_users/save`, payload);
+    console.log('✅ Lưu voucher thành công:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Lỗi khi lưu voucher:', error);
+
+    if (error.response?.status === 409) {
+      throw new Error('Bạn đã lưu voucher này rồi!');
+    } else if (error.response?.status === 400) {
+      throw new Error(error.response.data.message || 'Voucher không hợp lệ');
+    } else if (error.response?.status === 404) {
+      throw new Error('Voucher không tồn tại hoặc đã bị vô hiệu hóa');
+    }
+
+    throw error.response?.data || error;
   }
+}
+
 
   // Xoá voucher đã lưu
   async removeVoucherFromList(userVoucherId: string): Promise<any> {

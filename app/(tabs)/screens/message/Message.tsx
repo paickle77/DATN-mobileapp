@@ -42,7 +42,7 @@ const ChatScreen = () => {
     (async () => {
       const user = await getUserData("accountId");
       if (user) { 
-        setUserId(user);
+        setUserId(user);  
         socket.emit("join", user);
 
         const res = await axios.get(`${BASE_URL}/messages/${user}`);

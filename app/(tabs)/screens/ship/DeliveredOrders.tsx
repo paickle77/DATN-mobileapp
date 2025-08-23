@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import axios from 'axios';
 import { useFocusEffect } from 'expo-router';
 import moment from 'moment';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -15,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BASE_URL } from '../../services/api';
 import {
   assignOrderToShipper,
   fetchAllBills,
@@ -102,7 +104,7 @@ const DeliveredOrders = () => {
 
   const fetchUserData = async () => {
     try {
-      const userId = await getUserData('userData');
+      const userId = await getUserData('accountId');
       const response = await axios.get(`${BASE_URL}/shippers`);
       const userData = response.data.data;
       const currentUser = userData.find((u: Shipper) => u.account_id === userId);
