@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import notificationService from './NotificationService'; // Đường dẫn tới file NotificationService
+import notificationService from '../../services/NotificationService'; // Đường dẫn tới file NotificationService
 export default function NotificationDemo() {
   useEffect(() => {
     // Khởi tạo notification (chỉ 1 lần)

@@ -64,12 +64,47 @@ const AddressListScreen = () => {
     try {
       setIsLoading(true);
 
-
       const response = await axios.get(`${BASE_URL}/GetAllAddress`);
       const allData = response.data?.data ?? [];
       const filtered = allData.filter((item: Address) => item.user_id?._id === userId);
 
       setAddresses(filtered);
+      
+      // ✅ FIX: Chỉ tự động chọn địa chỉ mặc định khi chưa có selectedAddressId
+      if (mode === 'select' && !selectedAddressId) {
+        const savedAddressId = await getUserData('selectedAddressId');
+        
+        if (savedAddressId) {
+          // Nếu có savedAddressId, kiểm tra địa chỉ này có tồn tại không
+          const savedAddress = filtered.find(addr => addr._id === savedAddressId);
+          if (savedAddress) {
+            console.log('📍 Sử dụng địa chỉ đã lưu:', savedAddressId);
+            setSelectedAddressId(savedAddressId);
+          } else {
+            // Địa chỉ đã lưu không còn tồn tại, chọn mặc định
+            const defaultAddress = filtered.find(addr => 
+              addr.isDefault === true || addr.isDefault === 'true'
+            );
+            
+            if (defaultAddress) {
+              console.log('📍 Địa chỉ đã lưu không tồn tại, chọn mặc định:', defaultAddress._id);
+              setSelectedAddressId(defaultAddress._id);
+              await saveUserData({ key: 'selectedAddressId', value: defaultAddress._id });
+            }
+          }
+        } else {
+          // Chưa có savedAddressId, tự động chọn địa chỉ mặc định
+          const defaultAddress = filtered.find(addr => 
+            addr.isDefault === true || addr.isDefault === 'true'
+          );
+          
+          if (defaultAddress) {
+            console.log('📍 Tự động chọn địa chỉ mặc định:', defaultAddress._id);
+            setSelectedAddressId(defaultAddress._id);
+            await saveUserData({ key: 'selectedAddressId', value: defaultAddress._id });
+          }
+        }
+      }
     } catch (error) {
       console.error('❌ Lỗi lấy địa chỉ:', error);
       Alert.alert('Lỗi', 'Không thể tải địa chỉ. Vui lòng thử lại sau.');
@@ -81,7 +116,13 @@ const AddressListScreen = () => {
   const onRefresh = async () => {
     if (!currentUserId) return;
     setRefreshing(true);
+    // ✅ FIX: Giữ nguyên selectedAddressId khi refresh
+    const currentSelectedId = selectedAddressId;
     await fetchAddresses(currentUserId);
+    // Restore selectedAddressId sau khi refresh
+    if (currentSelectedId && mode === 'select') {
+      setSelectedAddressId(currentSelectedId);
+    }
     setRefreshing(false);
   };
 
@@ -101,17 +142,18 @@ const AddressListScreen = () => {
       }
 
       setCurrentUserId(uid); // ✅ Lưu vào state
-      await fetchAddresses(uid);
 
-      // ✅ Load địa chỉ đã chọn trước đó nếu đang ở mode select
+      // ✅ FIX: Load selectedAddressId trước khi fetch addresses
       if (mode === 'select') {
-        const selectedAddressId = await getUserData('selectedAddressId');
-        console.log('📍 Địa chỉ đã chọn trước đó:', selectedAddressId);
+        const savedAddressId = await getUserData('selectedAddressId');
+        console.log('📍 Địa chỉ đã chọn trước đó:', savedAddressId);
         
-        if (selectedAddressId) {
-          setSelectedAddressId(selectedAddressId);
+        if (savedAddressId) {
+          setSelectedAddressId(savedAddressId);
         }
       }
+
+      await fetchAddresses(uid);
     };
 
     init();
@@ -174,6 +216,8 @@ const AddressListScreen = () => {
     // Lưu ID địa chỉ đã chọn để Checkout có thể load lại
     await saveUserData({ key: 'selectedAddressId', value: address._id });
     
+    console.log('📍 Đã lưu selectedAddressId:', address._id);
+    
     // Quay lại màn hình trước (Checkout) với địa chỉ được chọn
     setTimeout(() => {
       navigation.goBack();
@@ -192,14 +236,24 @@ const AddressListScreen = () => {
 
   const renderAddressItem = ({ item }: { item: Address }) => {
     const isDefault = item.isDefault === true || item.isDefault === 'true';
-    const isSelected = selectedAddressId === item._id;
+    // ✅ FIX: Sử dụng selectedAddressId từ state thay vì so sánh trực tiếp
+    const isSelected = mode === 'select' && selectedAddressId === item._id;
+
+    console.log('🔍 Debug render address:', {
+      id: item._id,
+      name: item.name,
+      isDefault,
+      isSelected,
+      selectedAddressId,
+      mode
+    });
 
     return (
       <TouchableOpacity
         style={[
           styles.addressItem,
           mode === 'select' && styles.selectModeItem,
-          mode === 'select' && isSelected && styles.selectedItem
+          isSelected && styles.selectedItem
         ]}
         onPress={mode === 'select' ? () => handleSelectAddress(item) : undefined}
         activeOpacity={mode === 'select' ? 0.7 : 1}

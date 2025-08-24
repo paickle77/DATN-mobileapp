@@ -27,7 +27,7 @@ import ConfirmationScreen from './screens/order/confirmationScreen';
 import { default as OderDetails, default as OrderDetails } from './screens/order/OrderDetails';
 import OrderHistoryScreen from './screens/order/OrderHistoryScreen';
 import PaymentMethods from './screens/order/PaymentMethods';
-import CategoryScreen from './screens/product/CategoryScreen';
+import VNPayWebView from './screens/payment/VNPayWebView';
 import CommentScreen from './screens/product/Comment';
 import Detail from './screens/product/Detail';
 import Home from './screens/product/Home';
@@ -44,6 +44,12 @@ import DeliveredOrders from './screens/ship/DeliveredOrders';
 import ShipHome from './screens/ship/ShipHome';
 import OrderDetailPage from './screens/ship/ShipOrderDetail';
 import ShipProfile from './screens/ship/ShipProfile';
+// cách ẩn các cảnh báo app expo
+import { LogBox } from "react-native";
+LogBox.ignoreLogs([
+  "expo-notifications" // Ẩn cảnh báo này
+]);
+LogBox.ignoreAllLogs();
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const Stack = createNativeStackNavigator();
@@ -78,6 +84,7 @@ export default function TabLayout() {
       <Stack.Screen name="NewPassword" component={NewPassword} options={{ headerShown: false }} />
       <Stack.Screen name="CompleteProfile" component={CompleteProfile} options={{ headerShown: false }} />
       <Stack.Screen name="Checkout" component={Checkout} options={{ headerShown: false }} />
+      <Stack.Screen name="VNPayWebView" component={VNPayWebView} options={{ headerShown: false }} />
       <Stack.Screen name="CartScreen" component={CartScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CategoryItem" component={CategoryItem} options={{ headerShown: false }} />
@@ -90,7 +97,6 @@ export default function TabLayout() {
       {/* Screens có thể được navigate từ tab navigator */}
       <Stack.Screen name="category" component={CategoryItem} options={{ headerShown: false }} />
       <Stack.Screen name="Detail" component={Detail} options={{ headerShown: false }} />
-      <Stack.Screen name="Category" component={CategoryScreen} options={{ headerShown: false }} />
 
       {/* Settings Screen - được navigate từ Profile */}
       <Stack.Screen name="Settings" component={Settings} options={{ headerShown: false }} />

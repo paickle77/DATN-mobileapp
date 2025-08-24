@@ -7,7 +7,7 @@ import AddPaymentModal from '../../component/AddPaymentModal';
 
 type PaymentMethod = {
   id: string;
-  type: 'momo' | 'VNPAY' | 'ZaloPay' | 'card';
+  type: 'momo' | 'vnpay' | 'zalopay' | 'card';
   name: string;
   accountNumber?: string;
   cardNumber?: string;
@@ -48,26 +48,23 @@ const PaymentMethodsScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     {
-      id: '1',
-      type: 'momo',
-      name: 'Ví MoMo',
-      accountNumber: '0987654321',
+      id: 'vnpay-sandbox',
+      type: 'vnpay',
+      name: 'VNPAY - Sandbox',
+      accountNumber: 'sandbox',
       isDefault: false,
     },
     {
-      id: '2',
-      type: 'VNPAY',
-      name: 'VNPAY',
-      accountNumber: '0123456789',
+      id: 'momo-sandbox',
+      type: 'momo',
+      name: 'Ví MoMo - Test',
+      accountNumber: 'test-account',
       isDefault: false,
     },
   ]);
 
-
-  
-
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedType, setSelectedType] = useState<'momo' | 'VNPAY' | 'ZaloPay' | 'card'>('momo');
+  const [selectedType, setSelectedType] = useState<'momo' | 'vnpay' | 'zalopay' | 'card'>('momo');
   const [accountNumber, setAccountNumber] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -83,13 +80,13 @@ const PaymentMethodsScreen = () => {
         return <View style={[styles.paymentIcon, { backgroundColor: '#D82D8B' }]}>
           <Text style={styles.iconText}>M</Text>
         </View>;
-      case 'VNPAY':
+      case 'vnpay':
+        return <View style={[styles.paymentIcon, { backgroundColor: '#1E88E5' }]}>
+          <Text style={styles.iconText}>V</Text>
+        </View>;
+      case 'zalopay':
         return <View style={[styles.paymentIcon, { backgroundColor: '#0068FF' }]}>
           <Text style={styles.iconText}>Z</Text>
-        </View>;
-      case 'ZaloPay':
-        return <View style={[styles.paymentIcon, { backgroundColor: '#1BA8FF' }]}>
-          <Text style={styles.iconText}>V</Text>
         </View>;
       case 'card':
         return <View style={[styles.paymentIcon, { backgroundColor: '#4CAF50' }]}>
@@ -103,8 +100,8 @@ const PaymentMethodsScreen = () => {
   const getPaymentName = (type: string) => {
     switch (type) {
       case 'momo': return 'Ví MoMo';
-      case 'VNPAY': return 'VNPAY';
-      case 'ZaloPay': return 'ZaloPay';
+      case 'vnpay': return 'VNPAY';
+      case 'zalopay': return 'ZaloPay';
       case 'card': return 'Thẻ tín dụng/ghi nợ';
       default: return '';
     }

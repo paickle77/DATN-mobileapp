@@ -224,7 +224,7 @@ const ProfileScreen = () => {
                 />
                 <MenuItem 
                     icon={<Feather name="message-circle" size={22} color="#222" />} 
-                    label="Trò chuyện với admin"
+                    label="Hỗ trợ"
                     onPress={navigateToMessage}
                 />
                 </View>

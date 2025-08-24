@@ -90,6 +90,7 @@ const ShipHome: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       loadShipperInfo();
+      loadTodayStats();
     }, [])
   );
 
@@ -204,6 +205,10 @@ const ShipHome: React.FC = () => {
 
   const toggleOnlineStatus = async () => {
     const newStatus: OnlineStatus = isOnline === 'offline' ? 'online' : 'offline';
+    if (isOnline === 'busy') {
+      Alert.alert('Thông báo', 'Bạn đang bận, không thể chuyển trạng thái.');
+      return;
+    }
     try {
       await updateShipperStatus(shipperInfo?._id || '', newStatus);
       setIsOnline(newStatus);

@@ -49,7 +49,7 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
     setSavingVouchers(prev => new Set(prev).add(v._id));
 
     try {
-      await voucherService.saveVoucherToList(v._id);
+      await voucherService.saveVoucherToList(v);
       Alert.alert('Thành công', '✅ Đã lưu voucher!', [
         { text: 'OK', style: 'default' }
       ]);

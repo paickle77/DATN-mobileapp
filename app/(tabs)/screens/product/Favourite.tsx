@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
@@ -17,29 +18,33 @@ import { getUserData } from '../utils/storage';
 const { width } = Dimensions.get('window');
 const itemWidth = (width - 48) / 2;
 
+type RootStackParamList = {
+  Detail: { productId: string } | undefined;
+};
+
 const FavoritesScreen: React.FC = () => {
-  const categories = ['Tất cả', 'Bánh bông lan', 'Bánh quy', 'Bánh kem', 'Flan', 'Quy'];
   const [loading, setLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [userProducts, setUserProducts] = useState<any[]>([]);
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
         setLoading(true);
         try {
-          const user = await getUserData('accountId');
-          const accountId = user
-          console.log('User ID yêu thích:', accountId);
-
-          const result = await favoriteAuthService.getAll();
-          const matched = result.data.filter((item: any) => item.Account_id === accountId);
-          const products = matched.map((item: any) => item.product_id);
-          setUserProducts(products);
+          const favoriteItems = await favoriteAuthService.getFavoritesByAccount();
+          console.log('Favorites data:', favoriteItems);
+          
+          // Lấy danh sách sản phẩm từ favorite items và validate
+          const validProducts = favoriteItems
+            .map((item: any) => item.product_id)
+            .filter((product: any) => product && product._id && product.name);
+          
+          setUserProducts(validProducts);
         } catch (error) {
           console.error('❌ Lỗi khi gọi API:', error);
-          Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+          Alert.alert('Lỗi', 'Có lỗi xảy ra khi tải danh sách yêu thích. Vui lòng thử lại.');
+          setUserProducts([]);
         } finally {
           setLoading(false);
         }
@@ -50,8 +55,7 @@ const FavoritesScreen: React.FC = () => {
 
   const toggleFavorite = async (productId: string): Promise<void> => {
     try {
-      const user = await getUserData('accountId');
-      const accountId = user
+      const accountId = await getUserData('accountId');
       if (!accountId) {
         Alert.alert('Lỗi', 'Không xác định được người dùng');
         return;
@@ -77,17 +81,6 @@ const FavoritesScreen: React.FC = () => {
     }
   };
 
-  const filteredItems = selectedCategory === 'Tất cả'
-    ? userProducts
-    : userProducts.filter((item: any) => {
-        if (selectedCategory === 'Bánh kem') return item.name.toLowerCase().includes('kem');
-        if (selectedCategory === 'Bánh quy') return item.name.toLowerCase().includes('quy');
-        if (selectedCategory === 'Bánh bông lan') return item.name.toLowerCase().includes('bông lan');
-        if (selectedCategory === 'Flan') return item.name.toLowerCase().includes('flan');
-        if (selectedCategory === 'Quy') return item.name.toLowerCase().includes('quy');
-        return false;
-      });
-
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -95,46 +88,47 @@ const FavoritesScreen: React.FC = () => {
     }).format(price);
   };
 
-  const renderCategoryItem = ({ item }: { item: string }) => (
-    <TouchableOpacity
-      style={[styles.categoryButton, selectedCategory === item && styles.selectedCategoryButton]}
-      onPress={() => setSelectedCategory(item)}
-    >
-      <Text
-        style={[styles.categoryText, selectedCategory === item && styles.selectedCategoryText]}
-      >
-        {item}
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderFavoriteItem = ({ item }: { item: any }) => {
+    // Kiểm tra dữ liệu sản phẩm có hợp lệ không
+    if (!item || !item._id || !item.name) {
+      return null;
+    }
 
-  const renderFavoriteItem = ({ item }: { item: any }) => (
-    <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item._id })}>
-      <View style={styles.itemContainer}>
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: item.image_url }} style={styles.itemImage} />
-          <TouchableOpacity
-            style={styles.favoriteButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              toggleFavorite(item._id);
-            }}
-          >
-            <Ionicons name="trash" size={20} color="#FF6B6B" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={styles.ratingText}>{item.rating}</Text>
+    return (
+      <TouchableOpacity onPress={() => {
+        console.log('🔄 Navigating to Detail with productID:', item._id);
+        navigation.navigate('Detail', { productId: item._id });
+      }}>
+        <View style={styles.itemContainer}>
+          <View style={styles.imageContainer}>
+            <Image 
+              source={{ uri: item.image_url || 'https://via.placeholder.com/150' }} 
+              style={styles.itemImage}
+              defaultSource={{ uri: 'https://via.placeholder.com/150' }}
+            />
+            <TouchableOpacity
+              style={styles.favoriteButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                toggleFavorite(item._id);
+              }}
+            >
+              <Ionicons name="trash" size={20} color="#FF6B6B" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.priceText}>{formatPrice(item.discount_price || item.price)}</Text>
+
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemName} numberOfLines={1} ellipsizeMode="tail">
+              {item.name || 'Sản phẩm không xác định'}
+            </Text>
+            <Text style={styles.priceText}>
+              {item.discount_price || item.price ? formatPrice(item.discount_price || item.price) : 'Giá không xác định'}
+            </Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -142,23 +136,12 @@ const FavoritesScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Yêu thích</Text>
         <View style={styles.favoriteCount}>
           <Ionicons name="heart" size={20} color="#FF6B6B" />
-          <Text style={styles.countText}>{filteredItems.length}</Text>
+          <Text style={styles.countText}>{userProducts.length}</Text>
         </View>
       </View>
 
-      <View style={styles.categoriesContainer}>
-        <FlatList
-          data={categories}
-          renderItem={renderCategoryItem}
-          keyExtractor={(item) => item}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesList}
-        />
-      </View>
-
       <FlatList
-        data={filteredItems}
+        data={userProducts}
         renderItem={renderFavoriteItem}
         keyExtractor={(item) => item._id}
         numColumns={2}
@@ -176,12 +159,6 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#2D3748' },
   favoriteCount: { flexDirection: 'row', alignItems: 'center' },
   countText: { marginLeft: 4, fontSize: 16, fontWeight: '600', color: '#4A5568' },
-  categoriesContainer: { marginBottom: 20 },
-  categoriesList: { paddingRight: 16 },
-  categoryButton: { paddingHorizontal: 16, paddingVertical: 8, marginRight: 8, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0' },
-  selectedCategoryButton: { backgroundColor: '#FF6B35', borderColor: '#FF6B35' },
-  categoryText: { fontSize: 14, fontWeight: '500', color: '#4A5568' },
-  selectedCategoryText: { color: '#FFFFFF' },
   itemsList: { paddingBottom: 20 },
   row: { justifyContent: 'space-between' },
   itemContainer: { width: itemWidth, backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 3 },
@@ -189,10 +166,17 @@ const styles = StyleSheet.create({
   itemImage: { width: '100%', height: 120, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
   favoriteButton: { position: 'absolute', top: 8, right: 8, backgroundColor: '#FFFFFF', borderRadius: 15, width: 30, height: 30, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
   itemInfo: { padding: 12 },
-  itemName: { fontSize: 14, fontWeight: '600', color: '#2D3748', marginBottom: 4, lineHeight: 18 },
-  ratingContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  ratingText: { marginLeft: 4, fontSize: 12, color: '#4A5568' },
+  itemName: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: '#2D3748', 
+    marginBottom: 8,
+    lineHeight: 18,
+    width: '100%',
+    textAlign: 'left'
+  },
   priceText: { fontSize: 14, fontWeight: 'bold', color: '#FF6B35' },
 });
 
 export default FavoritesScreen;
+

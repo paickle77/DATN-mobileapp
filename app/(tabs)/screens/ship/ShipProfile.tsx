@@ -17,10 +17,11 @@ import {
 import {
   fetchShipperInfo,
   Shipper,
+  updateShipperOnlineStatus,
   updateShipperProfile,
   updateShipperStatus
 } from '../../services/ShipService';
-import { clearUserData, getUserData } from '../utils/storage';
+import { clearAllStorage, getUserData } from '../utils/storage';
 
 interface ProfileItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -190,8 +191,9 @@ const ShipProfileScreen: React.FC = () => {
         text: 'Đăng xuất',
         style: 'destructive',
         onPress: async () => {
-          await clearUserData('userData');
-          await clearUserData('shipperID');
+          const id = await getUserData('shipperID');
+          await updateShipperOnlineStatus(id, 'offline');
+          await clearAllStorage();
           navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
         },
       },
