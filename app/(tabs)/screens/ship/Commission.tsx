@@ -72,6 +72,24 @@ export default function CommissionScreen() {
     }
   };
 
+  // Hàm lùi ngày/tháng
+  const handlePrev = () => {
+    if (filterType === 'day') {
+      setSelectedDate(moment(selectedDate, 'YYYY-MM-DD').subtract(1, 'day').format('YYYY-MM-DD'));
+    } else {
+      setSelectedDate(moment(selectedDate, 'YYYY-MM').subtract(1, 'month').format('YYYY-MM'));
+    }
+  };
+
+  // Hàm tiến ngày/tháng
+  const handleNext = () => {
+    if (filterType === 'day') {
+      setSelectedDate(moment(selectedDate, 'YYYY-MM-DD').add(1, 'day').format('YYYY-MM-DD'));
+    } else {
+      setSelectedDate(moment(selectedDate, 'YYYY-MM').add(1, 'month').format('YYYY-MM'));
+    }
+  };
+
   const renderOrder = ({ item }: { item: any }) => (
     <View style={styles.orderCard}>
       <View style={styles.orderHeader}>
@@ -151,18 +169,34 @@ export default function CommissionScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.dateSelector}
-          onPress={() => setShowPicker(true)}
-        >
-          <Text style={styles.dateSelectorText}>
-            {filterType === 'month' ? 
-              moment(selectedDate, 'YYYY-MM').format('MM/YYYY') :
-              moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')
-            }
-          </Text>
-          <Text style={styles.dateSelectorIcon}>📅</Text>
-        </TouchableOpacity>
+        <View style={styles.dateSelector}>
+          <TouchableOpacity 
+            style={styles.navigationButton}
+            onPress={handlePrev}
+          >
+            <Text style={styles.navigationIcon}>‹</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.dateSelectorCenter}
+            onPress={() => setShowPicker(true)}
+          >
+            <Text style={styles.dateSelectorText}>
+              {filterType === 'month' ? 
+                moment(selectedDate, 'YYYY-MM').format('MM/YYYY') :
+                moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')
+              }
+            </Text>
+            <Text style={styles.dateSelectorIcon}>📅</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.navigationButton}
+            onPress={handleNext}
+          >
+            <Text style={styles.navigationIcon}>›</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {showPicker && (
@@ -307,10 +341,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#F9FAFB',
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  dateSelectorCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  navigationButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navigationIcon: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#634838',
   },
   dateSelectorText: {
     fontSize: 16,
