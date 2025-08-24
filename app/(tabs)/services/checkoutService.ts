@@ -35,6 +35,7 @@ export interface BillPayload {
   discount_amount: number;
   shipping_fee: number;
   voucher_code?: string;
+  voucher_user_id?: string; // ✅ Thêm voucher_user_id
   items: BillDetailItem[];
 }
 
@@ -172,7 +173,8 @@ class CheckoutService {
     finalTotal: number,
     discountAmount: number,
     voucherCode?: string,
-    shippingFee: number = 0
+    shippingFee: number = 0,
+    voucherUserId?: string // ✅ Thêm voucher_user_id parameter
   ): Promise<PendingOrder> {
     try {
       const accountId = await getUserData('accountId');
@@ -218,6 +220,7 @@ class CheckoutService {
         total: calculatedTotal, // ✅ Tổng cuối cùng (đã bao gồm ship và trừ giảm giá)
         discount_amount: discountAmount,
         voucher_code: voucherCode,
+        voucher_user_id: voucherUserId, // ✅ Thêm voucher_user_id
         note: note || '',
         shipping_fee: shippingFee, // ✅ Phí ship riêng biệt
         items,

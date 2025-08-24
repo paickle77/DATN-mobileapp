@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { getUserData } from '../screens/utils/storage';
 
 const { width } = Dimensions.get('window');
 
@@ -31,7 +32,7 @@ type OrderType = {
   note?: string;
   payment_method?: string;
   shipping_method?: string;
-  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
   total: number;
   original_total?: number;
   discount_amount?: number;
@@ -129,6 +130,20 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
           bgColor: '#FFEBEE',
           icon: 'return-up-back-outline',
         };
+      case 'refund_pending':
+        return {
+          text: 'Chờ hoàn tiền',
+          color: '#FF9800',
+          bgColor: '#FFF3E0',
+          icon: 'hourglass-outline',
+        };
+      case 'refunded':
+        return {
+          text: 'Đã hoàn tiền',
+          color: '#4CAF50',
+          bgColor: '#E8F5E9',
+          icon: 'checkmark-done-circle-outline',
+        };
       default:
         return {
           text: status || 'N/A',
@@ -197,7 +212,7 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
   };
 
   const canCancelOrder = (status: string): boolean => {
-    return ['pending', 'confirmed'].includes(status.toLowerCase());
+    return status.toLowerCase() === 'pending'; // ✅ Chỉ cho hủy khi pending
   };
 
   const canReview = (status: string): boolean => {
@@ -211,7 +226,7 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
   const handleCancelOrder = (): void => {
     Alert.alert(
       'Hủy đơn bánh? 🥺',
-      'Bạn có chắc chắn muốn hủy đơn bánh này không? Chúng tôi sẽ rất tiếc!',
+      'Bạn có chắc chắn muốn hủy đơn bánh này không? Lưu ý: Chỉ có thể hủy đơn khi chưa được xác nhận. Nếu đã thanh toán online, chúng tôi sẽ hoàn tiền cho bạn.',
       [
         { 
           text: 'Không hủy', 
@@ -223,12 +238,34 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.put(`${BASE_URL}/bills/${order._id}`, { status: 'cancelled' });
+              // ✅ Gọi API hủy đơn từ phía khách hàng
+              const accountId = await getUserData('accountId');
+              await axios.post(`${BASE_URL}/bills/cancel-by-customer`, { 
+                orderId: order._id,
+                Account_id: accountId,
+                reason: 'Khách hàng hủy đơn'
+              });
+              
               if (onRefresh) onRefresh();
-              Alert.alert('✅ Đã hủy', 'Đơn bánh đã được hủy. Hẹn gặp lại bạn!');
-            } catch (error) {
+              
+              // Kiểm tra xem có phải thanh toán online không
+              const isOnlinePayment = order.payment_method && 
+                (order.payment_method.toLowerCase().includes('vnpay') ||
+                 order.payment_method.toLowerCase().includes('momo') ||
+                 order.payment_method.toLowerCase().includes('zalopay') ||
+                 order.payment_method.toLowerCase().includes('online'));
+
+              const isPaid = order.payment_confirmed_at != null;
+              
+              if (isOnlinePayment && isPaid) {
+                Alert.alert('✅ Đã hủy', 'Đơn bánh đã được hủy và đang chờ xử lý hoàn tiền. Chúng tôi sẽ hoàn tiền trong 3-5 ngày làm việc.');
+              } else {
+                Alert.alert('✅ Đã hủy', 'Đơn bánh đã được hủy thành công!');
+              }
+            } catch (error: any) {
               console.error('Error cancelling order:', error);
-              Alert.alert('❌ Lỗi', 'Không thể hủy đơn hàng');
+              const errorMessage = error?.response?.data?.message || 'Không thể hủy đơn hàng';
+              Alert.alert('❌ Lỗi', errorMessage);
             }
           }
         }

@@ -57,7 +57,7 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
     } catch (err: any) {
       console.error('Save voucher error:', err);
       const errorMessage = err?.message || 'Lỗi khi lưu voucher';
-      Alert.alert('Lỗi', `❌ ${errorMessage}`, [
+      Alert.alert('Thông Báo', ` ${errorMessage}`, [
         { text: 'OK', style: 'default' }
       ]);
     } finally {
@@ -85,7 +85,7 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
 
   return (
     <View>
-      <Text style={styles.header}>📢 Voucher có sẵn</Text>
+      <Text style={styles.header}>Voucher có sẵn</Text>
       {validVouchers.map((v) => {
         const isAlreadySaved = userVouchers.some(
           (uv) => typeof uv.voucher_id === 'object' && uv.voucher_id._id === v._id
@@ -117,17 +117,22 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
             </View>
             
             <View style={styles.discountContainer}>
-              <Text style={styles.discount}>Giảm {v.discount_percent}%</Text>
+              <Text style={styles.discount}>{v.description}</Text>
+              {v.min_order_value && v.min_order_value > 0 && (
+                <Text style={styles.minOrderText}>
+                  Đơn tối thiểu: {v.min_order_value.toLocaleString('vi-VN')}₫
+                </Text>
+              )}
             </View>
             
             <Text style={styles.dateRange}>
-              📅 {formatDate(v.start_date)} - {formatDate(v.end_date)}
+              {formatDate(v.start_date)} - {formatDate(v.end_date)}
             </Text>
             
             {/* Hiển thị thông tin số lượng */}
             {v.quantity > 0 && (
               <Text style={styles.quantityInfo}>
-                📊 Đã dùng: {v.used_count}/{v.quantity} | Tối đa: {v.max_usage_per_user} lần/người
+                Đã dùng: {v.used_count}/{v.quantity} | Tối đa: {v.max_usage_per_user} lần/người
               </Text>
             )}
             
@@ -143,7 +148,7 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                 styles.saveText,
                 (isAlreadySaved || isSaving) && styles.disabledText
               ]}>
-                {isSaving ? '⏳ Đang lưu...' : isAlreadySaved ? '✓ Đã lưu' : '💾 Lưu Voucher'}
+                {isSaving ? 'Đang lưu...' : isAlreadySaved ? '✓ Đã lưu' : 'Lưu Voucher'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -168,7 +173,6 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                 
                 <View style={styles.modalBody}>
                   <View style={styles.modalRow}>
-                    <Text style={styles.modalIcon}>🎫</Text>
                     <View style={styles.modalTextContainer}>
                       <Text style={styles.modalLabelTitle}>Mã voucher</Text>
                       <Text style={styles.modalValue}>{selectedVoucher.code}</Text>
@@ -176,7 +180,6 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                   </View>
                   
                   <View style={styles.modalRow}>
-                    <Text style={styles.modalIcon}>📜</Text>
                     <View style={styles.modalTextContainer}>
                       <Text style={styles.modalLabelTitle}>Mô tả</Text>
                       <Text style={styles.modalValue}>{selectedVoucher.description}</Text>
@@ -184,15 +187,22 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                   </View>
                   
                   <View style={styles.modalRow}>
-                    <Text style={styles.modalIcon}>💸</Text>
                     <View style={styles.modalTextContainer}>
-                      <Text style={styles.modalLabelTitle}>Giảm giá</Text>
-                      <Text style={styles.modalValueHighlight}>{selectedVoucher.discount_percent}%</Text>
+                      <Text style={styles.modalLabelTitle}>Mô tả ưu đãi</Text>
+                      <Text style={styles.modalValueHighlight}>{selectedVoucher.description}</Text>
                     </View>
                   </View>
                   
+                  {selectedVoucher.min_order_value && selectedVoucher.min_order_value > 0 && (
+                    <View style={styles.modalRow}>
+                      <View style={styles.modalTextContainer}>
+                        <Text style={styles.modalLabelTitle}>Đơn tối thiểu</Text>
+                        <Text style={styles.modalValue}>{selectedVoucher.min_order_value.toLocaleString('vi-VN')}₫</Text>
+                      </View>
+                    </View>
+                  )}
+                  
                   <View style={styles.modalRow}>
-                    <Text style={styles.modalIcon}>🕒</Text>
                     <View style={styles.modalTextContainer}>
                       <Text style={styles.modalLabelTitle}>Thời gian hiệu lực</Text>
                       <Text style={styles.modalValue}>
@@ -204,7 +214,6 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                   {/* Hiển thị thông tin số lượng */}
                   {selectedVoucher.quantity > 0 && (
                     <View style={styles.modalRow}>
-                      <Text style={styles.modalIcon}>📊</Text>
                       <View style={styles.modalTextContainer}>
                         <Text style={styles.modalLabelTitle}>Số lượng</Text>
                         <Text style={styles.modalValue}>
@@ -216,7 +225,7 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                   
                   {selectedVoucher.max_usage_per_user > 0 && (
                     <View style={styles.modalRow}>
-                      <Text style={styles.modalIcon}>👤</Text>
+                     
                       <View style={styles.modalTextContainer}>
                         <Text style={styles.modalLabelTitle}>Giới hạn mỗi người</Text>
                         <Text style={styles.modalValue}>
@@ -227,7 +236,7 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                   )}
                   
                   <View style={styles.modalRow}>
-                    <Text style={styles.modalIcon}>📌</Text>
+                    
                     <View style={styles.modalTextContainer}>
                       <Text style={styles.modalLabelTitle}>Trạng thái</Text>
                       <Text style={styles.modalValue}>
@@ -237,12 +246,6 @@ const AvailableVoucherList: React.FC<Props> = ({ data, userVouchers, onSave }) =
                   </View>
                 </View>
                 
-                <TouchableOpacity
-                  onPress={() => setSelectedVoucher(null)}
-                  style={styles.closeButton}
-                >
-                  <Text style={styles.closeText}>Đóng</Text>
-                </TouchableOpacity>
               </>
             )}
           </View>
@@ -312,6 +315,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 18,
     color: '#D32F2F',
+  },
+  minOrderText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   dateRange: { 
     fontSize: 14, 
@@ -423,11 +432,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 20,
   },
-  modalIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    marginTop: 2,
-  },
+ 
   modalTextContainer: {
     flex: 1,
   },
