@@ -85,7 +85,7 @@ const VoucherScreen = () => {
                 activeTab === 'available' ? styles.activeTabText : styles.inactiveTabText,
               ]}
             >
-              📢 Có sẵn
+              Có sẵn
             </Text>
           </TouchableOpacity>
 
@@ -102,7 +102,7 @@ const VoucherScreen = () => {
                 activeTab === 'saved' ? styles.activeTabText : styles.inactiveTabText,
               ]}
             >
-              🎉 Đã lưu
+              Đã lưu
             </Text>
           </TouchableOpacity>
         </View>

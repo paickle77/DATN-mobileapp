@@ -35,6 +35,7 @@ export interface BillPayload {
   discount_amount: number;
   shipping_fee: number;
   voucher_code?: string;
+  voucher_user_id?: string; // ✅ Thêm voucher_user_id
   items: BillDetailItem[];
 }
 
@@ -139,13 +140,27 @@ class CheckoutService {
 
   async fetchDefaultAddress(): Promise<CheckoutAddress> {
     const userId = await getUserData('userId');
-    const response = await axios.get(`${BASE_URL}/addresses/default/${userId}`);
+    
+    // ✅ FIX: Sử dụng AddressService để có logic xử lý tốt hơn
+    try {
+      const response = await axios.get(`${BASE_URL}/addresses/default/${userId}`);
 
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Không lấy được địa chỉ mặc định');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Không lấy được địa chỉ mặc định');
+      }
+
+      const defaultAddress = response.data.data;
+      console.log('📍 Lấy địa chỉ mặc định thành công:', {
+        id: defaultAddress._id,
+        name: defaultAddress.name,
+        isDefault: defaultAddress.isDefault
+      });
+
+      return defaultAddress;
+    } catch (error) {
+      console.error('❌ Lỗi lấy địa chỉ mặc định:', error);
+      throw new Error('Không thể lấy địa chỉ mặc định');
     }
-
-    return response.data.data;
   }
 
   async createPendingBill(
@@ -158,7 +173,8 @@ class CheckoutService {
     finalTotal: number,
     discountAmount: number,
     voucherCode?: string,
-    shippingFee: number = 0
+    shippingFee: number = 0,
+    voucherUserId?: string // ✅ Thêm voucher_user_id parameter
   ): Promise<PendingOrder> {
     try {
       const accountId = await getUserData('accountId');
@@ -204,6 +220,7 @@ class CheckoutService {
         total: calculatedTotal, // ✅ Tổng cuối cùng (đã bao gồm ship và trừ giảm giá)
         discount_amount: discountAmount,
         voucher_code: voucherCode,
+        voucher_user_id: voucherUserId, // ✅ Thêm voucher_user_id
         note: note || '',
         shipping_fee: shippingFee, // ✅ Phí ship riêng biệt
         items,
@@ -288,7 +305,7 @@ class CheckoutService {
     try {
       const userData = await getUserData('accountId');
       const accountId = userData
-      await axios.delete(`${BASE_URL}/carts/user/${accountId}`);
+      await axios.delete(`${BASE_URL}/carts/account/${accountId}`);
     } catch (error) {
       console.error('❌ Lỗi khi xóa giỏ hàng:', error);
     }
@@ -361,6 +378,22 @@ class CheckoutService {
     } catch (error) {
       console.error('❌ Lỗi lấy thông tin bill với snapshot:', error);
       throw new Error('Không thể lấy thông tin đơn hàng');
+    }
+  }
+
+  // ✅ THÊM METHOD để giảm số lượng sản phẩm
+  async decreaseProductQuantity(sizeId: string, quantity: number): Promise<void> {
+    try {
+      const payload = {
+        sizeId: sizeId,
+        quantityToDecrease: quantity,
+      };
+
+      const response = await axios.post(`${BASE_URL}/decrease-quantity`, payload);
+      console.log("✔️ Giảm quantity thành công:", response.data);
+    } catch (error: any) {
+      console.error("❌ Giảm quantity thất bại:", error.response?.data || error.message);
+      throw new Error('Không thể cập nhật số lượng sản phẩm');
     }
   }
 }

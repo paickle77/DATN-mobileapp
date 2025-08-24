@@ -36,7 +36,7 @@ export interface CheckoutAddress {
   latitude: string;
   longitude: string;
   name: string;
-  phone: string;
+  phone: string | number; // ✅ Hỗ trợ cả string và number
 }
 
 interface CheckoutRouteParams {
@@ -63,10 +63,10 @@ const Checkout = ({
   const [addresses, setAddresses] = useState<CheckoutAddress[]>([]);
   const [listCart, setListCart] = useState<CartItem[]>([]);
   const [fullPaymentObject, setFullPaymentObject] = useState<any>(null);
-  const [voucher, setVoucher] = useState();
+  const [voucher, setVoucher] = useState<any>();
   const [percent, setPercent] = useState<number>(0);
   const [nameCode, setNameCode] = useState('');
-  const [notification, setNotification] = useState({ visible: false, message: '', type: 'info' });
+  const [notification, setNotification] = useState<{ visible: boolean; message: string; type: 'info' | 'error' | 'warning' | 'success' }>({ visible: false, message: '', type: 'info' });
   // const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [shippingError, setShippingError] = useState(false);
@@ -160,35 +160,71 @@ const Checkout = ({
     loadVoucher();
   }, []);
 
-  // Load selected address
+  // Load selected address - XỬ LÝ KHI QUAY LẠI TỪ ADDRESSLIST
   useFocusEffect(
     useCallback(() => {
-      const selected = route.params?.selectedAddress;
-      console.log('📍 Địa chỉ đã chọn từ route:', selected);
-
-      if (selected && selected._id) {
-        setAddresses([selected]);
-        saveUserData({ key: 'addressId', value: selected._id});
-        navigation.setParams({ selectedAddress: null });
-      }
-    }, [route.params?.selectedAddress])
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      const loadSelectedAddress = async () => {
+      const loadAddressOnFocus = async () => {
         try {
-          const address = await getUserData('addressId');
-          if (address) {
-            setAddresses([address]);
+          // 1. Ưu tiên địa chỉ từ route params (khi navigate trực tiếp)
+          const selectedFromRoute = route.params?.selectedAddress;
+          if (selectedFromRoute && selectedFromRoute._id) {
+            console.log('📍 Sử dụng địa chỉ từ route params:', selectedFromRoute);
+            setAddresses([selectedFromRoute as CheckoutAddress]);
+            saveUserData({ key: 'selectedAddressId', value: selectedFromRoute._id });
+            navigation.setParams({ selectedAddress: null });
+            return;
           }
+
+          // 2. Khi quay lại từ AddressList, load địa chỉ đã chọn
+          const savedAddressId = await getUserData('selectedAddressId');
+          console.log('📍 Checking savedAddressId:', savedAddressId, 'Current addresses:', addresses.length);
+          
+          if (savedAddressId) {
+            // ✅ FIX: Luôn kiểm tra và load lại địa chỉ đã chọn từ storage
+            if (addresses.length === 0 || addresses[0]._id !== savedAddressId) {
+              console.log('📍 Địa chỉ cần được load/cập nhật:', savedAddressId);
+              const allAddresses: CheckoutAddress[] = await checkoutService.fetchAllAddresses();
+              const savedAddress = allAddresses.find(addr => addr._id === savedAddressId);
+              
+              if (savedAddress) {
+                console.log('📍 Load địa chỉ đã chọn:', savedAddress._id, savedAddress.name);
+                setAddresses([savedAddress]);
+                return;
+              } else {
+                console.log('📍 Địa chỉ đã lưu không còn tồn tại, xóa khỏi storage');
+                await removeUserDataByKey('selectedAddressId');
+              }
+            } else {
+              console.log('📍 Địa chỉ hiện tại đã đúng với savedAddressId');
+              return;
+            }
+          }
+
+          // 3. Nếu chưa có địa chỉ nào, load địa chỉ mặc định (lần đầu vào)
+          if (addresses.length === 0) {
+            console.log('📍 Lần đầu vào, load địa chỉ mặc định');
+            const defaultAddress = await checkoutService.fetchDefaultAddress();
+            setAddresses([defaultAddress]);
+            // ✅ Lưu địa chỉ mặc định vào storage để AddressList có thể hiển thị đúng
+            await saveUserData({ key: 'selectedAddressId', value: defaultAddress._id });
+            console.log('📍 Đã lưu địa chỉ mặc định vào storage:', defaultAddress._id);
+          }
+          
         } catch (err) {
-          console.error('❌ Lỗi lấy địa chỉ đã chọn:', err);
+          console.error('❌ Lỗi lấy địa chỉ:', err);
+          // Chỉ hiển thị error nếu chưa có địa chỉ nào
+          if (addresses.length === 0) {
+            setNotification({
+              visible: true,
+              message: 'Không thể lấy địa chỉ giao hàng. Vui lòng chọn thủ công.',
+              type: 'error',
+            });
+          }
         }
       };
 
-      loadSelectedAddress();
-    }, [])
+      loadAddressOnFocus();
+    }, [route.params?.selectedAddress]) // ✅ FIX: Chỉ depend vào route params, không depend vào addresses.length
   );
 
   // Fetch voucher data
@@ -219,11 +255,11 @@ const Checkout = ({
       setSizeQuantityList(extractedData);
 
       console.log("📦 Size & Quantity list:", extractedData);
-      cartItems.forEach((item, index) => {
-        console.log(`🛍️ Size_id of item ${index}:`, item.Size_id);
-        console.log(`🛍️ Size_id of item :`, cartItems);
-        setSizeID(item.Size_id);
-      });
+      // cartItems.forEach((item, index) => {
+      //   console.log(`🛍️ Size_id of item ${index}:`, item.Size_id);
+      //   console.log(`🛍️ Size_id of item :`, cartItems);
+      //   setSizeID(item.Size_id);
+      // });
     } catch (error) {
       console.error('Lỗi lấy giỏ hàng:', error);
       setNotification({
@@ -234,44 +270,18 @@ const Checkout = ({
     }
   };
 
-  // Load initial data
+  // Load initial data (chỉ load khi chưa có địa chỉ nào)
   useFocusEffect(
     useCallback(() => {
-      const fetchInitialAddress = async () => {
-        try {
-          const selected = await getUserData('defaultAddress');
-          console.log('📍 Địa chỉ đã chọn:', selected);
-
-          if (selected) {
-            const latestAddresses: CheckoutAddress[] = await checkoutService.fetchAllAddresses(); // 👈 bạn cần viết thêm API này trong service
-            const found = latestAddresses.find(addr => addr._id === selected._id);
-
-            if (found) {
-              setAddresses([found]);
-            } else {
-              // await removeUserDataByKey('selectedAddress');
-              const defaultAddress = await checkoutService.fetchDefaultAddress();
-              setAddresses([defaultAddress]);
-            }
-          } else {
-            const defaultAddress = await checkoutService.fetchDefaultAddress();
-            setAddresses([defaultAddress]);
-          }
-        } catch (err) {
-          console.error('❌ Lỗi lấy địa chỉ mặc định:', err);
-          setNotification({
-            visible: true,
-            message: 'Không thể lấy địa chỉ giao hàng. Vui lòng chọn thủ công.',
-            type: 'error',
-          });
+      const fetchInitialData = async () => {
+        // Chỉ fetch dữ liệu cart và voucher, không touch vào địa chỉ
+        if (selectedItemIds.length > 0) {
+          fetchCartData();
         }
+        fetchVoucherData();
       };
 
-      fetchInitialAddress();
-      if (selectedItemIds.length > 0) {
-        fetchCartData();
-      }
-      fetchVoucherData();
+      fetchInitialData();
     }, [selectedItemIds])
   );
 
@@ -381,7 +391,68 @@ const Checkout = ({
     setShippingError(false);
   };
 
-  // Handle place order - tạo pending bill với sản phẩm đã chọn
+  // Xử lý thanh toán online - Flow mới: KHÔNG tạo đơn hàng trước
+  const handleOnlinePayment = async () => {
+    try {
+      const { paymentService } = require('../../services/paymentService');
+
+      // Lấy thông tin user hiện tại
+      const currentUser = await getUserData('userAccount');
+      const selectedShipping = shippingMethods.find(m => m.id === selectedShippingMethod);
+      const selectedShippingName = selectedShipping?.name || '';
+      const shippingFee = selectedShipping?.price || 0;
+      
+      // Chuẩn bị dữ liệu đơn hàng (chưa gửi lên server)
+      const billData = {
+        Account_id: currentUser?.id || currentUser?._id || '',
+        address_id: addresses[0]?._id || '',
+        shipping_method: selectedShippingName,
+        payment_method: selectedPaymentName,
+        original_total: originalTotal,
+        total: finalTotal,
+        discount_amount: discountAmount,
+        voucher_code: selectedVoucher?.voucher_id?.code || '',
+        voucher_user_id: selectedVoucher?._id || '', // ✅ Thêm voucher_user_id
+        note: note || '',
+        shipping_fee: shippingFee,
+        address_snapshot: addresses[0] || {},
+        items: listCart.map((item: any) => ({
+          product_id: item.product_id._id || item.product_id,
+          size: item.Size || 'M',
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+      };
+
+      // Tạo link thanh toán VNPay (KHÔNG tạo đơn hàng)
+      if (selectedPaymentName.toLowerCase().includes('vnpay')) {
+        console.log('💳 Creating VNPay payment URL only...');
+        const { paymentUrl } = await paymentService.createVNPayPayment(billData);
+
+        // Chuyển đến WebView với dữ liệu để tạo đơn SAU KHI thanh toán thành công
+        navigation.navigate('VNPayWebView', {
+          paymentUrl,
+          billData, // Dữ liệu để tạo đơn hàng sau khi thanh toán thành công
+          sizeQuantityList,
+        });
+      } else {
+        setNotification({
+          visible: true,
+          message: 'Phương thức thanh toán này đang được phát triển',
+          type: 'warning'
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ Error creating online payment:', error);
+      setNotification({
+        visible: true,
+        message: error.message || 'Không thể tạo link thanh toán',
+        type: 'error'
+      });
+    }
+  };
+
+  // Handle place order - phân biệt COD và Online Payment
   const handlePlaceOrder = async () => {
     try {
       if (!selectedShippingMethod) {
@@ -397,7 +468,7 @@ const Checkout = ({
       if (selectedVoucher) {
         console.log('Voucher đã chọn, voucher_user_id:', selectedVoucher._id);
         console.log('Voucher gốc id:', selectedVoucher.voucher_id?._id);
-        setVoucher_User(selectedVoucher._id); // ✅ SET ID CUA VOUCHER_USER
+        setVoucher_User(selectedVoucher._id);
       } else {
         console.log('Chưa chọn voucher');
       }
@@ -435,33 +506,47 @@ const Checkout = ({
       const selectedShippingName = selectedShipping?.name || '';
       const shippingFee = selectedShipping?.price || 0;
 
-      const pendingOrder = await checkoutService.createPendingBill(
-        addresses,
-        listCart,
-        note,
-        selectedShippingName,
-        selectedPaymentName,
-        originalTotal,
-        finalTotal,
-        discountAmount,
-        nameCode,
-        shippingFee, // ✅ phí ship
-      );
-      console.log(`💰 Tổng tiền thanh toán: ${(finalTotal + shippingFee).toLocaleString('vi-VN')} VND`);
+      // Kiểm tra phương thức thanh toán
+      const requiresOnlinePayment = selectedPaymentName.toLowerCase().includes('vnpay') ||
+        selectedPaymentName.toLowerCase().includes('momo') ||
+        selectedPaymentName.toLowerCase().includes('zalopay');
 
-      console.log('✅ Tạo pending bill thành công:', pendingOrder.billId);
-      navigation.navigate('ConfirmationScreen', {
-        pendingOrder,
-        selectedItemIds,
-        sizeQuantityList, // 👈 Thêm dòng này
-        voucher_User: selectedVoucher?._id || '', // ✅ TRUYỀN ID CUA VOUCHER_USER, KHÔNG PHẢI VOUCHER GỐC
-      });
+      if (requiresOnlinePayment) {
+        // ✅ Flow mới: Thanh toán online KHÔNG tạo đơn hàng trước
+        console.log('💳 Online payment - không tạo đơn hàng trước');
+        await handleOnlinePayment();
+      } else {
+        // ✅ COD: Tạo đơn hàng ngay
+        console.log('💵 COD payment - tạo đơn hàng ngay');
+        
+        const pendingOrder = await checkoutService.createPendingBill(
+          addresses,
+          listCart,
+          note,
+          selectedShippingName,
+          selectedPaymentName,
+          originalTotal,
+          finalTotal,
+          discountAmount,
+          nameCode,
+          shippingFee,
+          selectedVoucher?._id // ✅ Truyền voucher_user_id
+        );
 
-    } catch (error) {
-      console.error('❌ Lỗi tạo đơn hàng:', error);
+        console.log('✅ COD order created:', pendingOrder.billId);
+        navigation.navigate('ConfirmationScreen', {
+          pendingOrder,
+          selectedItemIds,
+          sizeQuantityList,
+          voucher_User: selectedVoucher?._id || '',
+        });
+      }
+
+    } catch (error: any) {
+      console.error('❌ Lỗi đặt hàng:', error);
       setNotification({
         visible: true,
-        message: error.message || 'Không thể tạo đơn hàng. Vui lòng thử lại.',
+        message: error?.message || 'Không thể tạo đơn hàng. Vui lòng thử lại.',
         type: 'error'
       });
     } finally {

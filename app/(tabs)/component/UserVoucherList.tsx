@@ -20,19 +20,38 @@ const UserVoucherList: React.FC<Props> = ({ data }) => {
     setSelectedVoucher(null);
   };
 
-  // ✅ Chỉ lấy voucher còn hạn và có trạng thái active
+  // ✅ Debug: Log dữ liệu nhận được
+  console.log('📋 UserVoucherList - Raw data:', data.length);
+  data.forEach((item, index) => {
+    console.log(`  ${index + 1}. ID: ${item._id}, Status: ${item.status}, VoucherID type: ${typeof item.voucher_id}`);
+    if (typeof item.voucher_id === 'object' && item.voucher_id) {
+      console.log(`     Code: ${item.voucher_id.code}, End: ${item.voucher_id.end_date}`);
+    }
+  });
+
+  // ✅ Chỉ lấy voucher còn hạn và có trạng thái available hoặc active (tạm thời)
   const validVouchers = data.filter(item => {
     const v = item.voucher_id;
-    return (
-      item.status === 'active' &&
-      typeof v === 'object' &&
-      v.end_date &&
-      dayjs(v.end_date).isAfter(dayjs())
-    );
+    const isAvailable = item.status === 'available' || item.status === 'active'; // ✅ Tạm thời chấp nhận cả 2
+    const isVoucherObject = typeof v === 'object' && v;
+    const hasEndDate = isVoucherObject && v.end_date;
+    const isNotExpired = hasEndDate && dayjs(v.end_date).isAfter(dayjs());
+    
+    console.log(`🔍 Checking voucher ${item._id}:`, {
+      status: item.status,
+      isAvailable,
+      isVoucherObject: !!isVoucherObject,
+      hasEndDate: !!hasEndDate,
+      isNotExpired,
+      result: isAvailable && isVoucherObject && hasEndDate && isNotExpired
+    });
+    
+    return isAvailable && isVoucherObject && hasEndDate && isNotExpired;
   });
 
   // Ghi log danh sách voucher đã được lọc
-  console.log('Voucher được render ra màn hình:', validVouchers.map(v => ({
+  console.log('✅ Voucher được render ra màn hình:', validVouchers.length);
+  console.log('📄 Valid vouchers:', validVouchers.map(v => ({
     id: v._id,
     code: typeof v.voucher_id === 'object' ? v.voucher_id.code : v.voucher_id,
     status: v.status
@@ -50,7 +69,7 @@ const UserVoucherList: React.FC<Props> = ({ data }) => {
 
   return (
     <View>
-      <Text style={styles.header}>🎟️ Voucher đã thu thập</Text>
+      <Text style={styles.header}>Voucher đã thu thập</Text>
 
       {validVouchers.map(item => {
         const v = typeof item.voucher_id === 'object' ? item.voucher_id : null;
@@ -66,7 +85,11 @@ const UserVoucherList: React.FC<Props> = ({ data }) => {
                 <Text style={styles.code}>{v.code}</Text>
                 <View style={styles.statusContainer}>
                   <View style={[styles.statusBadge, styles.activeBadge]}>
-                    <Text style={styles.statusText}>✓ Hoạt động</Text>
+                    <Text style={styles.statusText}>
+                      {item.status === 'available' ? '✓ Khả dụng' : 
+                       item.status === 'active' ? '✓ Hoạt động' : 
+                       '✓ Sẵn sàng'}
+                    </Text>
                   </View>
                   {isExpiringSoon && (
                     <View style={styles.warningBadge}>
@@ -84,7 +107,12 @@ const UserVoucherList: React.FC<Props> = ({ data }) => {
             </View>
             
             <View style={styles.discountContainer}>
-              <Text style={styles.discount_percent}>Giảm {v.discount_percent}%</Text>
+              <Text style={styles.discount_percent}>{v.description}</Text>
+              {v.min_order_value && v.min_order_value > 0 && (
+                <Text style={styles.minOrderText}>
+                  Đơn tối thiểu: {v.min_order_value.toLocaleString('vi-VN')}₫
+                </Text>
+              )}
             </View>
             
             <Text style={styles.dateRange}>
@@ -139,10 +167,20 @@ const UserVoucherList: React.FC<Props> = ({ data }) => {
                   <View style={styles.modalRow}>
                     <Text style={styles.modalIcon}>💸</Text>
                     <View style={styles.modalTextContainer}>
-                      <Text style={styles.modalLabelTitle}>Giảm giá</Text>
-                      <Text style={styles.modalValueHighlight}>{selectedVoucher.voucher_id.discount_percent}%</Text>
+                      <Text style={styles.modalLabelTitle}>Mô tả ưu đãi</Text>
+                      <Text style={styles.modalValueHighlight}>{selectedVoucher.voucher_id.description}</Text>
                     </View>
                   </View>
+                  
+                  {selectedVoucher.voucher_id.min_order_value && selectedVoucher.voucher_id.min_order_value > 0 && (
+                    <View style={styles.modalRow}>
+                      <Text style={styles.modalIcon}>💰</Text>
+                      <View style={styles.modalTextContainer}>
+                        <Text style={styles.modalLabelTitle}>Đơn tối thiểu</Text>
+                        <Text style={styles.modalValue}>{selectedVoucher.voucher_id.min_order_value.toLocaleString('vi-VN')}₫</Text>
+                      </View>
+                    </View>
+                  )}
                   
                   <View style={styles.modalRow}>
                     <Text style={styles.modalIcon}>🕒</Text>
@@ -159,7 +197,10 @@ const UserVoucherList: React.FC<Props> = ({ data }) => {
                     <View style={styles.modalTextContainer}>
                       <Text style={styles.modalLabelTitle}>Trạng thái</Text>
                       <Text style={[styles.modalValue, styles.modalStatusActive]}>
-                        {selectedVoucher.status === 'active' ? 'Hoạt động' : selectedVoucher.status}
+                        {selectedVoucher.status === 'available' ? 'Khả dụng' : 
+                         selectedVoucher.status === 'active' ? 'Hoạt động' :
+                         selectedVoucher.status === 'in_use' ? 'Đang sử dụng' : 
+                         selectedVoucher.status === 'used' ? 'Đã sử dụng' : selectedVoucher.status}
                       </Text>
                     </View>
                   </View>
@@ -256,6 +297,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 18,
     color: '#D32F2F',
+  },
+  minOrderText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   dateRange: { 
     fontSize: 14, 
