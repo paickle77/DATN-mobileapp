@@ -116,15 +116,16 @@ class ReviewService {
     content: string;
     image?: string | null;
     Account_id: string;
+    bill_id: string;
+    billDetailId: string;
   }): Promise<any> {
     try {
       const response = await axios.post(`${BASE_URL}/reviews`, reviewData);
-      
+
       // Xóa tất cả cache liên quan đến product này
       this.clearCacheForProduct(reviewData.product_id);
-      
-      console.log(`✅ Review submitted và cache cleared cho product ${reviewData.product_id}`);
-      
+
+      console.log(`✅ Review submitted cho product ${reviewData.product_id}, bill ${reviewData.bill_id}`);
       return response.data;
     } catch (error) {
       console.error('Error submitting review:', error);

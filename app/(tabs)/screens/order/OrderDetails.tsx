@@ -285,7 +285,7 @@ const OrderDetails = () => {
     return found;
   };
 
-  const navigateToReview = async (productId?: string) => {
+  const navigateToReview = async (productId?: string, orderId?: string, billDetailId?: string) => {
     if (!productId) {
       Alert.alert('Lỗi', 'Không tìm thấy thông tin sản phẩm để đánh giá');
       return;
@@ -293,7 +293,7 @@ const OrderDetails = () => {
 
     try {
       console.log("Navigating to review with productId:", productId);
-      (navigation as any).navigate('ReviewScreen', { ProductID: productId });
+      (navigation as any).navigate('ReviewScreen', { ProductID: productId, BillID: orderId, BillDetailID: billDetailId });
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể chuyển đến trang đánh giá');
       console.error('Error navigating to review:', error);
@@ -309,6 +309,7 @@ const OrderDetails = () => {
     const productReviewStatus = getProductReviewStatus(item._id);
     // Lấy productId từ reviewStatus nếu item.product_id không có
     const productId = item.product_id?._id || productReviewStatus?.productId;
+    const billId = item.bill_id?._id || orderId;
 
     console.log(`🔍 Rendering product item:`, {
       billDetailId: item._id,
@@ -327,7 +328,7 @@ const OrderDetails = () => {
         />
         
         {/* Review Status & Button */}
-        {isOrderCompleted() && productId && (
+        {isOrderCompleted() && productId && billId &&(
           <View style={styles.reviewSection}>
             {productReviewStatus?.hasReviewed ? (
               <View style={styles.reviewedStatus}>
@@ -337,7 +338,7 @@ const OrderDetails = () => {
             ) : productReviewStatus?.canReview ? (
               <TouchableOpacity 
                 style={styles.individualReviewButton}
-                onPress={() => navigateToReview(productId)}
+                onPress={() => navigateToReview(productId,billId, item._id)}
               >
                 <Icon name="star-outline" size={16} color="#5C4033" />
                 <Text style={styles.individualReviewButtonText}>Đánh giá sản phẩm này</Text>

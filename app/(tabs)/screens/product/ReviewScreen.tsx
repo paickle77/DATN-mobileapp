@@ -45,7 +45,12 @@ type ProductDataType = {
 const ReviewScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { ProductID } = route.params as { ProductID: string };
+  // Ở ReviewScreen
+const { ProductID, BillID, BillDetailID } = route.params as { 
+  ProductID: string; 
+  BillID: string; 
+  BillDetailID: string; 
+};
 
   // States
   const [rating, setRating] = useState(0);
@@ -66,19 +71,7 @@ const slideAnim = useRef(new Animated.Value(30)).current;
       fetchProductData();
     }
     
-    // Start animations
-    Animated.stagger(200, [
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      })
-    ]).start();
+  
   }, [ProductID]);
 
   const fetchProductData = async () => {
@@ -150,7 +143,10 @@ const slideAnim = useRef(new Animated.Value(30)).current;
         content: reviewText.trim(),
         image: imageBase64,
         Account_id: userData,
+        bill_id: BillID, 
+        billDetailId: BillDetailID,
       };
+
 
       // Sử dụng ReviewService để submit (đã handle cache clearing internally)
       await reviewService.submitReview(payload);
