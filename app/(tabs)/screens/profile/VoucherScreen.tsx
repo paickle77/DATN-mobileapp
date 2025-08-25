@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { CommonActions, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
@@ -45,12 +45,7 @@ const VoucherScreen = () => {
   };
 
   const handleGoBack = () => {
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'TabNavigator', params: { screen: 'Profile' } }],
-      })
-    );
+    navigation.goBack();
   };
 
   return (
@@ -85,7 +80,7 @@ const VoucherScreen = () => {
                 activeTab === 'available' ? styles.activeTabText : styles.inactiveTabText,
               ]}
             >
-              📢 Có sẵn
+              Có sẵn
             </Text>
           </TouchableOpacity>
 
@@ -102,7 +97,7 @@ const VoucherScreen = () => {
                 activeTab === 'saved' ? styles.activeTabText : styles.inactiveTabText,
               ]}
             >
-              🎉 Đã lưu
+              Đã lưu
             </Text>
           </TouchableOpacity>
         </View>

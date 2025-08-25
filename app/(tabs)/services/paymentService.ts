@@ -10,6 +10,7 @@ export interface BillData {
   total: number;
   discount_amount?: number;
   voucher_code?: string;
+  voucher_user_id?: string; // ✅ Thêm voucher_user_id
   note?: string;
   shipping_fee?: number;
   address_snapshot?: any;
@@ -97,3 +98,4 @@ class PaymentServiceImpl implements PaymentService {
 
 const paymentService = new PaymentServiceImpl();
 export { paymentService };
+

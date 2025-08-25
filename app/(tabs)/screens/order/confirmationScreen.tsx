@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { BASE_URL } from '../../services/api';
 import checkoutService, { PendingOrder } from '../../services/checkoutService';
-import voucherService from '../../services/VoucherService';
 import { registerForPushNotificationsAsync } from '../notification/PushTokenService';
 import { getUserData } from '../utils/storage';
 
@@ -180,22 +179,14 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
       console.log("- voucher_User type:", typeof voucher_User);
 
       // ✅ CHỈ GỌI API UPDATE VOUCHER KHI THỰC SỰ CÓ SỬ DỤNG VOUCHER
+      // ❌ KHÔNG CẦN gọi markVoucherAsUsed ở đây vì:
+      // - COD: Voucher đã được mark "in_use" khi tạo đơn hàng
+      // - Voucher sẽ được mark "used" khi shipper hoàn thành đơn hàng
       if (pendingOrder.orderData.voucherCode && voucher_User) {
-        try {
-          console.log("🎯 Gọi markVoucherAsUsed với voucherUserId:", voucher_User);
-          // ✅ SỬ DỤNG API MỚI để mark voucher as used
-          await voucherService.markVoucherAsUsed(voucher_User);
-          console.log("✅ Đã đánh dấu voucher đã sử dụng");
-        } catch (voucherError) {
-          console.error("❌ Lỗi khi cập nhật voucher:", voucherError);
-          // Không throw error vì đơn hàng vẫn thành công
-        }
+        console.log("ℹ️ Đơn COD có voucher - voucher đã được mark 'in_use' khi tạo đơn");
+        console.log("ℹ️ Voucher sẽ được mark 'used' khi shipper hoàn thành giao hàng");
       } else {
-        console.log("ℹ️ Không có voucher được sử dụng, bỏ qua việc cập nhật trạng thái");
-        console.log("ℹ️ Lý do:", {
-          hasVoucherCode: !!pendingOrder.orderData.voucherCode,
-          hasVoucherUser: !!voucher_User
-        });
+        console.log("ℹ️ Không có voucher được sử dụng");
       }
 
       // Giảm số lượng sản phẩm trong kho

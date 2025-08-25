@@ -41,7 +41,7 @@ type OrderType = {
   note?: string;
   payment_method?: string;
   shipping_method?: string;
-  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
   total: number;
   original_total?: number;
   discount_amount?: number;
@@ -69,7 +69,7 @@ type OrderType = {
   };
 };
 
-type TabType = 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed';
+type TabType = 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
 
 // Fallback component for rendering errors
 const FallbackComponent = () => (
@@ -112,12 +112,20 @@ const OrderHistoryScreen = () => {
       priority: 3 
     },
     { 
+      key: 'refund_pending', 
+      title: 'Chờ hoàn tiền', 
+      icon: 'hourglass-outline', 
+      color: '#FF9800',
+      bgColor: 'rgba(255, 152, 0, 0.1)',
+      priority: 4 
+    },
+    { 
       key: 'cancelled', 
       title: 'Đã hủy', 
       icon: 'close-circle-outline', 
       color: '#E74C3C',
       bgColor: 'rgba(231, 76, 60, 0.1)',
-      priority: 4 
+      priority: 5 
     },
   ];
 
@@ -160,6 +168,8 @@ const OrderHistoryScreen = () => {
       filtered = orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase()));
     } else if (activeTab === 'cancelled') {
       filtered = orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase()));
+    } else if (activeTab === 'refund_pending') {
+      filtered = orders.filter(order => ['refund_pending', 'refunded'].includes(order.status.toLowerCase()));
     } else {
       filtered = orders.filter(order => order.status.toLowerCase() === activeTab);
     }
@@ -196,6 +206,9 @@ const OrderHistoryScreen = () => {
     }
     if (status === 'cancelled') {
       return orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase())).length;
+    }
+    if (status === 'refund_pending') {
+      return orders.filter(order => ['refund_pending', 'refunded'].includes(order.status.toLowerCase())).length;
     }
     return orders.filter(order => order.status.toLowerCase() === status).length;
   };

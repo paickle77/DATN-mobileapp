@@ -412,6 +412,7 @@ const Checkout = ({
         total: finalTotal,
         discount_amount: discountAmount,
         voucher_code: selectedVoucher?.voucher_id?.code || '',
+        voucher_user_id: selectedVoucher?._id || '', // ✅ Thêm voucher_user_id
         note: note || '',
         shipping_fee: shippingFee,
         address_snapshot: addresses[0] || {},
@@ -529,6 +530,7 @@ const Checkout = ({
           discountAmount,
           nameCode,
           shippingFee,
+          selectedVoucher?._id // ✅ Truyền voucher_user_id
         );
 
         console.log('✅ COD order created:', pendingOrder.billId);
