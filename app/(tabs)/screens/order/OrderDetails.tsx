@@ -186,7 +186,7 @@ const OrderDetails = () => {
     return '';
   };
 
-  const getStatusConfig = (status: string) => {
+  const getStatusConfig = (status: string, shippingMethod?: string) => {
     const normalizedStatus = status ? status.toLowerCase() : '';
     
     switch (normalizedStatus) {
@@ -207,6 +207,16 @@ const OrderDetails = () => {
           description: 'Thầy bánh đang chuẩn bị nguyên liệu và làm bánh'
         };
       case 'ready':
+        // Kiểm tra nếu là nhận tại cửa hàng
+        if (shippingMethod === 'Nhận tại cửa hàng') {
+          return {
+            text: 'Sẵn sàng tại quán',
+            color: '#5856D6',
+            bgColor: '#F0F0FF',
+            icon: 'storefront-outline',
+            description: 'Bánh đã hoàn thành, sẵn sàng để bạn đến lấy tại quán'
+          };
+        }
         return {
           text: 'Sẵn sàng giao',
           color: '#5856D6',
@@ -239,13 +249,20 @@ const OrderDetails = () => {
           description: 'Đơn hàng đã bị hủy'
         };
       case 'failed':
+        return {
+          text: 'Đang trên đường hoàn về',
+          color: '#FF9800',
+          bgColor: '#FFF3E0',
+          icon: 'return-up-back-outline',
+          description: 'Khách không nhận, shipper đang hoàn trả về cửa hàng'
+        };
       case 'returned':
         return {
-          text: 'Hoàn trả',
+          text: 'Đã hoàn về tới quán',
           color: '#DC3545',
           bgColor: '#FFE6E6',
-          icon: 'return-up-back-outline',
-          description: 'Khách không nhận, đã hoàn trả về cửa hàng'
+          icon: 'checkmark-circle-outline',
+          description: 'Đơn hàng đã được hoàn trả về cửa hàng thành công'
         };
       default:
         return {
@@ -382,7 +399,8 @@ const OrderDetails = () => {
   const shippingFee = billInfo?.shipping_fee || 0;
   const discountAmount = billInfo?.discount_amount || 0;
   const status = getOrderStatus();
-  const statusConfig = getStatusConfig(status);
+  const shippingMethod = billInfo?.shipping_method || (data.length > 0 ? data[0].bill_id?.shipping_method : '');
+  const statusConfig = getStatusConfig(status, shippingMethod);
 
   return (
     <View style={styles.container}>

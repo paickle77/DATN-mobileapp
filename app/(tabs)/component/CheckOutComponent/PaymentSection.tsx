@@ -6,12 +6,16 @@ interface PaymentSectionProps {
   selectedPaymentMethod: string;
   selectedPaymentName: string;
   onPress: () => void;
+  canUseCOD?: boolean; // ✅ Thêm prop để kiểm tra COD eligibility
+  codCheckLoading?: boolean; // ✅ Loading state cho COD check
 }
 
 const PaymentSection: React.FC<PaymentSectionProps> = ({ 
   selectedPaymentMethod, 
   selectedPaymentName, 
-  onPress 
+  onPress,
+  canUseCOD = true, // ✅ Mặc định cho phép COD
+  codCheckLoading = false // ✅ Mặc định không loading
 }) => {
   const getPaymentIcon = () => {
     if (!selectedPaymentMethod) return null;
@@ -111,6 +115,23 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
         </View>
         <Ionicons name="chevron-forward" size={20} color="#999" />
       </TouchableOpacity>
+      
+      {/* ✅ Hiển thị warning khi không được phép dùng COD */}
+      {!canUseCOD && (
+        <View style={styles.warningContainer}>
+          <Ionicons name="warning-outline" size={16} color="#FF9500" />
+          <Text style={styles.warningText}>
+            Bạn đã từng từ chối nhận hàng khi chọn COD. Vui lòng thanh toán online để tiếp tục.
+          </Text>
+        </View>
+      )}
+
+      {/* ✅ Hiển thị loading state */}
+      {codCheckLoading && (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Đang kiểm tra phương thức thanh toán...</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -162,6 +183,35 @@ const styles = StyleSheet.create({
   paymentPlaceholder: {
     fontSize: 14,
     color: '#999',
+  },
+  // ✅ Thêm styles cho warning và loading
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+  },
+  warningText: {
+    fontSize: 13,
+    color: '#FF9500',
+    marginLeft: 6,
+    flex: 1,
+    lineHeight: 18,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
 
