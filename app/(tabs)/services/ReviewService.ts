@@ -117,7 +117,7 @@ class ReviewService {
     image?: string | null;
     Account_id: string;
     bill_id: string;
-    billDetailId: string;
+    billDetail_id: string;
   }): Promise<any> {
     try {
       const response = await axios.post(`${BASE_URL}/reviews`, reviewData);

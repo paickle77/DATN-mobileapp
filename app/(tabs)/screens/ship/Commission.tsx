@@ -28,7 +28,7 @@ export default function CommissionScreen() {
     try {
       setLoading(true);
       const shipperId = await getUserData('shipperID');
-      const res = await axios.get(`${BASE_URL}/GetAllBills`);
+      const res = await axios.get(`${BASE_URL}/bills`);
       const data = res.data.data;
       const ordersData = data.filter(
         (order: any) => order.shipper_id === shipperId && order.status === 'done'

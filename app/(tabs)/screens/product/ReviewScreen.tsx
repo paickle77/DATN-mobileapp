@@ -144,7 +144,7 @@ const slideAnim = useRef(new Animated.Value(30)).current;
         image: imageBase64,
         Account_id: userData,
         bill_id: BillID, 
-        billDetailId: BillDetailID,
+        billDetail_id: BillDetailID,
       };
 
 
@@ -251,12 +251,8 @@ const slideAnim = useRef(new Animated.Value(30)).current;
         >
           {/* Product Card */}
           {data && (
-            <Animated.View style={[
-              styles.sectionContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }]
-              }
+            <View style={[
+              styles.sectionContainer
             ]}>
               <ProductCard
                 imageUrl={data.image_url}
@@ -264,30 +260,22 @@ const slideAnim = useRef(new Animated.Value(30)).current;
                 name={data.name}
                 price={data.price}
               />
-            </Animated.View>
+            </View>
           )}
 
           {/* Star Rating */}
-          <Animated.View style={[
-            styles.sectionContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
+          <View style={[
+            styles.sectionContainer
           ]}>
             <StarRating
               rating={rating}
               setRating={setRating}
             />
-          </Animated.View>
+          </View>
 
           {/* Detailed Review */}
-          <Animated.View style={[
-            styles.sectionContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
+          <View style={[
+            styles.sectionContainer
           ]}>
             <DetailedReview
               reviewText={reviewText}
@@ -295,15 +283,11 @@ const slideAnim = useRef(new Animated.Value(30)).current;
               onImageAdd={pickImage}
               uploadedImage={image}
             />
-          </Animated.View>
+          </View>
 
           {/* Submit Button */}
-          <Animated.View style={[
-            styles.submitContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
+          <View style={[
+            styles.submitContainer
           ]}>
             <TouchableOpacity 
               style={[
@@ -346,7 +330,7 @@ const slideAnim = useRef(new Animated.Value(30)).current;
                 Đánh giá của bạn sẽ được kiểm duyệt và hiển thị công khai
               </Text>
             </View>
-          </Animated.View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

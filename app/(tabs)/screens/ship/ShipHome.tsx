@@ -127,9 +127,16 @@ const ShipHome: React.FC = () => {
         (o: any) => o.status === 'ready' && o.shipping_method !== 'Nhận tại cửa hàng'
       );
       const deliveredOrders = todayOrders.filter((o: any) => o.status === 'delivered').length;
-      const shippingOrders = todayOrders.filter(
+      const shippingOrders = orders.filter(
         (o: any) => o.status === 'shipping' && o.shipper_id === shipperId
       ).length;
+      if (shippingOrders > 0 && isOnline !== "busy") {
+        Alert.alert(
+          "Thông báo",
+          "Bạn đang có đơn hàng đang giao. Vui lòng hoàn thành trước khi nhận đơn mới."
+        );
+        await setBusyStatus(); // ép sang busy
+      }
       const doneOrders = todayOrders.filter(
         (o: any) => o.status === 'done' && o.shipper_id === shipperId
       );
@@ -202,25 +209,36 @@ const ShipHome: React.FC = () => {
       Alert.alert('Lỗi', error?.response?.data?.msg || 'Không thể nhận đơn hàng.');
     }
   };
+  
 
   const toggleOnlineStatus = async () => {
-    const newStatus: OnlineStatus = isOnline === 'offline' ? 'online' : 'offline';
-    if (isOnline === 'busy') {
-      Alert.alert('Thông báo', 'Bạn đang bận, không thể chuyển trạng thái.');
-      return;
-    }
-    try {
-      await updateShipperStatus(shipperInfo?._id || '', newStatus);
-      setIsOnline(newStatus);
-      Alert.alert(
-        'Trạng thái thay đổi',
-        `Bạn đã ${newStatus === 'online' ? 'bật chế độ nhận đơn' : 'tắt chế độ nhận đơn'}`
-      );
-    } catch (error) {
-      console.error('❌ Lỗi khi cập nhật trạng thái online:', error);
-      Alert.alert('Lỗi', 'Không thể cập nhật trạng thái online.');
-    }
-  };
+  const newStatus: OnlineStatus = isOnline === 'offline' ? 'online' : 'offline';
+  
+  if (isOnline === 'busy') {
+    Alert.alert('Thông báo', 'Bạn đang bận, không thể chuyển trạng thái.');
+    return;
+  }
+
+  console.log('🔄 Toggling online status from', shipperInfo?._id);
+  console.log('🔄 Chuyển trạng thái online:', newStatus);
+
+  try {
+    await updateShipperStatus(
+      shipperInfo?._id || '',
+      newStatus.toLowerCase() as OnlineStatus   // 👈 ép về lowercase trước khi gọi API
+    );
+
+    setIsOnline(newStatus);
+    Alert.alert(
+      'Trạng thái thay đổi',
+      `Bạn đã ${newStatus === 'online' ? 'bật chế độ nhận đơn' : 'tắt chế độ nhận đơn'}`
+    );
+  } catch (error) {
+    console.error('❌ Lỗi khi cập nhật trạng thái online:', error);
+    Alert.alert('Lỗi', 'Không thể cập nhật trạng thái online.');
+  }
+};
+
 
   const setBusyStatus = async () => {
     try {

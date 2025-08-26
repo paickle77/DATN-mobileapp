@@ -17,10 +17,10 @@ import {
   View
 } from "react-native";
 import { io } from "socket.io-client";
-import { BASE_URL, BASE_URL1 } from "../../services/api";
+import { BASE_URL } from "../../services/api";
 import { getUserData } from "../utils/storage";
 
-const socket = io(`${BASE_URL1}`);
+const socket = io('http://14.225.198.220:5555');
 
 const ChatScreen = () => {
   const [message, setMessage] = useState("");

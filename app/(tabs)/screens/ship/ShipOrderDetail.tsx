@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { User } from '../../services/RegisterAuthService';
-import { assignOrderToShipper, cancelOrder, completeOrder, fetchOrderDetailLikeScreen, fetchOrderItemsLikeScreen, OrderDetail, OrderItem, Shipper, updateShipperOnlineStatus } from '../../services/ShipService';
+import { assignOrderToShipper, completeOrder, failedOrder, fetchOrderDetailLikeScreen, fetchOrderItemsLikeScreen, OrderDetail, OrderItem, Shipper, updateShipperOnlineStatus } from '../../services/ShipService';
 import { getUserData } from '../utils/storage';
 
 
@@ -88,39 +88,26 @@ const screenWidth = Dimensions.get('window').width;
     }
   };
 
-  const handleAcceptOrder = async () => {
-    if (!order) return;
-
-    if ((isOnline as OnlineStatus) === 'offline') {
+  const handleAcceptOrder = async (billId: string) => {
+    if (isOnline === 'offline') {
       Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }
-    if ((isOnline as OnlineStatus) === 'busy') {
+    if (isOnline === 'busy') {
       Alert.alert('Thông báo', 'Bạn đang có đơn, không thể nhận đơn hàng này.');
       return;
     }
-
-
     try {
-      setActionLoading(true);
       const shipperID = await getUserData('shipperID');
-      const res = await assignOrderToShipper(order._id, shipperID);
-
-      if (res.success) {
-        Alert.alert('Thành công', 'Đã nhận đơn hàng thành công!');
-        setOnlineStatus('busy');
-        fetchOrderDetail();
-      } else {
-        Alert.alert('Lỗi', res.message || 'Không thể nhận đơn hàng');
-      }
-    } catch (error) {
-      console.error('Error accepting order:', error);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi nhận đơn hàng');
-    } finally {
-      setActionLoading(false);
+      await assignOrderToShipper(billId, shipperID);
+      Alert.alert('Thành công', 'Bạn đã nhận đơn hàng.');
+      setOnlineStatus('busy'); // tự động chuyển sang busy
+      fetchOrderDetail();
+    } catch (error: any) {
+      console.error('❌ Lỗi khi nhận đơn:', error);
+      Alert.alert('Lỗi', error?.response?.data?.msg || 'Không thể nhận đơn hàng.');
     }
   };
-
   const handleCompleteOrder = async () => {
     if (!order) return;
 
@@ -193,7 +180,7 @@ const screenWidth = Dimensions.get('window').width;
             try {
               setActionLoading(true);
               const shipperID = await getUserData('shipperID');
-              const response = await cancelOrder(orderId, shipperID, proofImage);
+              const response = await failedOrder(orderId, shipperID, proofImage);
 
               if (response.success) {
                 Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');
@@ -281,6 +268,7 @@ const screenWidth = Dimensions.get('window').width;
             icon: '❌',
             progress: 0
           };
+        
         default:
           return { 
             label: status, 
@@ -336,6 +324,7 @@ const screenWidth = Dimensions.get('window').width;
         quality: 0.8,
         base64: true,
       });
+
 
       if (!result.canceled) {
         const base64String = `data:image/jpeg;base64,${result.assets[0].base64}`;
@@ -699,7 +688,7 @@ const screenWidth = Dimensions.get('window').width;
             {order.status === 'ready' && (
               <TouchableOpacity 
                 style={[styles.actionButton, styles.acceptButton]}
-                onPress={handleAcceptOrder}
+                onPress={() =>handleAcceptOrder(order._id)}
                 disabled={actionLoading}
               >
                 {actionLoading ? (
