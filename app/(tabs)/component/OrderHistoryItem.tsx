@@ -297,7 +297,7 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
           </View>
           <View style={styles.orderIdBadge}>
             <Text style={styles.orderIdText}>
-              #{order._id?.slice(-6)?.toUpperCase() || 'N/A'}
+              #{order._id?.slice(-8)?.toUpperCase() || 'N/A'}
             </Text>
           </View>
         </View>

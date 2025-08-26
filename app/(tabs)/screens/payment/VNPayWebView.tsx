@@ -1,7 +1,9 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
+import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, StyleSheet, View } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
+import { BASE_URL } from '../../services/api';
 import checkoutService from '../../services/checkoutService';
 import { paymentService } from '../../services/paymentService';
 import { getUserData } from '../utils/storage';
@@ -128,6 +130,25 @@ const VNPayWebView: React.FC = () => {
       
       const { billId } = await paymentService.createBillAfterPayment(finalBillData, transactionData);
 
+        try {
+          const pendingOrder = await getUserData('pendingOrder')
+          console.log('pendingOrder',pendingOrder)
+          const userId = await getUserData('userId');
+                console.log('👤 UserID:', userId);
+          const payload = {
+            title: "Đặt hàng thành công",
+            content: `Bạn vừa đặt thành công đơn hàng .`,
+            user_id: userId, // Gửi notification đến user hiện tại
+          };
+          console.log('Notification payload:', payload);
+          const res = await axios.post(`${BASE_URL}/notifications`, payload);
+          console.log('Notification sent:', res.data);         
+
+        } catch (error) {
+          console.error('Error sending notification:', error);
+        }
+
+
       // 2. Giảm quantity cho các sản phẩm và xóa khỏi giỏ hàng
       if (sizeQuantityList && Array.isArray(sizeQuantityList)) {
         for (const item of sizeQuantityList) {
@@ -151,6 +172,11 @@ const VNPayWebView: React.FC = () => {
 
       console.log('🎉 Order created successfully:', billId);
       
+
+      
+
+
+
       // 4. Hiển thị alert với tùy chọn xem đơn hàng hoặc về Home
       setTimeout(() => {
         Alert.alert(

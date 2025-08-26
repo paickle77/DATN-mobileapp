@@ -1,13 +1,14 @@
 import { Feather } from '@expo/vector-icons';
 import axios from 'axios';
+import * as Notifications from 'expo-notifications';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNotification } from '../../../../../hooks/useNotification'; // Đường dẫn tùy theo cấu trúc project
 import NotificationComponent from '../../../component/NotificationComponent'; // Đường dẫn tùy theo cấu trúc project
 import { BASE_URL } from '../../../services/api';
+import { registerForPushNotificationsAsync } from '../../notification/PushTokenService';
 import { getUserData } from '../../utils/storage';
 import { styles } from './styles';
-
 interface Props {
   goBack: () => void;
 }
@@ -19,8 +20,22 @@ const PasswordManagement = ({ goBack }: Props) => {
   const [secure, setSecure] = useState(true);
   const [loading, setLoading] = useState<boolean>(true);
   const [accountId, setAccountId] = useState<string>(''); // ✅ Đổi từ userId -> accountId
-
+  const [pushToken, setPushToken] = useState('')
   const { notification, showError, showSuccess, hideNotification } = useNotification();
+
+    const fetchDatatoken = async () => {
+      try {
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          setPushToken(token);
+          console.log('🔐 Token:', token);
+          console.log("V")
+        }
+      } catch (error) {
+        console.error('❌ Lỗi khi lấy push token:', error);
+      }
+    };
+  
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -46,7 +61,7 @@ const PasswordManagement = ({ goBack }: Props) => {
         setLoading(false);
       }
     };
-
+    fetchDatatoken();
     fetchUserData();
   }, []);
 
@@ -107,11 +122,46 @@ const PasswordManagement = ({ goBack }: Props) => {
       });
 
       if (res.data.success) {
+        
+         await Notifications.scheduleNotificationAsync({
+                content: {
+                  to: `${pushToken}`,
+                  sound: "custom",
+                  title: "Đổi mật khẩu thành công !",
+                  body: "Bạn đã đổi mật khẩu thành công",
+                  data: { "foo": "bar" },
+                  android: {
+                    channelId: "orders",
+                    icon: "notification-icon", 
+                    color: "#5C4033",
+                  }
+                },
+                trigger: null,
+              });
+        
+         try {
+          const userId = await getUserData('userId');
+                console.log('👤 UserID:', userId);
+          const payload = {
+            title: "Đổi mật khẩu thành công",
+            content: "Mật khẩu của bạn đã được cập nhật thành công.",
+            user_id: userId, // Gửi notification đến user hiện tại
+          };
+          console.log('Notification payload:', payload);
+          const res = await axios.post(`${BASE_URL}/notifications`, payload);
+          console.log('Notification sent:', res.data);         
+
+        } catch (error) {
+          console.error('Error sending notification:', error);
+        }
+
         showSuccess('Đổi mật khẩu thành công!');
         // ✅ Clear form sau khi thành công
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+
+       
       } else {
         showError(res.data.message || 'Đổi mật khẩu thất bại!');
       }
