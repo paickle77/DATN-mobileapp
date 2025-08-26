@@ -83,7 +83,7 @@ export type OrderItem = {
 
 // Lấy thông tin shipper
 export const fetchShipperInfo = async () => {
-  const accountId = await getUserData('userData');
+  const accountId = await getUserData('accountId');
   const res = await axios.get(`${BASE_URL}/shippers`);
   const shippers = res.data?.data || [];
   const shipper = shippers.find((s: any) => s.account_id === accountId);
@@ -113,7 +113,7 @@ export const updateShipperStatus = async (
 
 // Lấy tất cả hóa đơn
 export const fetchAllBills = async (): Promise<OrderDetail[]> => {
-  const res = await axios.get(`${BASE_URL}/GetAllBills`);
+  const res = await axios.get(`${BASE_URL}/bills`);
   
   return res.data?.data || [];
 };
@@ -148,33 +148,33 @@ export const assignOrderToShipper = async (orderId: string, shipperId: string) =
 export const completeOrder = async (
   orderId: string,
   shipperId: string,
-  proofImage?: string
+  proof_images: string
 ) => {
   const res = await axios.post(`${BASE_URL}/bills/CompleteOrder`, {
     orderId,
     shipperId,
-    proof_images: proofImage
+    proof_images
   });
   return res.data;
 };
 
 // Hủy đơn
-export const cancelOrder = async (
+export const failedOrder = async (
   orderId: string,
   shipperId: string,
-  proofImage?: string
+  proof_images: string
 ) => {
-  const res = await axios.post(`${BASE_URL}/bills/CancelOrder`, {
+  const res = await axios.post(`${BASE_URL}/bills/FailedOrder`, {
     orderId,
     shipperId,
-    proof_images: proofImage
+    proof_images
   });
   return res.data;
 };
 
 // Lấy đơn đã giao (hoa hồng)
 export const fetchCommissionOrders = async (shipperId: string) => {
-  const res = await axios.get(`${BASE_URL}/GetAllBills`);
+  const res = await axios.get(`${BASE_URL}/bills`);
   const data = res.data?.data || [];
   return data.filter(
     (order: any) => order.shipper_id === shipperId && order.status === 'done'
@@ -187,7 +187,7 @@ export const getCommissionOrders = async (
   filterType: 'day' | 'month',
   selectedDate: string
 ) => {
-  const res = await axios.get(`${BASE_URL}/GetAllBills`);
+  const res = await axios.get(`${BASE_URL}/bills`);
   const data = res.data?.data || [];
 
   const ordersData = data.filter(
