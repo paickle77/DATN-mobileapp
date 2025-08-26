@@ -443,14 +443,14 @@ const Checkout = ({
       const { paymentService } = require('../../services/paymentService');
 
       // Lấy thông tin user hiện tại
-      const currentUser = await getUserData('userAccount');
+       const accountId = await getUserData('accountId');
       const selectedShipping = shippingMethods.find(m => m.id === selectedShippingMethod);
       const selectedShippingName = selectedShipping?.name || '';
       const shippingFee = selectedShipping?.price || 0;
       
       // Chuẩn bị dữ liệu đơn hàng (chưa gửi lên server)
       const billData = {
-        Account_id: currentUser?.id || currentUser?._id || '',
+        Account_id:accountId ,
         address_id: addresses[0]?._id || '',
         shipping_method: selectedShippingName,
         payment_method: selectedPaymentName,
@@ -469,12 +469,15 @@ const Checkout = ({
           unit_price: item.price,
         })),
       };
-
+        //  await saveUserData({ key: 'pendingOrder', value: pendingOrder.billId.slice(-8).toUpperCase() });
+        //      await saveUserData({ key: 'pendingOrder', value:  });
+        // console.log('✅ COD order created:', pendingOrder.billId);
       // Tạo link thanh toán VNPay (KHÔNG tạo đơn hàng)
       if (selectedPaymentName.toLowerCase().includes('vnpay')) {
         console.log('💳 Creating VNPay payment URL only...');
         const { paymentUrl } = await paymentService.createVNPayPayment(billData);
-
+        console.log('✅ VNPay payment URL created:', billData);
+  //  await saveUserData({ key: 'pendingOrder', value: pendingOrder});
         // Chuyển đến WebView với dữ liệu để tạo đơn SAU KHI thanh toán thành công
         navigation.navigate('VNPayWebView', {
           paymentUrl,
@@ -578,8 +581,7 @@ const Checkout = ({
           shippingFee,
           selectedVoucher?._id // ✅ Truyền voucher_user_id
         );
-
-        console.log('✅ COD order created:', pendingOrder.billId);
+     
         navigation.navigate('ConfirmationScreen', {
           pendingOrder,
           selectedItemIds,

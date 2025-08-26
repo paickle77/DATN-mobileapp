@@ -35,8 +35,9 @@ const NotificationScreen = () => {
   const fetchNotifications = useCallback(async () => {
     try {
       const userId = await getUserData('userId');
+      console.log('👤 UserID:', userId);
       if (!userId) return;
-
+      
       const response = await axios.get(`${BASE_URL}/notifications/user/${userId}`);
       const allNotifications = response.data?.data || [];
       
