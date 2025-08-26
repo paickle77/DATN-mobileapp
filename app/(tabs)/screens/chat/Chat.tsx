@@ -309,7 +309,6 @@ Bước 3: Sửa đổi thông tin mà bạn muốn`;
                 <Text style={styles.productNameHorizontal} numberOfLines={2}>
                   {product.name}
                 </Text>
-                
                 <View style={styles.productPriceContainerHorizontal}>
                   {product.discount_price > 0 ? (
                     <>
@@ -325,13 +324,6 @@ Bước 3: Sửa đổi thông tin mà bạn muốn`;
                       {product.price.toLocaleString('vi-VN')}đ
                     </Text>
                   )}
-                </View>
-
-                <View style={styles.productMetaHorizontal}>
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={12} color="#FFD700" />
-                    <Text style={styles.ratingTextHorizontal}>{product.rating}/5</Text>
-                  </View>
                 </View>
               </View>
             </TouchableOpacity>

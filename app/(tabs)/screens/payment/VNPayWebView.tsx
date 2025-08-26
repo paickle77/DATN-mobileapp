@@ -41,25 +41,29 @@ const VNPayWebView: React.FC = () => {
   // Xử lý back button - về HomeScreen
   useEffect(() => {
     const backAction = () => {
-      Alert.alert(
-        'Thoát thanh toán?',
-        'Bạn có chắc muốn thoát? Giao dịch sẽ bị hủy.',
-        [
-          { text: 'Không', style: 'cancel' },
-          { 
-            text: 'Có', 
-            onPress: () => {
-              // Clear timeout và về HomeScreen
-              if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-                timeoutRef.current = null;
+      if (!hasHandledResult.current) {
+        Alert.alert(
+          'Thoát thanh toán?',
+          'Bạn có chắc muốn thoát? Giao dịch sẽ bị hủy.',
+          [
+            { text: 'Không', style: 'cancel' },
+            { 
+              text: 'Có', 
+              onPress: () => {
+                // Clear timeout và về HomeScreen
+                if (timeoutRef.current) {
+                  clearTimeout(timeoutRef.current);
+                  timeoutRef.current = null;
+                }
+                (navigation as any).navigate('TabNavigator', { screen: 'Home' });
               }
-              (navigation as any).navigate('TabNavigator', { screen: 'Home' });
-            }
-          },
-        ]
-      );
-      return true; // Prevent default back action
+            },
+          ]
+        );
+        return true; // Prevent default back action
+      }
+      // Nếu đã xử lý xong kết quả thanh toán thì cho phép back bình thường
+      return false;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);

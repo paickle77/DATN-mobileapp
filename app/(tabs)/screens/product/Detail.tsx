@@ -39,6 +39,11 @@ const Detail: React.FC = () => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
+
+  // Tính lại tổng tiền khi chọn size hoặc thay đổi số lượng
+  useEffect(() => {
+    calculateTotalPrice();
+  }, [selectedSize, quantity, product, sizes]);
   const [error, setError] = useState<string | null>(null);
   const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({
     averageRating: 0,
