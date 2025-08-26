@@ -15,9 +15,9 @@ export const validateEmail = (email: string): ValidationResult => {
     return { isValid: false, error: 'Email không được để trống' };
   }
   
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
   if (!emailRegex.test(email)) {
-    return { isValid: false, error: 'Email không đúng định dạng' };
+    return { isValid: false, error: 'Email không hợp lệ (ví dụ: ten@gmail.com)' };
   }
   
   return { isValid: true, error: '' };
@@ -29,8 +29,9 @@ export const validatePassword = (password: string): ValidationResult => {
     return { isValid: false, error: 'Mật khẩu không được để trống' };
   }
   
-  if (password.length < 6) {
-    return { isValid: false, error: 'Mật khẩu phải có ít nhất 6 ký tự' };
+  const passwordRegex = /^\S{6,}$/;
+  if (!passwordRegex.test(password)) {
+    return { isValid: false, error: 'Mật khẩu phải có ít nhất 6 ký tự và không chứa khoảng trắng' };
   }
   
   return { isValid: true, error: '' };
@@ -52,11 +53,12 @@ export const validateConfirmPassword = (password: string, confirmPassword: strin
 // Validate full name
 export const validateFullName = (fullName: string): ValidationResult => {
   if (!fullName.trim()) {
-    return { isValid: false, error: 'Họ tên không được để trống' };
+    return { isValid: false, error: 'Tên không được để trống' };
   }
   
-  if (fullName.trim().length < 2) {
-    return { isValid: false, error: 'Họ tên phải có ít nhất 2 ký tự' };
+  const nameRegex = /^[A-Za-zÀ-ỹ\s]{2,50}$/;
+  if (!nameRegex.test(fullName.trim())) {
+    return { isValid: false, error: 'Tên không hợp lệ (chỉ chứa chữ cái, tiếng Việt, độ dài 2–50 ký tự)' };
   }
   
   return { isValid: true, error: '' };
@@ -68,9 +70,9 @@ export const validatePhone = (phone: string): ValidationResult => {
     return { isValid: false, error: 'Số điện thoại không được để trống' };
   }
   
-  const phoneRegex = /^(0[3|5|7|8|9])+([0-9]{8})$/;
+  const phoneRegex = /^(0[3|5|7|8|9][0-9]{8}|(\+84)[3|5|7|8|9][0-9]{8})$/;
   if (!phoneRegex.test(phone)) {
-    return { isValid: false, error: 'Số điện thoại không đúng định dạng (VD: 0987654321)' };
+    return { isValid: false, error: 'Số điện thoại không hợp lệ (phải theo chuẩn Việt Nam: 03,05,07,08,09)' };
   }
   
   return { isValid: true, error: '' };
@@ -174,4 +176,40 @@ export const validateCompleteProfileForm = (
   }
 
   return { isValid, errors };
+};
+
+// Hàm validate form tổng thể theo yêu cầu
+export const validateForm = (input: {
+  name: string;
+  password: string;
+  email: string;
+  phone: string;
+}): { valid: boolean; message?: string } => {
+  const { name, password, email, phone } = input;
+
+  // Validate name
+  const nameValidation = validateFullName(name);
+  if (!nameValidation.isValid) {
+    return { valid: false, message: nameValidation.error };
+  }
+
+  // Validate password
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.isValid) {
+    return { valid: false, message: passwordValidation.error };
+  }
+
+  // Validate email
+  const emailValidation = validateEmail(email);
+  if (!emailValidation.isValid) {
+    return { valid: false, message: emailValidation.error };
+  }
+
+  // Validate phone
+  const phoneValidation = validatePhone(phone);
+  if (!phoneValidation.isValid) {
+    return { valid: false, message: phoneValidation.error };
+  }
+
+  return { valid: true };
 };

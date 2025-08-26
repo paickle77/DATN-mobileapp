@@ -32,7 +32,7 @@ type OrderType = {
   note?: string;
   payment_method?: string;
   shipping_method?: string;
-  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded' | 'returned';
   total: number;
   original_total?: number;
   discount_amount?: number;
@@ -124,6 +124,7 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
           icon: 'close-circle-outline',
         };
       case 'failed':
+      case 'returned':
         return {
           text: 'Hoàn trả',
           color: '#F44336',

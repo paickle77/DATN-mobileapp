@@ -5,7 +5,6 @@ import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RegisterAuthService } from '../../services/RegisterAuthService';
-import { validateCompleteProfileForm } from '../../utils/validation';
 import { saveUserData } from '../utils/storage'; // ✅ THÊM: Import saveUserData
 
 // Danh sách các tùy chọn giới tính
@@ -142,16 +141,26 @@ export default function CompleteProfile() {
       gender: '',
     });
 
-    // Gọi validation từ file utils
-    const validation = validateCompleteProfileForm(fullName.trim(), phone.trim(), gender);
+    // Validate chỉ tên và số điện thoại
+    const { validateFullName, validatePhone } = require('../../utils/validation');
+    let valid = true;
+    const newErrors: any = {};
+
+    const fullNameResult = validateFullName(fullName.trim());
+    if (!fullNameResult.isValid) {
+      newErrors.fullName = fullNameResult.error;
+      valid = false;
+    }
+
+    const phoneResult = validatePhone(phone.trim());
+    if (!phoneResult.isValid) {
+      newErrors.phone = phoneResult.error;
+      valid = false;
+    }
 
     // Nếu có lỗi, hiển thị lỗi và dừng
-    if (!validation.isValid) {
-      setErrors({
-        fullName: validation.errors.fullName || '',
-        phone: validation.errors.phone || '',
-        gender: validation.errors.gender || '',
-      });
+    if (!valid) {
+      setErrors(newErrors);
       return;
     }
 

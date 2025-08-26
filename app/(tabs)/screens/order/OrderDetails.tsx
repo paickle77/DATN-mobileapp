@@ -239,6 +239,7 @@ const OrderDetails = () => {
           description: 'Đơn hàng đã bị hủy'
         };
       case 'failed':
+      case 'returned':
         return {
           text: 'Hoàn trả',
           color: '#DC3545',

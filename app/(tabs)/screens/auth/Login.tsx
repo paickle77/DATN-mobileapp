@@ -45,31 +45,38 @@ export default function Login() {
   const navigation = useNavigation<LoginNavigationProp>();
 
   const handleLogin = async () => {
-   await clearAllStorage();
-  if (!email || !password) {
-    setSnackbarMessage('Vui lòng nhập email và mật khẩu');
-    setSnackbarType('error');
-    setSnackbarVisible(true);
-    return;
-  }
+    await clearAllStorage();
+    // Validate form before login
+    const { isValid, errors: formErrors } = validateLoginForm(email, password);
+    if (!isValid) {
+      setErrors({ 
+        email: formErrors.email || '', 
+        password: formErrors.password || '' 
+      });
+      setSnackbarMessage(formErrors.email || formErrors.password || 'Vui lòng nhập email và mật khẩu');
+      setSnackbarType('error');
+      setSnackbarVisible(true);
+      return;
+    }
 
-  setLoading(true);
-  const result = await loginAuthService.login(email, password);
-        await Notifications.scheduleNotificationAsync({
-           content: {
-             title: ' Đăng nhập thành công!',
-             body: `Bạn được chuyển tới trang chủ`,
-             sound: 'default',
-           },
-           trigger: null, // Gửi ngay lập tức
-         });
-  // ✅ In rõ role lấy được
-  const role = result?.data?.account?.role;
-  console.log('🔍 Role lấy được:', role);
+    setLoading(true);
+    const result = await loginAuthService.login(email, password);
+    // ✅ In rõ role lấy được
+    const role = result?.data?.account?.role;
+    console.log('🔍 Role lấy được:', role);
 
-  setLoading(false);
+    setLoading(false);
 
-  if (result.success) {
+    if (result.success) {
+      // Chỉ gửi thông báo khi đăng nhập thành công
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Đăng nhập thành công!',
+          body: 'Bạn được chuyển tới trang chủ',
+          sound: 'default',
+        },
+        trigger: null, // Gửi ngay lập tức
+      });
     try {
       // ✅ Lưu tất cả thông tin quan trọng vào AsyncStorage
       const userData = result.data;

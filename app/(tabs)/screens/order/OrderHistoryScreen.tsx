@@ -41,7 +41,7 @@ type OrderType = {
   note?: string;
   payment_method?: string;
   shipping_method?: string;
-  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded' | 'returned';
   total: number;
   original_total?: number;
   discount_amount?: number;
@@ -69,7 +69,7 @@ type OrderType = {
   };
 };
 
-type TabType = 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
+type TabType = 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded' | 'returned';
 
 // Fallback component for rendering errors
 const FallbackComponent = () => (
@@ -167,7 +167,7 @@ const OrderHistoryScreen = () => {
     if (activeTab === 'shipping') {
       filtered = orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase()));
     } else if (activeTab === 'cancelled') {
-      filtered = orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase()));
+      filtered = orders.filter(order => ['cancelled', 'failed', 'returned'].includes(order.status.toLowerCase()));
     } else if (activeTab === 'refund_pending') {
       filtered = orders.filter(order => ['refund_pending', 'refunded'].includes(order.status.toLowerCase()));
     } else {
@@ -205,7 +205,7 @@ const OrderHistoryScreen = () => {
       return orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase())).length;
     }
     if (status === 'cancelled') {
-      return orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase())).length;
+      return orders.filter(order => ['cancelled', 'failed', 'returned'].includes(order.status.toLowerCase())).length;
     }
     if (status === 'refund_pending') {
       return orders.filter(order => ['refund_pending', 'refunded'].includes(order.status.toLowerCase())).length;
