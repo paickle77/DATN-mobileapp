@@ -117,6 +117,10 @@ const screenWidth = Dimensions.get('window').width;
       Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }
+    if (!proofImage) {
+      Alert.alert("Thông báo", "Bạn cần thêm ảnh minh chứng trước khi hoàn thành đơn.");
+      return;
+}
 
     
     Alert.alert(
@@ -130,7 +134,7 @@ const screenWidth = Dimensions.get('window').width;
             try {
               setActionLoading(true);
               const shipperID = await getUserData('shipperID');
-              const response = await completeOrder(orderId, shipperID, proofImage ?? '');
+              const response = await completeOrder(orderId, shipperID, proofImage);
 
               if (response.success) {
                 Alert.alert('🎉 Thành công', 'Đơn hàng đã được hoàn thành!');
@@ -159,6 +163,10 @@ const screenWidth = Dimensions.get('window').width;
       Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }
+    if (!proofImage) {
+      Alert.alert("Thông báo", "Bạn cần thêm ảnh minh chứng trước khi hoàn thành đơn.");
+      return;
+    }
 
 
     Alert.alert(
@@ -173,7 +181,8 @@ const screenWidth = Dimensions.get('window').width;
             try {
               setActionLoading(true);
               const shipperID = await getUserData('shipperID');
-              const response = await failedOrder(orderId, shipperID, proofImage ?? '');
+              console.log('zzz',orderId, shipperID, proofImage);
+              const response = await failedOrder(orderId, shipperID, proofImage);
 
               if (response.success) {
                 Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');

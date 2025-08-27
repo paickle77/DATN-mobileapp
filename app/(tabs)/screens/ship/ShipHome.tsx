@@ -236,6 +236,9 @@ const ShipHome: React.FC = () => {
 
   const setBusyStatus = async () => {
     try {
+      console.log('====================================');
+      console.log('setBusyStatus called',shipperInfo?._id, isOnline);
+      console.log('====================================');
       await updateShipperStatus(shipperInfo?._id || '', 'busy');
       setIsOnline('busy');
     } catch (error) {
