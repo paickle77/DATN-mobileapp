@@ -76,7 +76,7 @@ interface ShipperProfile {
   image: string;
   vehicleType: string;
   licenseNumber: string;
-  isOnline: true | false | "busy";   // ✅ đổi chỗ này
+  isOnline: 'true' | 'false' | "busy";   // ✅ đổi chỗ này
   accountId: string;
 }
 
@@ -195,11 +195,11 @@ const ShipProfileScreen: React.FC = () => {
       },
     ]);
   };
-  const getStatusText = (status: true | false | "busy") => {
+  const getStatusText = (status: 'true' | 'false' | "busy") => {
     switch (status) {
-      case true: return 'Đang hoạt động';
+      case 'true': return 'Đang hoạt động';
       case "busy": return 'Đang bận';
-      case false: return 'Không hoạt động';
+      case 'false': return 'Không hoạt động';
       default: return 'Không xác định';
     }
   };
