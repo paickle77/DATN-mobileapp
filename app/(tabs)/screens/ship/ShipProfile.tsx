@@ -87,7 +87,7 @@ const defaultShipperData: ShipperProfile = {
   image: 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
   vehicleType: '',
   licenseNumber: '',
-  isOnline: false,
+  isOnline: 'false',
   accountId: '',
 };
 
@@ -98,7 +98,7 @@ const mapToShipperProfile = (s: Shipper): ShipperProfile => ({
   image: s.image || 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
   vehicleType: s.vehicle_type || '',
   licenseNumber: s.license_number || '',
-  isOnline: s.is_online as true | false | "busy" || false,  // ✅ ép kiểu
+  isOnline: s.is_online as 'true' | 'false' | "busy" || false,  // ✅ ép kiểu
   accountId: s.account_id || '',
 });
 
