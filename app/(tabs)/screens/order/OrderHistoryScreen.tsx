@@ -97,7 +97,7 @@ const OrderHistoryScreen = () => {
     },
     { 
       key: 'shipping', 
-      title: 'Đang làm', 
+      title: 'Đang chuẩn bị', 
       icon: 'bicycle-outline', 
       color: '#4A90E2',
       bgColor: 'rgba(74, 144, 226, 0.1)',

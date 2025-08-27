@@ -1,6 +1,16 @@
 import type { Product } from './ProductsService';
 
 class HomeService {
+  // Chuyển tiếng Việt sang không dấu
+  removeVietnameseTones(str: string): string {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase();
+  }
+
   // Validate tìm kiếm
   validateSearchQuery(query: string): {
     isValid: boolean;
@@ -46,7 +56,7 @@ class HomeService {
     };
   }
 
-  // Filter sản phẩm theo search text
+  // Filter sản phẩm theo search text với hỗ trợ không dấu
   filterProductsBySearch(products: Product[], searchText: string): Product[] {
     if (!searchText.trim()) return products;
 
@@ -54,14 +64,22 @@ class HomeService {
     if (!validation.isValid) return products;
 
     const searchTerm = validation.sanitizedQuery!.toLowerCase();
+    const searchTermNoAccent = this.removeVietnameseTones(searchTerm);
 
     return products.filter(product => {
       const name = product.name.toLowerCase();
+      const nameNoAccent = this.removeVietnameseTones(name);
       const categoryName = typeof product.category_id === 'object' && product.category_id 
         ? product.category_id.name?.toLowerCase() || ''
         : '';
+      const categoryNameNoAccent = this.removeVietnameseTones(categoryName);
 
-      return name.includes(searchTerm) || categoryName.includes(searchTerm);
+      return (
+        name.includes(searchTerm) ||
+        nameNoAccent.includes(searchTermNoAccent) ||
+        categoryName.includes(searchTerm) ||
+        categoryNameNoAccent.includes(searchTermNoAccent)
+      );
     });
   }
 
@@ -84,7 +102,7 @@ class HomeService {
     func: T,
     wait: number
   ): (...args: Parameters<T>) => void {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     
     return (...args: Parameters<T>) => {
       clearTimeout(timeout);
@@ -116,7 +134,8 @@ class HomeService {
           return ratingB - ratingA;
         case 'newest':
         default:
-          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+          // Sắp xếp theo _id (ObjectId MongoDB thường chứa timestamp)
+          return b._id.localeCompare(a._id);
       }
     });
   }
