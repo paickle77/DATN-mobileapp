@@ -455,12 +455,15 @@ const ShipHome: React.FC = () => {
               </View>
 
               {/* ✅ Nút nhận đơn */}
-              <TouchableOpacity
-                style={styles.acceptButton}
-                onPress={() => handleAcceptOrder(order._id)}
-              >
-                <Text style={styles.acceptButtonText}>Nhận đơn</Text>
-              </TouchableOpacity>
+              {isOnline === "online" && (
+                <TouchableOpacity
+                  style={styles.acceptButton}
+                  onPress={() => handleAcceptOrder(order._id)}
+                >
+                  <Text style={styles.acceptButtonText}>Nhận đơn</Text>
+                </TouchableOpacity>
+              )}
+
             </TouchableOpacity>
           ))}
         </View>

@@ -375,7 +375,7 @@ const DeliveredOrders = () => {
           <>
             <View style={styles.divider} />
             <View style={styles.actionSection}>
-              {isReadyOrder && (
+              {isReadyOrder  && isOnline === "online" && (
                 <TouchableOpacity 
                   style={styles.acceptButton}
                   onPress={() => handleAcceptOrder(item._id)}

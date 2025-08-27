@@ -685,7 +685,7 @@ const screenWidth = Dimensions.get('window').width;
         {/* Action Buttons */}
         {(order.status === 'ready' || order.status === 'shipping') && (
           <View style={styles.actionContainer}>
-            {order.status === 'ready' && (
+            {order.status === 'ready'  && isOnline === "online" && (
               <TouchableOpacity 
                 style={[styles.actionButton, styles.acceptButton]}
                 onPress={() =>handleAcceptOrder(order._id)}
