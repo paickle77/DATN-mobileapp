@@ -16,7 +16,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
-    shadowColor: '#4A90E2',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -45,29 +45,29 @@ export const styles = StyleSheet.create({
   },
   
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   
   headerSpacer: {
-    width: 40,
+    width: 32,
   },
   
 headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'black',
+    color: 'white',
     textAlign: 'center',
     flex: 1,
   },
   
   headerSubtitle: {
     fontSize: 14,
-    color: 'black',
+    color: 'white',
     opacity: 0.8,
   },
   

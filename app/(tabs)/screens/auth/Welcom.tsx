@@ -1,28 +1,48 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   StyleSheet,
   View
 } from 'react-native';
+import AuthChecker from '../../../../components/AuthChecker';
+import AuthUtils from '../../utils/auth.utils';
 
 type RootStackParamList = {
-  Splash: undefined;
+  Login: undefined;
+  Home: undefined; // Thêm Home route
   // Add other screens here if needed
 };
 
 type WelcomScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Splash'>;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 };
 
 const WelcomScreen: React.FC<WelcomScreenProps> = ({ navigation }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace('Splash');
-    }, 3000);
+  const [showAuthChecker, setShowAuthChecker] = useState(false);
 
-    return () => clearTimeout(timer);
+  useEffect(() => {
+    // Delay 2 giây để show logo trước khi check auth
+    const logoTimer = setTimeout(() => {
+      setShowAuthChecker(true);
+    }, 2000);
+
+    return () => clearTimeout(logoTimer);
   }, [navigation]);
+
+  const handleAuthComplete = (isLoggedIn: boolean, userInfo?: any) => {
+    if (isLoggedIn && userInfo) {
+      // User đã đăng nhập → vào Home với role tương ứng
+      console.log('🎉 Auto-login thành công với user:', userInfo);
+      
+      // Sử dụng AuthUtils để điều hướng đúng theo role
+      AuthUtils.handlePostAuthNavigation(navigation as any, userInfo.userRole);
+    } else {
+      // Chưa đăng nhập → chuyển qua Splash (auth flow)
+      console.log('👋 Chưa đăng nhập - chuyển qua Splash');
+      navigation.replace('Login');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -34,6 +54,12 @@ const WelcomScreen: React.FC<WelcomScreenProps> = ({ navigation }) => {
           resizeMode="contain"
         />
         
+        {/* Auth Checker */}
+        {showAuthChecker && (
+          <AuthChecker onAuthComplete={handleAuthComplete}>
+            {/* Logo sẽ vẫn hiển thị phía trên */}
+          </AuthChecker>
+        )}
       </View>
     </View>
   );
@@ -51,8 +77,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 520,
-    height: 520,
+    width: 420,
+    height: 420,
   
   },
 

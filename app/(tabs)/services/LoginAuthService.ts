@@ -1,7 +1,7 @@
 // services/LoginAuthService.ts
 import axios from 'axios';
 import bcrypt from 'bcryptjs';
-import { saveUserData } from '../screens/utils/storage';
+import { getUserData, saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
 export interface User {
@@ -18,6 +18,25 @@ export interface LoginResponse {
   message: string;
   user?: User;
   role?: string;
+  data?: {
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpires: number;
+    refreshTokenExpires: number;
+    account: any;
+    profile: any;
+  };
+}
+
+export interface RefreshTokenResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpires: number;
+    refreshTokenExpires: number;
+  };
 }
 
 class LoginAuthService {
@@ -63,41 +82,146 @@ class LoginAuthService {
     }
   }
 
-  // Xử lý login với BCrypt
-  // services/LoginAuthService.ts
-async login(email: string, password: string): Promise<any> {
-  try {
-    const response = await axios.post(`${BASE_URL}/login`, { email, password });
-    
+  // ✅ SỬA: Xử lý login với dual token
+  async login(email: string, password: string): Promise<LoginResponse> {
+    try {
+      const response = await axios.post(`${BASE_URL}/login`, { email, password });
+      
+      const { success, message, data } = response.data;
 
-    const { success, message, data } = response.data;
+      if (success && data?.accessToken && data?.refreshToken && data?.account) {
+        const { accessToken, refreshToken, accessTokenExpires, refreshTokenExpires, account, profile } = data;
 
-    if (success && data?.token && data?.account) {
-      const { token, account } = data;
+        // ✅ Lưu tokens và thông tin vào AsyncStorage
+        await saveUserData({ key: 'accessToken', value: accessToken });
+        await saveUserData({ key: 'refreshToken', value: refreshToken });
+        await saveUserData({ key: 'accessTokenExpires', value: accessTokenExpires.toString() });
+        await saveUserData({ key: 'refreshTokenExpires', value: refreshTokenExpires.toString() });
+        await saveUserData({ key: 'userData', value: account._id });
 
-      // ✅ Lưu token và account ID vào AsyncStorage
-      await saveUserData({ key: 'token', value: token });
-      await saveUserData({ key: 'userData', value: account._id });
-
-      return {
-        success,
-        message,
-        data // ✅ Trả lại toàn bộ data để lấy account.role, profile...
-      };
-    } else {
+        return {
+          success,
+          message,
+          data // ✅ Trả lại toàn bộ data để lấy account.role, profile...
+        };
+      } else {
+        return {
+          success: false,
+          message: message || 'Sai thông tin đăng nhập',
+        };
+      }
+    } catch (error: any) {
       return {
         success: false,
-        message: message || 'Sai thông tin đăng nhập',
+        message: 'Đăng nhập thất bại. Vui lòng kiểm tra tài khoản và mật khẩu.',
       };
     }
-  } catch (error: any) {
-    // console.error('❌ Lỗi đăng nhập:', error);
-    return {
-      success: false,
-      message: 'Đăng nhập thất bại. Vui lòng kiểm tra tài khoản và mật khẩu.',
-    };
   }
-}
+
+  // ✅ THÊM: Refresh token method
+  async refreshToken(): Promise<RefreshTokenResponse> {
+    try {
+      const refreshToken = await getUserData('refreshToken');
+      
+      if (!refreshToken) {
+        throw new Error('Không có refresh token');
+      }
+
+      const response = await axios.post(`${BASE_URL}/refresh-token`, { refreshToken });
+      
+      const { success, message, data } = response.data;
+
+      if (success && data?.accessToken && data?.refreshToken) {
+        const { accessToken, refreshToken: newRefreshToken, accessTokenExpires, refreshTokenExpires } = data;
+
+        // ✅ Lưu tokens mới vào AsyncStorage
+        await saveUserData({ key: 'accessToken', value: accessToken });
+        await saveUserData({ key: 'refreshToken', value: newRefreshToken });
+        await saveUserData({ key: 'accessTokenExpires', value: accessTokenExpires.toString() });
+        await saveUserData({ key: 'refreshTokenExpires', value: refreshTokenExpires.toString() });
+
+        return {
+          success,
+          message,
+          data
+        };
+      } else {
+        return {
+          success: false,
+          message: message || 'Không thể refresh token',
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ Lỗi refresh token:', error);
+      return {
+        success: false,
+        message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      };
+    }
+  }
+
+  // ✅ THÊM: Logout method
+  async logout(): Promise<{ success: boolean; message: string }> {
+    try {
+      const refreshToken = await getUserData('refreshToken');
+      
+      if (refreshToken) {
+        // Gọi API logout để xóa refresh token khỏi server
+        await axios.post(`${BASE_URL}/logout`, { refreshToken });
+      }
+
+      return {
+        success: true,
+        message: 'Đăng xuất thành công'
+      };
+    } catch (error) {
+      console.error('❌ Lỗi khi đăng xuất:', error);
+      // Vẫn trả về success vì client đã logout local
+      return {
+        success: true,
+        message: 'Đăng xuất thành công'
+      };
+    }
+  }
+
+  // ✅ THÊM: Kiểm tra token có hết hạn không
+  async isAccessTokenExpired(): Promise<boolean> {
+    try {
+      const expiresString = await getUserData('accessTokenExpires');
+      if (!expiresString) return true;
+      
+      const expires = parseInt(expiresString);
+      return Date.now() >= expires;
+    } catch (error) {
+      return true;
+    }
+  }
+
+  // ✅ THÊM: Auto refresh token nếu cần
+  async ensureValidToken(): Promise<boolean> {
+    try {
+      const isExpired = await this.isAccessTokenExpired();
+      
+      if (!isExpired) {
+        return true; // Access token còn hạn
+      }
+
+      // Access token hết hạn, thử refresh
+      console.log('🔄 Access token hết hạn, đang refresh...');
+      const refreshResult = await this.refreshToken();
+      
+      if (refreshResult.success) {
+        console.log('✅ Refresh token thành công');
+        return true;
+      } else {
+        console.log('❌ Refresh token thất bại');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi ensure valid token:', error);
+      return false;
+    }
+  }
 
 
 

@@ -113,7 +113,7 @@ const FavoritesScreen: React.FC = () => {
                 toggleFavorite(item._id);
               }}
             >
-              <Ionicons name="trash" size={20} color="#FF6B6B" />
+              <Ionicons name="trash" size={20} color="#A0522D" />
             </TouchableOpacity>
           </View>
 
@@ -154,28 +154,57 @@ const FavoritesScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA', paddingHorizontal: 16 },
+  container: { flex: 1, backgroundColor: '#FAF0E6', paddingHorizontal: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 20 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#2D3748' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#8B4513' },
   favoriteCount: { flexDirection: 'row', alignItems: 'center' },
-  countText: { marginLeft: 4, fontSize: 16, fontWeight: '600', color: '#4A5568' },
+  countText: { marginLeft: 4, fontSize: 16, fontWeight: '600', color: '#8B4513' },
   itemsList: { paddingBottom: 20 },
   row: { justifyContent: 'space-between' },
-  itemContainer: { width: itemWidth, backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 3 },
+  itemContainer: { 
+    width: itemWidth, 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    marginBottom: 16, 
+    shadowColor: '#8B4513', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.15, 
+    shadowRadius: 4, 
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#DEB887'
+  },
   imageContainer: { position: 'relative' },
   itemImage: { width: '100%', height: 120, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
-  favoriteButton: { position: 'absolute', top: 8, right: 8, backgroundColor: '#FFFFFF', borderRadius: 15, width: 30, height: 30, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
+  favoriteButton: { 
+    position: 'absolute', 
+    top: 8, 
+    right: 8, 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 15, 
+    width: 30, 
+    height: 30, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    shadowColor: '#8B4513', 
+    shadowOffset: { width: 0, height: 1 }, 
+    shadowOpacity: 0.2, 
+    shadowRadius: 2, 
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#DEB887'
+  },
   itemInfo: { padding: 12 },
   itemName: { 
     fontSize: 14, 
     fontWeight: '600', 
-    color: '#2D3748', 
+    color: '#8B4513', 
     marginBottom: 8,
     lineHeight: 18,
     width: '100%',
     textAlign: 'left'
   },
-  priceText: { fontSize: 14, fontWeight: 'bold', color: '#FF6B35' },
+  priceText: { fontSize: 14, fontWeight: 'bold', color: '#FF7F7F' },
 });
 
 export default FavoritesScreen;

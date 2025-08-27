@@ -32,7 +32,7 @@ type OrderType = {
   note?: string;
   payment_method?: string;
   shipping_method?: string;
-  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded' | 'returned';
   total: number;
   original_total?: number;
   discount_amount?: number;
@@ -77,7 +77,7 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
   BASE_URL,
   onRefresh,
 }) => {
-  const getStatusConfig = (status: string) => {
+  const getStatusConfig = (status: string, shippingMethod?: string) => {
     const normalizedStatus = status ? status.toLowerCase() : '';
 
     switch (normalizedStatus) {
@@ -96,6 +96,15 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
           icon: 'restaurant-outline',
         };
       case 'ready':
+        // Kiểm tra nếu là nhận tại cửa hàng
+        if (shippingMethod === 'Nhận tại cửa hàng') {
+          return {
+            text: 'Sẵn sàng tại quán',
+            color: '#9C27B0',
+            bgColor: '#F3E5F5',
+            icon: 'storefront-outline',
+          };
+        }
         return {
           text: 'Sẵn sàng giao',
           color: '#9C27B0',
@@ -125,10 +134,17 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
         };
       case 'failed':
         return {
-          text: 'Hoàn trả',
+          text: 'Đang trên đường hoàn về',
+          color: '#FF9800',
+          bgColor: '#FFF3E0',
+          icon: 'return-up-back-outline',
+        };
+      case 'returned':
+        return {
+          text: 'Đã hoàn về tới quán',
           color: '#F44336',
           bgColor: '#FFEBEE',
-          icon: 'return-up-back-outline',
+          icon: 'checkmark-circle-outline',
         };
       case 'refund_pending':
         return {
@@ -279,7 +295,7 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
     }
   };
 
-  const statusConfig = getStatusConfig(order.status);
+  const statusConfig = getStatusConfig(order.status, order.shipping_method);
 
   return (
     <TouchableOpacity
@@ -297,7 +313,7 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
           </View>
           <View style={styles.orderIdBadge}>
             <Text style={styles.orderIdText}>
-              #{order._id?.slice(-6)?.toUpperCase() || 'N/A'}
+              #{order._id?.slice(-8)?.toUpperCase() || 'N/A'}
             </Text>
           </View>
         </View>

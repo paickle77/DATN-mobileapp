@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import CustomSnackbar from '../../../(tabs)/component/CustomSnackbar'; // ✅ ĐÃ THÊM COMPONENT SNACKBAR
 import { loginAuthService } from '../../services/LoginAuthService';
+import AuthUtils from '../../utils/auth.utils';
 import { validateLoginForm } from '../../utils/validation';
 import { clearAllStorage, saveUserData } from '../utils/storage';
 // Kiểu dữ liệu navigation
@@ -45,31 +46,38 @@ export default function Login() {
   const navigation = useNavigation<LoginNavigationProp>();
 
   const handleLogin = async () => {
-   await clearAllStorage();
-  if (!email || !password) {
-    setSnackbarMessage('Vui lòng nhập email và mật khẩu');
-    setSnackbarType('error');
-    setSnackbarVisible(true);
-    return;
-  }
+    await clearAllStorage();
+    // Validate form before login
+    const { isValid, errors: formErrors } = validateLoginForm(email, password);
+    if (!isValid) {
+      setErrors({ 
+        email: formErrors.email || '', 
+        password: formErrors.password || '' 
+      });
+      setSnackbarMessage(formErrors.email || formErrors.password || 'Vui lòng nhập email và mật khẩu');
+      setSnackbarType('error');
+      setSnackbarVisible(true);
+      return;
+    }
 
-  setLoading(true);
-  const result = await loginAuthService.login(email, password);
-        await Notifications.scheduleNotificationAsync({
-           content: {
-             title: ' Đăng nhập thành công!',
-             body: `Bạn được chuyển tới trang chủ`,
-             sound: 'default',
-           },
-           trigger: null, // Gửi ngay lập tức
-         });
-  // ✅ In rõ role lấy được
-  const role = result?.data?.account?.role;
-  console.log('🔍 Role lấy được:', role);
+    setLoading(true);
+    const result = await loginAuthService.login(email, password);
+    // ✅ In rõ role lấy được
+    const role = result?.data?.account?.role;
+    console.log('🔍 Role lấy được:', role);
 
-  setLoading(false);
+    setLoading(false);
 
-  if (result.success) {
+    if (result.success) {
+      // Chỉ gửi thông báo khi đăng nhập thành công
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Đăng nhập thành công!',
+          body: 'Bạn được chuyển tới trang chủ',
+          sound: 'default',
+        },
+        trigger: null, // Gửi ngay lập tức
+      });
     try {
       // ✅ Lưu tất cả thông tin quan trọng vào AsyncStorage
       const userData = result.data;
@@ -132,15 +140,9 @@ export default function Login() {
         });
       }
 
-      // Lưu token
-      if (userData?.token) {
-        await saveUserData({
-          key: 'authToken',
-          value: userData.token
-        });
-        console.log('🔑 Auth Token:', userData.token);
-      }
-
+      // ✅ SỬA: Lưu access token thay vì token (dual token đã được lưu trong LoginAuthService)
+      // Tokens đã được lưu trong LoginAuthService.login()
+      
       // Lưu toàn bộ user data để backup
       await saveUserData({
         key: 'fullUserData',
@@ -158,20 +160,9 @@ export default function Login() {
     setTimeout(() => {
       setSnackbarVisible(false);
 
-      if (role === 'shipper') {
-        console.log('👉 Điều hướng vào ShipTabNavigator');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'ShipTabNavigator' }],
-        });
-      } else {
-        
-        console.log('👉 Điều hướng vào TabNavigator');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'TabNavigator' }],
-        });
-      }
+      // ✅ SỬA: Sử dụng AuthUtils để handle navigation
+      console.log('🎯 Sử dụng AuthUtils để điều hướng với role:', role);
+      AuthUtils.handlePostAuthNavigation(navigation, role);
     }, 1000);
   } else {
     setSnackbarMessage(result.message || 'Đăng nhập thất bại');

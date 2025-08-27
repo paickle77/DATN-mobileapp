@@ -437,10 +437,10 @@ export default function Home() {
       } else {
         setLoading(true);
       }
-      
+
       const products = await productService.getAllProducts();
       setAllData(products);
-      
+
       // Reset pagination when refreshing
       if (isRefreshing) {
         setCurrentPage(1);
@@ -448,6 +448,18 @@ export default function Home() {
         setRatingsCache({});
         setLoadedRatings(new Set());
         setProductRatings({});
+
+        // Load fresh ratings for all products
+        const ratingsObj: { [key: string]: number } = {};
+        for (const product of products) {
+          try {
+            const summary = await detailService.getReviewSummary(product._id);
+            ratingsObj[product._id] = summary.averageRating;
+          } catch (error) {
+            ratingsObj[product._id] = 0;
+          }
+        }
+        setProductRatings(ratingsObj);
       }
     } catch (error) {
       console.error('Error loading products:', error);

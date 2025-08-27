@@ -124,8 +124,8 @@ const VoucherCard = ({ navigation, route }: any) => {
 
   // Điều hướng đến AvailableVoucherList
   const handleNavigateToAvailableVouchers = () => {
-    navigation.navigate('AvailableVoucherList');
-  };
+      navigation.navigate('VoucherScreen', { activeTab: 'available' });
+    };
 
   // Sắp xếp voucher theo độ ưu tiên
   const sortedVouchers = useMemo(() => {
@@ -379,13 +379,6 @@ const VoucherCard = ({ navigation, route }: any) => {
                 <Text style={styles.sectionTitle}>
                   Voucher của Shop ({validVouchers.length})
                 </Text>
-                <TouchableOpacity 
-                  style={styles.addVoucherButton}
-                  onPress={handleNavigateToAvailableVouchers}
-                >
-                  <Ionicons name="add-circle-outline" size={20} color="#5C4033" />
-                  <Text style={styles.addVoucherText}>Lưu thêm</Text>
-                </TouchableOpacity>
               </View>
               
               {validVouchers.length === 0 ? (
@@ -933,22 +926,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  addVoucherButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#5C4033',
-    backgroundColor: 'transparent',
-  },
-  addVoucherText: {
-    color: '#5C4033',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
+  
   exploreVouchersButton: {
     backgroundColor: '#5C4033',
     paddingHorizontal: 24,

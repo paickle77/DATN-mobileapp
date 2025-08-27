@@ -1,7 +1,7 @@
 import { AntDesign, Feather, FontAwesome5 } from '@expo/vector-icons';
 import { NavigationProp, RouteProp, useRoute } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react'; // ✅ Thêm useEffect
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AddPaymentModal from '../../component/AddPaymentModal';
 
@@ -23,6 +23,7 @@ type PaymentMethodsRouteParams = {
     accountNumber?: string;
     cardNumber?: string;
   };
+  canUseCOD?: boolean; // ✅ Thêm prop COD eligibility
   onSelectPayment: (payment: {
     id: string;
     type: string;
@@ -71,7 +72,22 @@ const PaymentMethodsScreen = () => {
   const [cardholderName, setCardholderName] = useState('');
   const route = useRoute<RouteProp<Record<string, PaymentMethodsRouteParams>, string>>();
   const initialSelectedId = route.params?.selectedPaymentMethod?.id ?? 'cod';
+  const canUseCOD = route.params?.canUseCOD ?? true; // ✅ Lấy thông tin COD eligibility
   const [selectedPaymentId, setSelectedPaymentId] = useState<string>(initialSelectedId);
+
+  // ✅ Tự động chuyển sang phương thức khác nếu COD bị disable và đang được chọn
+  useEffect(() => {
+    if (!canUseCOD && selectedPaymentId === 'cod') {
+      // Tự động chọn VNPAY nếu có sẵn, hoặc để rỗng
+      const firstOnlineMethod = paymentMethods.find(method => method.type !== 'cod');
+      if (firstOnlineMethod) {
+        setSelectedPaymentId(firstOnlineMethod.id);
+      } else {
+        // Nếu không có phương thức nào, chọn VNPAY sandbox mặc định
+        setSelectedPaymentId('vnpay-sandbox');
+      }
+    }
+  }, [canUseCOD, selectedPaymentId, paymentMethods]);
 
 
   const getPaymentIcon = (type: string) => {
@@ -209,35 +225,58 @@ const PaymentMethodsScreen = () => {
         <TouchableOpacity
           style={[
             styles.paymentItem,
-            selectedPaymentId === 'cod' && styles.selectedPaymentItem
+            selectedPaymentId === 'cod' && styles.selectedPaymentItem,
+            !canUseCOD && styles.disabledPaymentItem // ✅ Style cho disabled COD
           ]}
-          onPress={() => setSelectedPaymentId('cod')}
+          onPress={() => {
+            if (!canUseCOD) {
+              // ✅ Hiển thị alert khi user cố chọn COD mà không được phép
+              Alert.alert(
+                'Không thể chọn COD',
+                'Bạn đã từng từ chối nhận hàng khi chọn thanh toán khi nhận. Vui lòng chọn thanh toán online để tiếp tục.',
+                [{ text: 'OK' }]
+              );
+              return;
+            }
+            setSelectedPaymentId('cod');
+          }}
+          disabled={!canUseCOD} // ✅ Disable khi không được phép dùng COD
         >
           <View style={styles.paymentInfo}>
-            <View style={[styles.paymentIcon, { backgroundColor: '#FF9800' }]}>
+            <View style={[
+              styles.paymentIcon, 
+              { backgroundColor: canUseCOD ? '#FF9800' : '#ccc' } // ✅ Màu khác khi disabled
+            ]}>
               <FontAwesome5 name="money-bill-wave" size={16} color="#fff" />
             </View>
             <View style={styles.paymentDetails}>
               <Text style={[
                 styles.paymentName,
-                selectedPaymentId === 'cod' && styles.selectedPaymentText
+                selectedPaymentId === 'cod' && styles.selectedPaymentText,
+                !canUseCOD && styles.disabledPaymentText // ✅ Style cho text disabled
               ]}>
                 Thanh toán khi nhận hàng
+                {!canUseCOD && ' (Không khả dụng)'} 
               </Text>
               <Text style={[
                 styles.paymentAccount,
-                selectedPaymentId === 'cod' && styles.selectedPaymentSubText
+                selectedPaymentId === 'cod' && styles.selectedPaymentSubText,
+                !canUseCOD && styles.disabledPaymentText // ✅ Style cho text disabled
               ]}>
-                Trả tiền mặt khi nhận hàng
+                {canUseCOD 
+                  ? 'Trả tiền mặt khi nhận hàng'
+                  : 'Bạn đã từng từ chối nhận hàng COD'
+                }
               </Text>
             </View>
           </View>
           <View style={styles.radioButton}>
             <View style={[
               styles.radioOuter,
-              selectedPaymentId === 'cod' && styles.radioSelected
+              selectedPaymentId === 'cod' && styles.radioSelected,
+              !canUseCOD && styles.disabledRadio // ✅ Style cho radio disabled
             ]}>
-              {selectedPaymentId === 'cod' && <View style={styles.radioInner} />}
+              {selectedPaymentId === 'cod' && canUseCOD && <View style={styles.radioInner} />}
             </View>
           </View>
         </TouchableOpacity>
@@ -641,6 +680,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     fontWeight: '500',
+  },
+  // ✅ Thêm styles cho disabled COD
+  disabledPaymentItem: {
+    opacity: 0.5,
+    backgroundColor: '#f5f5f5',
+  },
+  disabledPaymentText: {
+    color: '#999',
+  },
+  disabledRadio: {
+    borderColor: '#ccc',
+    backgroundColor: '#f5f5f5',
   },
 });
 

@@ -221,6 +221,22 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
         },
         trigger: null,
       });
+      // Điều hướng và thông báo thành công
+       try {
+          const userId = await getUserData('userId');
+                console.log('👤 UserID:', userId);
+          const payload = {
+            title: "Đặt hàng thành công",
+            content: `Bạn vừa đặt thành công đơn hàng ${pendingOrder.billId.slice(-8).toUpperCase()}.`,
+            user_id: userId, // Gửi notification đến user hiện tại
+          };
+          console.log('Notification payload:', payload);
+          const res = await axios.post(`${BASE_URL}/notifications`, payload);
+          console.log('Notification sent:', res.data);         
+
+        } catch (error) {
+          console.error('Error sending notification:', error);
+        }
 
       Alert.alert(
         'Thành công!',

@@ -1,7 +1,9 @@
 import { useFocusEffect } from '@react-navigation/native';
+import axios from 'axios'; // ✅ Thêm axios để gọi API
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 import NotificationComponent from '../../component/NotificationComponent';
+import { BASE_URL } from '../../services/api'; // ✅ Thêm BASE_URL
 import checkoutService, { CartItem } from '../../services/checkoutService';
 import type { Address as ImportedAddress } from '../profile/AddressList';
 import { getUserData, removeUserDataByKey, saveUserData } from '../utils/storage';
@@ -74,6 +76,8 @@ const Checkout = ({
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [sizeID, setSizeID] = useState([]);
   const [sizeQuantityList, setSizeQuantityList] = useState<{ sizeId: string; quantity: number }[]>([]);
+  const [canUseCOD, setCanUseCOD] = useState(true); // ✅ Thêm state kiểm tra COD eligibility
+  const [codCheckLoading, setCodCheckLoading] = useState(false); // ✅ Loading state cho COD check
 
   // Tính toán district type và shipping methods dựa trên địa chỉ đã chọn
   const districtType = useMemo(() => {
@@ -270,6 +274,45 @@ const Checkout = ({
     }
   };
 
+  // ✅ Kiểm tra COD eligibility
+  const checkCODEligibility = async () => {
+    try {
+      setCodCheckLoading(true);
+      const accountId = await getUserData('accountId');
+      
+      if (!accountId) {
+        console.log('❌ Không có accountId để kiểm tra COD eligibility');
+        setCanUseCOD(false);
+        return;
+      }
+
+      const response = await axios.get(`${BASE_URL}/bills/check-cod-eligibility/${accountId}`);
+      const { canUseCOD: eligible, message } = response.data;
+      
+      console.log('🔍 COD Eligibility check result:', { eligible, message });
+      setCanUseCOD(eligible);
+      
+      if (!eligible) {
+        // Nếu không được phép dùng COD, reset về rỗng để bắt buộc chọn lại
+        setSelectedPaymentMethod('');
+        setSelectedPaymentName('');
+        
+        setNotification({
+          visible: true,
+          message: message || 'Bạn không được phép sử dụng thanh toán COD',
+          type: 'warning'
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Lỗi kiểm tra COD eligibility:', error);
+      // Nếu có lỗi, mặc định cho phép COD (để không block user)
+      setCanUseCOD(true);
+    } finally {
+      setCodCheckLoading(false);
+    }
+  };
+
   // Load initial data (chỉ load khi chưa có địa chỉ nào)
   useFocusEffect(
     useCallback(() => {
@@ -279,6 +322,8 @@ const Checkout = ({
           fetchCartData();
         }
         fetchVoucherData();
+        // ✅ Kiểm tra COD eligibility khi load trang
+        checkCODEligibility();
       };
 
       fetchInitialData();
@@ -358,6 +403,7 @@ const Checkout = ({
   const handlePaymentMethodPress = () => {
     navigation.navigate('PaymentMethods', {
       selectedPaymentMethod: fullPaymentObject,
+      canUseCOD: canUseCOD, // ✅ Truyền COD eligibility
       onSelectPayment: (payment: any) => {
         setSelectedPaymentMethod(payment.id);
         setSelectedPaymentName(payment.name);
@@ -397,14 +443,14 @@ const Checkout = ({
       const { paymentService } = require('../../services/paymentService');
 
       // Lấy thông tin user hiện tại
-      const currentUser = await getUserData('userAccount');
+       const accountId = await getUserData('accountId');
       const selectedShipping = shippingMethods.find(m => m.id === selectedShippingMethod);
       const selectedShippingName = selectedShipping?.name || '';
       const shippingFee = selectedShipping?.price || 0;
       
       // Chuẩn bị dữ liệu đơn hàng (chưa gửi lên server)
       const billData = {
-        Account_id: currentUser?.id || currentUser?._id || '',
+        Account_id:accountId ,
         address_id: addresses[0]?._id || '',
         shipping_method: selectedShippingName,
         payment_method: selectedPaymentName,
@@ -423,12 +469,15 @@ const Checkout = ({
           unit_price: item.price,
         })),
       };
-
+        //  await saveUserData({ key: 'pendingOrder', value: pendingOrder.billId.slice(-8).toUpperCase() });
+        //      await saveUserData({ key: 'pendingOrder', value:  });
+        // console.log('✅ COD order created:', pendingOrder.billId);
       // Tạo link thanh toán VNPay (KHÔNG tạo đơn hàng)
       if (selectedPaymentName.toLowerCase().includes('vnpay')) {
         console.log('💳 Creating VNPay payment URL only...');
         const { paymentUrl } = await paymentService.createVNPayPayment(billData);
-
+        console.log('✅ VNPay payment URL created:', billData);
+  //  await saveUserData({ key: 'pendingOrder', value: pendingOrder});
         // Chuyển đến WebView với dữ liệu để tạo đơn SAU KHI thanh toán thành công
         navigation.navigate('VNPayWebView', {
           paymentUrl,
@@ -532,8 +581,7 @@ const Checkout = ({
           shippingFee,
           selectedVoucher?._id // ✅ Truyền voucher_user_id
         );
-
-        console.log('✅ COD order created:', pendingOrder.billId);
+     
         navigation.navigate('ConfirmationScreen', {
           pendingOrder,
           selectedItemIds,
@@ -594,6 +642,8 @@ const Checkout = ({
           selectedPaymentMethod={selectedPaymentMethod}
           selectedPaymentName={selectedPaymentName}
           onPress={handlePaymentMethodPress}
+          canUseCOD={canUseCOD}
+          codCheckLoading={codCheckLoading}
         />
 
         <OrderSummarySection

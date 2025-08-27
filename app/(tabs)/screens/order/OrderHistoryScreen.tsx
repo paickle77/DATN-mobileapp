@@ -41,7 +41,7 @@ type OrderType = {
   note?: string;
   payment_method?: string;
   shipping_method?: string;
-  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded' | 'returned';
   total: number;
   original_total?: number;
   discount_amount?: number;
@@ -69,7 +69,7 @@ type OrderType = {
   };
 };
 
-type TabType = 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded';
+type TabType = 'pending' | 'confirmed' | 'ready' | 'shipping' | 'done' | 'cancelled' | 'failed' | 'refund_pending' | 'refunded' | 'returned';
 
 // Fallback component for rendering errors
 const FallbackComponent = () => (
@@ -120,12 +120,20 @@ const OrderHistoryScreen = () => {
       priority: 4 
     },
     { 
+      key: 'returned', 
+      title: 'Hoàn trả', 
+      icon: 'return-up-back-outline', 
+      color: '#DC3545',
+      bgColor: 'rgba(220, 53, 69, 0.1)',
+      priority: 5 
+    },
+    { 
       key: 'cancelled', 
       title: 'Đã hủy', 
       icon: 'close-circle-outline', 
-      color: '#E74C3C',
-      bgColor: 'rgba(231, 76, 60, 0.1)',
-      priority: 5 
+      color: '#6C757D',
+      bgColor: 'rgba(108, 117, 125, 0.1)',
+      priority: 6 
     },
   ];
 
@@ -167,7 +175,9 @@ const OrderHistoryScreen = () => {
     if (activeTab === 'shipping') {
       filtered = orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase()));
     } else if (activeTab === 'cancelled') {
-      filtered = orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase()));
+      filtered = orders.filter(order => ['cancelled'].includes(order.status.toLowerCase()));
+    } else if (activeTab === 'returned') {
+      filtered = orders.filter(order => ['failed', 'returned'].includes(order.status.toLowerCase()));
     } else if (activeTab === 'refund_pending') {
       filtered = orders.filter(order => ['refund_pending', 'refunded'].includes(order.status.toLowerCase()));
     } else {
@@ -205,7 +215,10 @@ const OrderHistoryScreen = () => {
       return orders.filter(order => ['confirmed', 'ready', 'shipping'].includes(order.status.toLowerCase())).length;
     }
     if (status === 'cancelled') {
-      return orders.filter(order => ['cancelled', 'failed'].includes(order.status.toLowerCase())).length;
+      return orders.filter(order => ['cancelled'].includes(order.status.toLowerCase())).length;
+    }
+    if (status === 'returned') {
+      return orders.filter(order => ['failed', 'returned'].includes(order.status.toLowerCase())).length;
     }
     if (status === 'refund_pending') {
       return orders.filter(order => ['refund_pending', 'refunded'].includes(order.status.toLowerCase())).length;

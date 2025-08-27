@@ -1,7 +1,6 @@
 // services/ProfileService.ts
-import axios from 'axios';
 import { getUserData } from '../screens/utils/storage';
-import { BASE_URL } from './api';
+import apiClient from './api.interceptor'; // ✅ Import API client với auto refresh token
 
 export interface Users {
   _id: string;
@@ -25,7 +24,8 @@ class ProfileService {
   //lấy thông tin user theo account
   async getProfileByAccountId(accountId: string): Promise<Users | null> {
   try {
-    const response = await axios.get(`${BASE_URL}/users/account/${accountId}`);
+    // ✅ Sử dụng apiClient thay vì axios để tự động refresh token
+    const response = await apiClient.get(`/users/account/${accountId}`);
     return response.data?.data || null;
     
   } catch (error) {
@@ -36,7 +36,8 @@ class ProfileService {
   // Lấy toàn bộ danh sách user (nếu cần)
   async getAll(): Promise<GetAllResponse> {
     try {
-      const response = await axios.get(`${BASE_URL}/users`);
+      // ✅ Sử dụng apiClient thay vì axios để tự động refresh token
+      const response = await apiClient.get('/users');
       return response.data;
     } catch (error) {
       console.error('❌ Lỗi khi lấy danh sách người dùng:', error);

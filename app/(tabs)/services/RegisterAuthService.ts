@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
+import apiClient from './api.interceptor'; // ✅ Import API client với interceptor
 
 // Types cho API responses
 interface User {
@@ -50,7 +51,8 @@ export class RegisterAuthService {
 
   static async getAllUsers(): Promise<User[]> {
     try {
-      const response = await axios.get<ApiResponse<User[]>>(`${BASE_URL}/users`);
+      // ✅ Sử dụng apiClient thay vì axios để tự động refresh token
+      const response = await apiClient.get<ApiResponse<User[]>>('/users');
       return response.data.data || [];
     } catch (error) {
       console.error('Lỗi khi lấy danh sách users:', error);
@@ -69,26 +71,39 @@ export class RegisterAuthService {
   }
 
   /**
-   * ✅ SỬA: Đăng ký user - trả về account thay vì user
+   * ✅ SỬA: Đăng ký user - trả về account với tokens
    */
-  static async registerUser(data: RegisterData): Promise<Account> {
+  static async registerUser(data: RegisterData): Promise<Account & { accessToken?: string; refreshToken?: string }> {
     try {
       console.log('📝 Đăng ký với data:', data);
 
       // ✅ Gọi đúng route để đăng ký
-      const response = await axios.post<ApiResponse<Account>>(`${BASE_URL}/register`, data);
+      const response = await axios.post<ApiResponse<Account & { accessToken: string; refreshToken: string; accessTokenExpires: number; refreshTokenExpires: number }>>(`${BASE_URL}/register`, data);
 
       if (!response.data.data) {
         throw new Error('Không nhận được thông tin account sau khi đăng ký');
       }
 
-      const account = response.data.data;
+      const accountData = response.data.data;
 
-      // ✅ Lưu account._id vào AsyncStorage
-      await saveUserData({ key: 'userData', value: account._id });
-      console.log(`✅ Đăng ký thành công với account ID: ${account._id}`);
+      // ✅ Lưu tokens và account._id vào AsyncStorage
+      if (accountData.accessToken) {
+        await saveUserData({ key: 'accessToken', value: accountData.accessToken });
+      }
+      if (accountData.refreshToken) {
+        await saveUserData({ key: 'refreshToken', value: accountData.refreshToken });
+      }
+      if (accountData.accessTokenExpires) {
+        await saveUserData({ key: 'accessTokenExpires', value: accountData.accessTokenExpires.toString() });
+      }
+      if (accountData.refreshTokenExpires) {
+        await saveUserData({ key: 'refreshTokenExpires', value: accountData.refreshTokenExpires.toString() });
+      }
+      
+      await saveUserData({ key: 'userData', value: accountData._id });
+      console.log(`✅ Đăng ký thành công với account ID: ${accountData._id}`);
 
-      return account;
+      return accountData;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         console.error('❌ Lỗi API khi đăng ký:', error.response?.data || error.message);
@@ -105,7 +120,8 @@ export class RegisterAuthService {
     try {
       console.log('🔍 Tìm user với account_id:', account_id);
       
-      const response = await axios.get<ApiResponse<User>>(`${BASE_URL}/users/account/${account_id}`);
+      // ✅ Sử dụng apiClient thay vì axios để tự động refresh token
+      const response = await apiClient.get<ApiResponse<User>>(`/users/account/${account_id}`);
       
       if (!response.data.success || !response.data.data) {
         console.log('❌ Không tìm thấy user với account_id:', account_id);
@@ -137,7 +153,8 @@ export class RegisterAuthService {
         avatar: profile.avatar || this.DEFAULT_AVATAR
       };
 
-      const response = await axios.post<ApiResponse<User>>(`${BASE_URL}/users/profile`, body);
+      // ✅ Sử dụng apiClient thay vì axios để tự động refresh token
+      const response = await apiClient.post<ApiResponse<User>>('/users/profile', body);
       
       if (!response.data.success || !response.data.data) {
         throw new Error(response.data.message || 'Không thể tạo hồ sơ người dùng');
@@ -166,7 +183,8 @@ export class RegisterAuthService {
         avatar: profileData.avatar || this.DEFAULT_AVATAR
       };
 
-      const response = await axios.put<ApiResponse<User>>(`${BASE_URL}/users/${user_id}`, finalData);
+      // ✅ Sử dụng apiClient thay vì axios để tự động refresh token
+      const response = await apiClient.put<ApiResponse<User>>(`/users/${user_id}`, finalData);
       
       if (!response.data.data) {
         throw new Error('Không nhận được thông tin user sau khi cập nhật');
@@ -258,3 +276,4 @@ export class RegisterAuthService {
 
 // Export types
 export type { Account, ApiResponse, CompleteProfileData, RegisterData, User };
+

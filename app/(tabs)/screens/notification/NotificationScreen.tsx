@@ -35,8 +35,9 @@ const NotificationScreen = () => {
   const fetchNotifications = useCallback(async () => {
     try {
       const userId = await getUserData('userId');
+      console.log('👤 UserID:', userId);
       if (!userId) return;
-
+      
       const response = await axios.get(`${BASE_URL}/notifications/user/${userId}`);
       const allNotifications = response.data?.data || [];
       
@@ -75,22 +76,6 @@ const NotificationScreen = () => {
     }
   };
 
-  // Đánh dấu một thông báo đã đọc
-  const markAsRead = async (notificationId: string) => {
-    try {
-      await axios.put(`${BASE_URL}/notifications/${notificationId}/mark-read`);
-      
-      setNotifications(prev => 
-        prev.map(noti => 
-          noti._id === notificationId 
-            ? { ...noti, is_read: true }
-            : noti
-        )
-      );
-    } catch (error) {
-      console.error('Lỗi khi đánh dấu đã đọc:', error);
-    }
-  };
 
   // Đánh dấu tất cả đã đọc
   const markAllAsRead = async () => {
