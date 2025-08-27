@@ -292,16 +292,26 @@ const Checkout = ({
       console.log('🔍 COD Eligibility check result:', { eligible, message });
       setCanUseCOD(eligible);
       
+      console.log('🔄 Setting canUseCOD to:', eligible);
+      
       if (!eligible) {
-        // Nếu không được phép dùng COD, reset về rỗng để bắt buộc chọn lại
-        setSelectedPaymentMethod('');
-        setSelectedPaymentName('');
-        
-        setNotification({
-          visible: true,
-          message: message || 'Bạn không được phép sử dụng thanh toán COD',
-          type: 'warning'
-        });
+        // ✅ Nếu không được phép dùng COD, kiểm tra và xóa COD nếu đang được chọn
+        const currentPayment = await getUserData('selectedPaymentMethod');
+        if (currentPayment && (currentPayment.id === 'cod' || currentPayment.type === 'cod')) {
+          console.log('❌ Đang chọn COD nhưng bị chặn, reset payment method');
+          setSelectedPaymentMethod('');
+          setSelectedPaymentName('');
+          setFullPaymentObject(null);
+          await removeUserDataByKey('selectedPaymentMethod');
+          
+          // ✅ Chỉ hiển thị warning khi thực sự có COD bị xóa
+          setNotification({
+            visible: true,
+            message: message || 'Bạn đã từng từ chối nhận hàng COD. Vui lòng chọn thanh toán online.',
+            type: 'warning'
+          });
+        }
+        // ✅ Bỏ phần hiển thị warning tổng quát
       }
 
     } catch (error) {
@@ -336,9 +346,24 @@ const Checkout = ({
       const selectedPayment = route.params?.selectedPaymentMethod;
 
       if (selectedPayment) {
+        // ✅ Kiểm tra nếu COD bị chặn thì không cho phép chọn COD
+        if (!canUseCOD && (selectedPayment.id === 'cod' || selectedPayment.type === 'cod')) {
+          console.log('❌ COD bị chặn, từ chối chọn COD từ PaymentMethods');
+          setNotification({
+            visible: true,
+            message: 'Bạn không được phép sử dụng thanh toán khi nhận hàng.',
+            type: 'warning'
+          });
+          navigation.setParams({ selectedPaymentMethod: null });
+          return;
+        }
+
         setSelectedPaymentMethod(selectedPayment.id);
         setSelectedPaymentName(selectedPayment.name);
         setFullPaymentObject(selectedPayment);
+
+        // ✅ Clear notification khi đã chọn phương thức hợp lệ
+        setNotification({ visible: false, message: '', type: 'info' });
 
         saveUserData({
           key: 'selectedPaymentMethod',
@@ -347,7 +372,7 @@ const Checkout = ({
 
         navigation.setParams({ selectedPaymentMethod: null });
       }
-    }, [route])
+    }, [route, canUseCOD]) // ✅ Depend vào canUseCOD
   );
 
   useEffect(() => {
@@ -355,6 +380,14 @@ const Checkout = ({
       try {
         const stored = await getUserData('selectedPaymentMethod');
         if (stored) {
+          // ✅ Kiểm tra nếu COD bị chặn thì không load COD từ storage
+          if (!canUseCOD && (stored.id === 'cod' || stored.type === 'cod')) {
+            console.log('❌ COD bị chặn, không load COD từ storage');
+            // Xóa COD khỏi storage
+            await removeUserDataByKey('selectedPaymentMethod');
+            return;
+          }
+          
           setSelectedPaymentMethod(stored.id);
           setSelectedPaymentName(stored.name);
           setFullPaymentObject(stored);
@@ -364,8 +397,29 @@ const Checkout = ({
       }
     };
 
-    loadStoredPaymentMethod();
-  }, []);
+    // ✅ Chỉ load khi đã kiểm tra COD eligibility xong
+    if (!codCheckLoading) {
+      loadStoredPaymentMethod();
+    }
+  }, [canUseCOD, codCheckLoading]); // ✅ Depend vào canUseCOD và codCheckLoading
+
+  // ✅ Theo dõi thay đổi canUseCOD để xử lý tự động
+  useEffect(() => {
+    const handleCODEligibilityChange = async () => {
+      // Nếu COD bị chặn và đang chọn COD
+      if (!canUseCOD && (selectedPaymentMethod === 'cod' || selectedPaymentName?.toLowerCase().includes('khi nhận'))) {
+        console.log('❌ COD bị chặn, tự động xóa phương thức thanh toán COD');
+        setSelectedPaymentMethod('');
+        setSelectedPaymentName('');
+        setFullPaymentObject(null);
+        await removeUserDataByKey('selectedPaymentMethod');
+      }
+    };
+
+    if (!codCheckLoading) { // Chỉ chạy khi không còn loading
+      handleCODEligibilityChange();
+    }
+  }, [canUseCOD, selectedPaymentMethod, selectedPaymentName, codCheckLoading]);
 
   // Handle voucher selection
   useFocusEffect(
@@ -532,6 +586,21 @@ const Checkout = ({
         return;
       }
 
+      // ✅ Kiểm tra COD eligibility trước khi đặt hàng
+      const isCurrentCODPayment = selectedPaymentMethod === 'cod' || 
+        selectedPaymentName?.toLowerCase().includes('khi nhận') ||
+        selectedPaymentName?.toLowerCase().includes('tiền mặt');
+        
+      if (isCurrentCODPayment && !canUseCOD) {
+        setPaymentError(true);
+        setNotification({
+          visible: true,
+          message: 'Bạn không được phép sử dụng thanh toán khi nhận hàng. Vui lòng chọn thanh toán online.',
+          type: 'error',
+        });
+        return;
+      }
+
       if (addresses.length === 0) {
         setNotification({
           visible: true,
@@ -555,17 +624,29 @@ const Checkout = ({
       const selectedShippingName = selectedShipping?.name || '';
       const shippingFee = selectedShipping?.price || 0;
 
-      // Kiểm tra phương thức thanh toán
+      // ✅ Kiểm tra phương thức thanh toán chính xác hơn
+      const isCODPayment = selectedPaymentMethod === 'cod' || 
+        selectedPaymentName?.toLowerCase().includes('khi nhận') ||
+        selectedPaymentName?.toLowerCase().includes('tiền mặt');
+        
       const requiresOnlinePayment = selectedPaymentName.toLowerCase().includes('vnpay') ||
         selectedPaymentName.toLowerCase().includes('momo') ||
         selectedPaymentName.toLowerCase().includes('zalopay');
+
+      console.log('🔍 Payment method check:', {
+        selectedPaymentMethod,
+        selectedPaymentName,
+        isCODPayment,
+        requiresOnlinePayment,
+        canUseCOD
+      });
 
       if (requiresOnlinePayment) {
         // ✅ Flow mới: Thanh toán online KHÔNG tạo đơn hàng trước
         console.log('💳 Online payment - không tạo đơn hàng trước');
         await handleOnlinePayment();
-      } else {
-        // ✅ COD: Tạo đơn hàng ngay
+      } else if (isCODPayment && canUseCOD) {
+        // ✅ COD: Chỉ cho phép khi canUseCOD = true
         console.log('💵 COD payment - tạo đơn hàng ngay');
         
         const pendingOrder = await checkoutService.createPendingBill(
@@ -587,6 +668,16 @@ const Checkout = ({
           selectedItemIds,
           sizeQuantityList,
           voucher_User: selectedVoucher?._id || '',
+        });
+      } else {
+        // ✅ Phương thức thanh toán không hợp lệ hoặc COD bị chặn
+        setPaymentError(true);
+        setNotification({
+          visible: true,
+          message: isCODPayment 
+            ? 'Bạn không được phép sử dụng thanh toán khi nhận hàng. Vui lòng chọn thanh toán online.'
+            : 'Phương thức thanh toán không hợp lệ. Vui lòng chọn lại.',
+          type: 'error',
         });
       }
 

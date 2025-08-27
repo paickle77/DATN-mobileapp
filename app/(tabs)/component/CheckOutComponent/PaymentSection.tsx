@@ -17,6 +17,13 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
   canUseCOD = true, // ✅ Mặc định cho phép COD
   codCheckLoading = false // ✅ Mặc định không loading
 }) => {
+  // ✅ Debug log
+  console.log('💳 PaymentSection props:', {
+    selectedPaymentMethod,
+    selectedPaymentName,
+    canUseCOD,
+    codCheckLoading
+  });
   const getPaymentIcon = () => {
     if (!selectedPaymentMethod) return null;
 
@@ -48,7 +55,7 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
     const name = selectedPaymentName.toLowerCase();
     
     if (name.includes('cod') || name.includes('tiền mặt') || name.includes('khi nhận')) {
-      return 'Thanh toán khi nhận hàng (COD)';
+      return 'Thanh toán khi nhận hàng';
     }
     if (name.includes('momo')) {
       return 'Ví MoMo';
@@ -116,8 +123,8 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
         <Ionicons name="chevron-forward" size={20} color="#999" />
       </TouchableOpacity>
       
-      {/* ✅ Hiển thị warning khi không được phép dùng COD */}
-      {!canUseCOD && (
+      {/* ✅ Chỉ hiển thị warning khi COD bị chặn VÀ chưa chọn phương thức online */}
+      {!canUseCOD && !selectedPaymentMethod && (
         <View style={styles.warningContainer}>
           <Ionicons name="warning-outline" size={16} color="#FF9500" />
           <Text style={styles.warningText}>

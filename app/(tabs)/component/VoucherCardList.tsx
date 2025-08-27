@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import voucherService, { UserVoucher } from '../services/VoucherService';
 
 interface UserVoucherListProps {
@@ -24,6 +24,9 @@ const VoucherCard = ({ navigation, route }: any) => {
   const [selectedVoucherIdLocal, setSelectedVoucherIdLocal] = useState<string | null>(selectedVoucherId);
   const [selectedVoucher, setSelectedVoucher] = useState<UserVoucher | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  
 
   // Load user vouchers nếu không có data truyền vào
   useEffect(() => {
@@ -121,6 +124,12 @@ const VoucherCard = ({ navigation, route }: any) => {
       navigation.goBack();
     }, 300);
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadUserVouchers();
+    setRefreshing(false);
+  }, []);
 
   // Điều hướng đến AvailableVoucherList
   const handleNavigateToAvailableVouchers = () => {
@@ -336,6 +345,9 @@ const VoucherCard = ({ navigation, route }: any) => {
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Order Summary */}
         {orderValue > 0 && (
