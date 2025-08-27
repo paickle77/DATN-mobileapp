@@ -4,7 +4,8 @@ import moment from 'moment';
 import { getUserData, saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
-export type OnlineStatus = 'online' | 'offline' | 'busy';
+export type OnlineStatus = 'true' | 'false' | 'busy';
+
 
 export type OrderDetail = {
   _id: string;
