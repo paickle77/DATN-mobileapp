@@ -31,13 +31,13 @@ const screenWidth = Dimensions.get('window').width;
     const [order, setOrder] = useState<OrderDetail | null>(null);
     const [items, setItems] = useState<OrderItem[]>([]);
     const [shipper, setShipper] = useState<Shipper | null>(null);
-    const [isOnline, setIsOnline] = useState<'offline' | 'online' | 'busy'>('offline');
+    type OnlineStatus = 'true' | 'false' | 'busy' ;
+    const [isOnline, setIsOnline] = useState<OnlineStatus>('false');
     const [users, setUsers] = useState<User  | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [proofImage, setProofImage] = useState<string | null>(null);
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);  
-    type OnlineStatus = "online" | "offline" | "busy";  
+    const [selectedImage, setSelectedImage] = useState<string | null>(null); 
 
     useEffect(() => {
       fetchOrderDetail();
@@ -52,7 +52,7 @@ const screenWidth = Dimensions.get('window').width;
         setProofImage(data.proofImage || null);
         setShipper(data.shipper || null);
         setUsers(data.user || null);
-        setIsOnline(data.is_online || 'offline');
+        setIsOnline(data.is_online ?? 'false');
 
         const orderItems = await fetchOrderItemsLikeScreen(orderId);
         setItems(orderItems);
@@ -80,7 +80,7 @@ const screenWidth = Dimensions.get('window').width;
   const setOnlineStatus = async (status: OnlineStatus) => {
     try {
       const id = await getUserData('shipperID');
-      await updateShipperOnlineStatus(id, status);
+      await updateShipperOnlineStatus(id, status); // truyền đúng kiểu
       setIsOnline(status);
     } catch (error) {
       console.error("❌ Lỗi khi cập nhật trạng thái online:", error);
@@ -88,15 +88,17 @@ const screenWidth = Dimensions.get('window').width;
     }
   };
 
+
   const handleAcceptOrder = async (billId: string) => {
-    if (isOnline === 'offline') {
+    if (isOnline === 'false') {
       Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }
-    if (isOnline === 'busy') {
+    if (isOnline === "busy") {
       Alert.alert('Thông báo', 'Bạn đang có đơn, không thể nhận đơn hàng này.');
       return;
     }
+
     try {
       const shipperID = await getUserData('shipperID');
       await assignOrderToShipper(billId, shipperID);
@@ -111,13 +113,8 @@ const screenWidth = Dimensions.get('window').width;
   const handleCompleteOrder = async () => {
     if (!order) return;
 
-    if (isOnline !== 'online' && isOnline !== 'busy') {
-      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hoàn thành đơn hàng.');
-      return;
-    }
-
-    if (!proofImage) {
-      Alert.alert('Thiếu ảnh', 'Bạn cần chụp hoặc chọn ảnh minh chứng trước khi hoàn thành đơn hàng.');
+    if (isOnline === 'false') {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }
 
@@ -133,11 +130,11 @@ const screenWidth = Dimensions.get('window').width;
             try {
               setActionLoading(true);
               const shipperID = await getUserData('shipperID');
-              const response = await completeOrder(orderId, shipperID, proofImage);
+              const response = await completeOrder(orderId, shipperID, proofImage ?? '');
 
               if (response.success) {
                 Alert.alert('🎉 Thành công', 'Đơn hàng đã được hoàn thành!');
-                setOnlineStatus('online');
+                setOnlineStatus('true'); ;
                 fetchOrderDetail();
                 setProofImage(null);
               } else {
@@ -158,15 +155,11 @@ const screenWidth = Dimensions.get('window').width;
   const handleCancelOrder = async () => {
     if (!order) return;
 
-    if (isOnline !== 'online' && isOnline !== 'busy') {
-      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để hủy đơn hàng.');
+    if (isOnline === 'false') {
+      Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }
 
-    if (!proofImage) {
-      Alert.alert('Thiếu ảnh', 'Bạn cần chụp hoặc chọn ảnh minh chứng trước khi hủy đơn hàng.');
-      return;
-    }
 
     Alert.alert(
       'Hủy đơn hàng',
@@ -180,11 +173,12 @@ const screenWidth = Dimensions.get('window').width;
             try {
               setActionLoading(true);
               const shipperID = await getUserData('shipperID');
-              const response = await failedOrder(orderId, shipperID, proofImage);
+              const response = await failedOrder(orderId, shipperID, proofImage ?? '');
 
               if (response.success) {
                 Alert.alert('Đã hủy', 'Đơn hàng đã được hủy thành công');
-                setOnlineStatus('online');
+                setOnlineStatus('true'); // quay về online
+;
                 fetchOrderDetail();
                 setProofImage(null);
               } else {
@@ -685,7 +679,7 @@ const screenWidth = Dimensions.get('window').width;
         {/* Action Buttons */}
         {(order.status === 'ready' || order.status === 'shipping') && (
           <View style={styles.actionContainer}>
-            {order.status === 'ready'  && isOnline === "online" && (
+            {order.status === 'ready'  && (
               <TouchableOpacity 
                 style={[styles.actionButton, styles.acceptButton]}
                 onPress={() =>handleAcceptOrder(order._id)}
