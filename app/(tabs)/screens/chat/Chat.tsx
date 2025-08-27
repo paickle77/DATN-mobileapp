@@ -441,6 +441,7 @@ Bước 3: Sửa đổi thông tin mà bạn muốn`;
 
   return (
     <SafeAreaView style={styles.container}>
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>

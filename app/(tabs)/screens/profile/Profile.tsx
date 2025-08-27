@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 
 import { profileService, Users } from '../../services/ProfileService';
-import { clearAllStorage, getUserData } from '../utils/storage';
+import AuthUtils from '../../utils/auth.utils'; // ✅ Import AuthUtils
+import { getUserData } from '../utils/storage';
 // ✅ Optimize MenuItem component với React.memo
 const MenuItem = React.memo(({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -114,10 +115,12 @@ const ProfileScreen = () => {
     const handleLogout = async () => {
         try {
             setLogoutVisible(false);
-            await clearAllStorage();
-            // ✅ Xoá dữ liệu người dùng
-            console.log('🟢 Đã xoá dữ liệu người dùng');
-            // await clearUserData('token');    // ✅ Nếu bạn lưu token cũng xoá luôn
+            
+            // ✅ Sử dụng AuthUtils để đăng xuất toàn diện (xóa token trên server + local)
+            await AuthUtils.logout();
+            
+            console.log('✅ Đã đăng xuất và xoá dữ liệu người dùng');
+            
             navigation.dispatch(
                 CommonActions.reset({
                     index: 0,

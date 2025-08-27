@@ -9,10 +9,8 @@ import ManualAddress from './screens/address/manual-address';
 import MapAddress from './screens/address/MapAddress';
 import index from './screens/auth/Login';
 import NewPassword from './screens/auth/NewPassword';
-import Onboarding from './screens/auth/Onboarding';
 import OtpVerification from './screens/auth/OtpVerification';
 import Register from './screens/auth/Register';
-import Splash from './screens/auth/Splash';
 import Welcom from './screens/auth/Welcom';
 import ChatScreen from './screens/chat/Chat';
 import Message from './screens/message/Message';
@@ -71,10 +69,8 @@ export default function TabLayout() {
       <Stack.Screen name="OrderDetails" component={OrderDetails} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Splash" component={Splash} options={{ headerShown: false }} />
       <Stack.Screen name="Welcom" component={Welcom} options={{ headerShown: false }} />
       <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
-      <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false }} />
       <Stack.Screen name="Address" component={AddressScreen} options={{ headerShown: false }} />
       <Stack.Screen name="SelectLocation" component={MapAddress} options={{ headerShown: false }} />
       <Stack.Screen name="ManualAddress" component={ManualAddress} options={{ headerShown: false }} />

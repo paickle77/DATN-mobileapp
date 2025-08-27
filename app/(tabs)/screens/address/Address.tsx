@@ -2,7 +2,8 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AddressService } from '../../services/AddressService';
-import { saveUserData } from '../utils/storage';
+import AuthUtils from '../../utils/auth.utils';
+import { getUserData, saveUserData } from '../utils/storage';
 
 type RootStackParamList = {
   CompleteProfile: {
@@ -132,7 +133,15 @@ const AddressScreen = () => {
       }
 
       Alert.alert('Thành công', 'Địa chỉ đã được lưu thành công!', [
-        { text: 'OK', onPress: () => navigation.navigate('TabNavigator') }
+        { 
+          text: 'OK', 
+          onPress: async () => {
+            // ✅ Lấy role từ storage để điều hướng đúng
+            const userRole = await getUserData('userRole');
+            console.log('🎯 Hoàn thành registration flow, điều hướng với role:', userRole);
+            AuthUtils.handlePostAuthNavigation(navigation, userRole || 'user');
+          }
+        }
       ]);
 
     } catch (error: any) {

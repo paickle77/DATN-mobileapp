@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import CustomSnackbar from '../../../(tabs)/component/CustomSnackbar'; // ✅ ĐÃ THÊM COMPONENT SNACKBAR
 import { loginAuthService } from '../../services/LoginAuthService';
+import AuthUtils from '../../utils/auth.utils';
 import { validateLoginForm } from '../../utils/validation';
 import { clearAllStorage, saveUserData } from '../utils/storage';
 // Kiểu dữ liệu navigation
@@ -139,15 +140,9 @@ export default function Login() {
         });
       }
 
-      // Lưu token
-      if (userData?.token) {
-        await saveUserData({
-          key: 'authToken',
-          value: userData.token
-        });
-        console.log('🔑 Auth Token:', userData.token);
-      }
-
+      // ✅ SỬA: Lưu access token thay vì token (dual token đã được lưu trong LoginAuthService)
+      // Tokens đã được lưu trong LoginAuthService.login()
+      
       // Lưu toàn bộ user data để backup
       await saveUserData({
         key: 'fullUserData',
@@ -165,20 +160,9 @@ export default function Login() {
     setTimeout(() => {
       setSnackbarVisible(false);
 
-      if (role === 'shipper') {
-        console.log('👉 Điều hướng vào ShipTabNavigator');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'ShipTabNavigator' }],
-        });
-      } else {
-        
-        console.log('👉 Điều hướng vào TabNavigator');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'TabNavigator' }],
-        });
-      }
+      // ✅ SỬA: Sử dụng AuthUtils để handle navigation
+      console.log('🎯 Sử dụng AuthUtils để điều hướng với role:', role);
+      AuthUtils.handlePostAuthNavigation(navigation, role);
     }, 1000);
   } else {
     setSnackbarMessage(result.message || 'Đăng nhập thất bại');
