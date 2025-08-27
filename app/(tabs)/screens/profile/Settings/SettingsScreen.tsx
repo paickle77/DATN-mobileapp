@@ -5,8 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
-import { styles } from './styles';
 import { getUserData } from '../../utils/storage';
+import { styles } from './styles';
 
 interface Props {
   setScreen: (screen: 'notifications' | 'password' | 'delete', userId?: string) => void;
@@ -46,8 +46,8 @@ const SettingsScreen = ({ setScreen, onBack }: Props) => {
       iconType: 'Ionicons',
       title: 'Cài đặt thông báo',
       subtitle: 'Quản lý thông báo và cảnh báo',
-      color: '#4A90E2',
-      bgColor: '#E8F4FD',
+      color: '#8B4513',
+      bgColor: '#F5E6D3',
       onPress: () => setScreen('notifications', userId)
     },
     {
@@ -56,8 +56,8 @@ const SettingsScreen = ({ setScreen, onBack }: Props) => {
       iconType: 'Feather',
       title: 'Quản lý mật khẩu',
       subtitle: 'Đổi mật khẩu và bảo mật',
-      color: '#50C878',
-      bgColor: '#E8F8F5',
+      color: '#A0522D',
+      bgColor: '#F2E8D5',
       onPress: () => setScreen('password', userId)
     },
     {
@@ -92,11 +92,11 @@ const SettingsScreen = ({ setScreen, onBack }: Props) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4A90E2" />
+      <StatusBar barStyle="light-content" backgroundColor="#8B4513" />
       
       {/* Header với gradient */}
       <LinearGradient
-        colors={['#4A90E2', '#357ABD']}
+        colors={['#8B4513', '#6B3410']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -104,7 +104,7 @@ const SettingsScreen = ({ setScreen, onBack }: Props) => {
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back-circle-outline" size={40} color="#000" />
+                    <Ionicons name="chevron-back" size={24} color="white" />
                   </TouchableOpacity>
             <Text style={styles.headerTitle}>Cài đặt</Text>
             <View style={styles.headerSpacer} />

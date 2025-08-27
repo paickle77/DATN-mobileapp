@@ -282,7 +282,7 @@ Bước 3: Sửa đổi thông tin mà bạn muốn`;
     ]}>
       {!message.isUser && message.type !== 'product_list' && (
         <View style={styles.botAvatar}>
-          <MaterialIcons name="cake" size={20} color="#FF6B6B" />
+          <MaterialIcons name="cake" size={20} color="#8B4513" />
         </View>
       )}
       
@@ -449,7 +449,7 @@ Bước 3: Sửa đổi thông tin mà bạn muốn`;
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <View style={styles.headerAvatar}>
-            <MaterialIcons name="cake" size={28} color="#FF6B6B" />
+            <MaterialIcons name="cake" size={28} color="#8B4513" />
           </View>
           <View>
             <Text style={styles.headerTitle}>🧁 CakeShop</Text>
@@ -479,7 +479,7 @@ Bước 3: Sửa đổi thông tin mà bạn muốn`;
             {isTyping && (
               <View style={styles.typingIndicator}>
                 <View style={styles.botAvatar}>
-                  <MaterialIcons name="cake" size={20} color="#FF6B6B" />
+                  <MaterialIcons name="cake" size={20} color="#8B4513" />
                 </View>
                 <View style={styles.typingBubble}>
                   <Text style={styles.typingText}>🤖 Đang suy nghĩ...</Text>
@@ -530,7 +530,7 @@ export default ChatScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#FAF0E6',
   },
 
   keyboardAvoidingView: {
@@ -544,10 +544,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 0 : 10,
     paddingBottom: 16,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#8B4513',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    shadowColor: '#FF6B6B',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   // Messages container
   messagesContainer: {
     flex: 1,
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#FAF0E6',
   },
   
   messagesContent: {
@@ -646,13 +646,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
     marginBottom: 2,
-    shadowColor: '#FF6B6B',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
     elevation: 3,
     borderWidth: 1.5,
-    borderColor: '#FFE4E1',
+    borderColor: '#DEB887',
   },
 
   // Enhanced message bubbles
@@ -665,9 +665,9 @@ const styles = StyleSheet.create({
   },
   
   userMessageContent: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#8B4513',
     borderBottomRightRadius: 4,
-    shadowColor: '#FF6B6B',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
@@ -772,14 +772,14 @@ const styles = StyleSheet.create({
   quickButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#F5E6D3',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#FFD4C4',
-    shadowColor: '#FF6B6B',
+    borderColor: '#D2B48C',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
@@ -821,8 +821,8 @@ const styles = StyleSheet.create({
     minHeight: 48,
     maxHeight: 120,
     borderWidth: 2,
-    borderColor: '#FF6B6B',
-    shadowColor: '#FF6B6B',
+    borderColor: '#8B4513',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
@@ -850,7 +850,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FF6B6B',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -858,7 +858,7 @@ const styles = StyleSheet.create({
   },
   
   sendButtonActive: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#8B4513',
   },
   
   sendButtonInactive: {
@@ -885,10 +885,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#F5E6D3',
     borderWidth: 1,
-    borderColor: '#FFE4E1',
-    shadowColor: '#FF6B6B',
+    borderColor: '#DEB887',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -928,13 +928,13 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FF6B6B',
+    color: '#8B4513',
   },
   
   productDiscountPrice: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FF6B6B',
+    color: '#8B4513',
     marginRight: 10,
   },
   
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8B4513',
     fontStyle: 'italic',
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#F5E6D3',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1005,14 +1005,14 @@ const styles = StyleSheet.create({
     marginRight: 16,
     backgroundColor: '#fff',
     borderRadius: 16,
-    shadowColor: '#FF6B6B',
+    shadowColor: '#8B4513',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 6,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#FFE4E1',
+    borderColor: '#DEB887',
   },
   
   productImageHorizontal: {
@@ -1043,13 +1043,13 @@ const styles = StyleSheet.create({
   productPriceHorizontal: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#FF6B6B',
+    color: '#8B4513',
   },
   
   productDiscountPriceHorizontal: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#FF6B6B',
+    color: '#8B4513',
   },
   
   productOriginalPriceHorizontal: {
