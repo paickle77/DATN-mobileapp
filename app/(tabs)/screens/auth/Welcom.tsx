@@ -25,7 +25,7 @@ const WelcomScreen: React.FC<WelcomScreenProps> = ({ navigation }) => {
     // Delay 2 giây để show logo trước khi check auth
     const logoTimer = setTimeout(() => {
       setShowAuthChecker(true);
-    }, 10000);
+    }, 2000);
 
     return () => clearTimeout(logoTimer);
   }, [navigation]);
