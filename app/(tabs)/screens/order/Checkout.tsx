@@ -476,6 +476,18 @@ const Checkout = ({
       if (selectedPaymentName.toLowerCase().includes('vnpay')) {
         console.log('💳 Creating VNPay payment URL only...');
         const { paymentUrl } = await paymentService.createVNPayPayment(billData);
+        
+
+
+
+
+
+
+
+
+
+
+
         console.log('✅ VNPay payment URL created:', billData);
   //  await saveUserData({ key: 'pendingOrder', value: pendingOrder});
         // Chuyển đến WebView với dữ liệu để tạo đơn SAU KHI thanh toán thành công

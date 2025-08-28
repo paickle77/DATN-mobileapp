@@ -141,7 +141,7 @@ const VNPayWebView: React.FC = () => {
                 console.log('👤 UserID:', userId);
           const payload = {
             title: "Đặt hàng thành công",
-            content: `Bạn vừa đặt thành công đơn hàng .`,
+            content: `Bạn vừa đặt thành công đơn hàng ${billId.slice(-8).toUpperCase()}.`,
             user_id: userId, // Gửi notification đến user hiện tại
           };
           console.log('Notification payload:', payload);
