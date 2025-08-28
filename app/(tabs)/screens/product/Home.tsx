@@ -1356,6 +1356,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
     zIndex: 2000,
+    marginBottom: Platform.OS === 'ios' ? 34 : 60,
+    
   },
 
   modalBackground: {
@@ -1364,8 +1366,7 @@ const styles = StyleSheet.create({
 
   sortModal: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 24,
     paddingBottom: Platform.OS === 'ios' ? 34 : 24,
   },
 
