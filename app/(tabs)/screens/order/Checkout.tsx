@@ -517,6 +517,7 @@ const Checkout = ({
         shipping_fee: shippingFee,
         address_snapshot: addresses[0] || {},
         items: listCart.map((item: any) => ({
+          id: item.id,
           product_id: item.product_id._id || item.product_id,
           size: item.Size || 'M',
           quantity: item.quantity,

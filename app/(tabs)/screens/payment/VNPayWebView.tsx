@@ -168,7 +168,11 @@ const VNPayWebView: React.FC = () => {
       // 3. Xóa sản phẩm khỏi giỏ hàng sau khi thanh toán thành công
       try {
         console.log('🧹 Clearing cart after successful payment...');
-        await checkoutService.clearCart();
+        const pendingOrder = await getUserData('pendingOrder');
+        console.log('====================================');
+        console.log('Pending Order from storage:', billData);
+        console.log('====================================');
+        await checkoutService.clearSelectedCartItems(billData.items.map((item: any) => item.id));
       } catch (error) {
         console.error('❌ Error clearing cart:', error);
         // Không block flow chính nếu clear cart thất bại
