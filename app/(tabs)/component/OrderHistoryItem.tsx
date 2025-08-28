@@ -254,15 +254,23 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
           style: 'destructive',
           onPress: async () => {
             try {
+              // Show loading state
+              Alert.alert('⏳ Đang xử lý', 'Vui lòng đợi trong giây lát...');
+              
               // ✅ Gọi API hủy đơn từ phía khách hàng
               const accountId = await getUserData('accountId');
-              await axios.post(`${BASE_URL}/bills/cancel-by-customer`, { 
+              const response = await axios.post(`${BASE_URL}/bills/cancel-by-customer`, { 
                 orderId: order._id,
                 Account_id: accountId,
                 reason: 'Khách hàng hủy đơn'
               });
               
-              if (onRefresh) onRefresh();
+              console.log('✅ Cancel response:', response.data);
+              
+              // Refresh data immediately after cancellation
+              if (onRefresh) {
+                setTimeout(() => onRefresh(), 500); // Small delay to ensure backend update is complete
+              }
               
               // Kiểm tra xem có phải thanh toán online không
               const isOnlinePayment = order.payment_method && 
@@ -324,9 +332,19 @@ const OrderHistoryItem: React.FC<OrderItemProps> = ({
           <View style={styles.dateContainer}>
             <Ionicons name="calendar-outline" size={14} color="#666" />
             <Text style={styles.dateText}>
-              {formatDate(order.created_at)}
+              Đặt lúc: {formatDate(order.created_at)}
             </Text>
           </View>
+
+          {/* Show update time if different from created time */}
+          {order.updatedAt && order.updatedAt !== order.created_at && (
+            <View style={styles.dateContainer}>
+              <Ionicons name="refresh-outline" size={14} color="#FF6B35" />
+              <Text style={[styles.dateText, { color: '#FF6B35', fontWeight: '600' }]}>
+                Cập nhật: {formatDate(order.updatedAt)}
+              </Text>
+            </View>
+          )}
 
           {order.address_snapshot && order.address_snapshot.name && (
             <View style={styles.addressContainer}>

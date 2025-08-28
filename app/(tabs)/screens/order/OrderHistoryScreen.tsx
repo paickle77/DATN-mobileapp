@@ -1,9 +1,9 @@
 // OrderHistoryScreen.tsx
 import { Ionicons } from '@expo/vector-icons';
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { useNavigation } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -85,6 +85,7 @@ const OrderHistoryScreen = () => {
   const [activeTab, setActiveTab] = useState<TabType>('pending');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const refreshIntervalRef = useRef<any>(null);
 
   const tabs = [
     { 
@@ -143,10 +144,10 @@ const OrderHistoryScreen = () => {
     try {
       setLoading(true);
       const accountId = await getUserData('accountId');
-      // console.log('🔄 Đang tải đơn hàng cho accountId:', accountId);
+      console.log('🔄 Fetching orders for accountId:', accountId);
 
       const response = await axios.get(`${BASE_URL}/bills`);
-      // console.log('API response:', response.data.data);
+      console.log('📡 API response received at:', new Date().toISOString());
       const allOrders: OrderType[] = response.data.data;
 
       const filteredOrders = allOrders.filter((order: OrderType) => {
@@ -159,8 +160,14 @@ const OrderHistoryScreen = () => {
         return orderAccountId === accountId;
       });
 
-      filteredOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      // Sort by updatedAt first (if available), then by created_at as fallback
+      filteredOrders.sort((a, b) => {
+        const aDate = new Date(a.updatedAt || a.created_at).getTime();
+        const bDate = new Date(b.updatedAt || b.created_at).getTime();
+        return bDate - aDate;
+      });
       setOrders(filteredOrders);
+      console.log('✅ Orders updated:', filteredOrders.length);
     } catch (error) {
       console.error('Lỗi khi gọi API đơn hàng:', error);
       Alert.alert('❌ Lỗi', 'Không thể tải đơn hàng');
@@ -225,6 +232,27 @@ const OrderHistoryScreen = () => {
     }
     return orders.filter(order => order.status.toLowerCase() === status).length;
   };
+
+  // Auto-refresh functionality with focus effect
+  useFocusEffect(
+    useCallback(() => {
+      fetchOrders(); // Fetch immediately when screen comes into focus
+      
+      // Set up interval to refresh every 45 seconds when screen is active
+      refreshIntervalRef.current = setInterval(() => {
+        console.log('🔄 Auto-refreshing orders...');
+        fetchOrders();
+      }, 45000); // 45 seconds - reduced frequency to avoid server overload
+
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+          console.log('🛑 Auto-refresh stopped');
+        }
+      };
+    }, [])
+  );
 
   useEffect(() => {
     fetchOrders();
