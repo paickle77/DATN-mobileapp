@@ -77,7 +77,7 @@ const slideAnim = useRef(new Animated.Value(30)).current;
   const fetchProductData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BASE_URL}/productbyID/${ProductID}`);
+      const response = await axios.get(`${BASE_URL}/products/${ProductID}`);
       const productData: ProductDataType = response.data.data;
      console.log('✅ Product data fetched:', productData);
       setData(productData);
