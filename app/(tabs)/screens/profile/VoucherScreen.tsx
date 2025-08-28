@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  
   View,
 } from 'react-native';
 import AvailableVoucherList from '../../component/AvailableVoucherList';
@@ -16,12 +17,14 @@ import voucherService, {
   UserVoucher,
   Voucher,
 } from '../../services/VoucherService';
+import { RefreshControl } from 'react-native';
 
 const VoucherScreen = () => {
   const navigation = useNavigation();
   const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]);
   const [userVouchers, setUserVouchers] = useState<UserVoucher[]>([]);
   const [activeTab, setActiveTab] = useState<'available' | 'saved'>('available');
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     try {
@@ -35,6 +38,12 @@ const VoucherScreen = () => {
       console.error('❌ Lỗi khi load dữ liệu:', err);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+      setRefreshing(true);
+      await loadData();
+      setRefreshing(false);
+    }, []);
 
   useEffect(() => {
     loadData();
@@ -107,6 +116,9 @@ const VoucherScreen = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                  }
         >
           {activeTab === 'available' ? (
             <AvailableVoucherList

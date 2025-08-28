@@ -1,7 +1,7 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -78,6 +78,7 @@ const OrderDetails = () => {
   const [error, setError] = useState<string | null>(null);
   const [reviewStatus, setReviewStatus] = useState<BillReviewStatus | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
+  const refreshIntervalRef = useRef<any>(null);
 
   console.log('✅✅✅Order ID từ params:', orderId);
 
@@ -150,7 +151,21 @@ const OrderDetails = () => {
       if (orderId) {
         console.log('🔄 OrderDetails focused - refreshing data...');
         fetchData();
+        
+        // Set up interval to refresh every 45 seconds when screen is active
+        refreshIntervalRef.current = setInterval(() => {
+          console.log('🔄 Auto-refreshing order details...');
+          fetchData();
+        }, 45000); // 45 seconds - reduced frequency
       }
+      
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+          console.log('🛑 Order details auto-refresh stopped');
+        }
+      };
     }, [orderId])
   );
 
@@ -438,6 +453,12 @@ const OrderDetails = () => {
           {billInfo?.created_at && (
             <Text style={styles.orderDate}>
               Đặt lúc: {formatDate(billInfo.created_at)}
+            </Text>
+          )}
+          
+          {billInfo?.updatedAt && billInfo.updatedAt !== billInfo.created_at && (
+            <Text style={[styles.orderDate, { color: '#D97706', fontWeight: '600', marginTop: 4 }]}>
+              Cập nhật: {formatDate(billInfo.updatedAt)}
             </Text>
           )}
         </View>
