@@ -39,7 +39,7 @@ const WelcomScreen: React.FC<WelcomScreenProps> = ({ navigation }) => {
       AuthUtils.handlePostAuthNavigation(navigation as any, userInfo.userRole);
     } else {
       // Chưa đăng nhập → chuyển qua Splash (auth flow)
-      console.log('👋 Chưa đăng nhập - chuyển qua Splash');
+      console.log('👋 Chưa đăng nhập - chuyển qua Login');
       navigation.replace('Login');
     }
   };

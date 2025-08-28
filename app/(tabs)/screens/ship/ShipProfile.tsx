@@ -18,10 +18,12 @@ import {
   fetchShipperInfo,
   Shipper,
   updateShipperOnlineStatus,
-  updateShipperProfile,
-  updateShipperStatus
+  updateShipperProfile
 } from '../../services/ShipService';
 import { clearAllStorage, getUserData } from '../utils/storage';
+
+export type OnlineStatus = 'true' | 'false' | 'busy';
+
 
 interface ProfileItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -67,7 +69,6 @@ const ProfileItem: React.FC<ProfileItemProps> = ({
     </View>
   );
 
-
 interface ShipperProfile {
   id: string;
   full_name: string;
@@ -75,7 +76,7 @@ interface ShipperProfile {
   image: string;
   vehicleType: string;
   licenseNumber: string;
-  isOnline: 'offline' | 'online' | 'busy';
+  isOnline: 'true' | 'false' | "busy";   // ✅ đổi chỗ này
   accountId: string;
 }
 
@@ -86,7 +87,7 @@ const defaultShipperData: ShipperProfile = {
   image: 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
   vehicleType: '',
   licenseNumber: '',
-  isOnline: 'offline',
+  isOnline: 'false',
   accountId: '',
 };
 
@@ -97,9 +98,10 @@ const mapToShipperProfile = (s: Shipper): ShipperProfile => ({
   image: s.image || 'https://cdn1.iconfinder.com/data/icons/user-interface-664/24/User-512.png',
   vehicleType: s.vehicle_type || '',
   licenseNumber: s.license_number || '',
-  isOnline: s.is_online || 'offline',
+  isOnline: s.is_online as 'true' | 'false' | "busy" || false,  // ✅ ép kiểu
   accountId: s.account_id || '',
 });
+
 
 const ShipProfileScreen: React.FC = () => {
   const [shipperData, setShipperData] = useState<ShipperProfile>(defaultShipperData);
@@ -163,13 +165,7 @@ const ShipProfileScreen: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = async () => {
-    if (!shipperData.id) return;
-    const newStatus = shipperData.isOnline === 'online' ? 'offline' : 'online';
-    const success = await updateShipperStatus(shipperData.id, newStatus);
-    if (success) setShipperData({ ...shipperData, isOnline: newStatus });
-  };
-
+  
   const handleEdit = () => setIsEditing(true);
 
   const handleCancel = () => {
@@ -192,21 +188,22 @@ const ShipProfileScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           const id = await getUserData('shipperID');
-          await updateShipperOnlineStatus(id, 'offline');
+          await updateShipperOnlineStatus(id, 'false');
           await clearAllStorage();
           navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
         },
       },
     ]);
   };
-  const getStatusText = (status: 'online' | 'offline' | 'busy') => {
-  switch (status) {
-    case 'online': return 'Đang hoạt động';
-    case 'busy': return 'Đang bận';
-    case 'offline': return 'Không hoạt động';
-    default: return 'Không xác định';
-  }
-};
+  const getStatusText = (status: 'true' | 'false' | "busy") => {
+    switch (status) {
+      case 'true': return 'Đang hoạt động';
+      case "busy": return 'Đang bận';
+      case 'false': return 'Không hoạt động';
+      default: return 'Không xác định';
+    }
+  };
+
 
 
   const pickImage = async () => {

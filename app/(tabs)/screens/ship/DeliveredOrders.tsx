@@ -46,13 +46,13 @@ interface FilterOption {
 const DeliveredOrders = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [orders, setOrders] = useState<OrderDetail[]>([]);
-  const [isOnline, setIsOnline] = useState<"online" | "offline" | "busy">("offline");
+  type OnlineStatus = 'true' | 'false' | 'busy';
+  const [isOnline, setIsOnline] = useState<OnlineStatus>('false');
   const [filteredOrders, setFilteredOrders] = useState<OrderDetail[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
-  type OnlineStatus = "online" | "offline" | "busy";
 
   useFocusEffect(
     useCallback(() => {
@@ -97,7 +97,7 @@ const DeliveredOrders = () => {
   const loadShipperStatus = async () => {
     try {
       const shipper: Shipper | null = await fetchShipperInfo();
-      setIsOnline(shipper?.is_online || 'offline');
+      setIsOnline(shipper?.is_online || 'false');
     } catch (error) {
       console.error('Lỗi khi lấy thông tin shipper:', error);
       Alert.alert('Lỗi', 'Không thể lấy thông tin shipper.');
@@ -219,7 +219,7 @@ const DeliveredOrders = () => {
   };
 
   const handleAcceptOrder = async (billId: string) => {
-      if (isOnline === 'offline') {
+      if (isOnline === 'false') {
         Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
         return;
       }
@@ -375,7 +375,7 @@ const DeliveredOrders = () => {
           <>
             <View style={styles.divider} />
             <View style={styles.actionSection}>
-              {isReadyOrder && (
+              {isReadyOrder  && isOnline === 'true' && (
                 <TouchableOpacity 
                   style={styles.acceptButton}
                   onPress={() => handleAcceptOrder(item._id)}

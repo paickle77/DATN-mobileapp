@@ -102,7 +102,7 @@ const AdvancedSearch = ({
   onBlur: () => void;
   isSearchFocused: boolean;
   searchHistory: string[];
-  onSelectSuggestion: (suggestion: string) => void;
+  onSelectSuggestion: (suggestion: string | Product) => void;
   suggestions: Product[];
   onClearHistory: () => void;
 }) => {
@@ -143,9 +143,13 @@ const AdvancedSearch = ({
       {isSearchFocused && (
         <Animated.View 
           style={[styles.searchOverlay, { opacity: fadeAnim }]}
-          pointerEvents={isSearchFocused ? 'auto' : 'none'}
+          pointerEvents={'auto'}
         >
-          <ScrollView style={styles.suggestionsContainer}>
+          <ScrollView 
+            style={styles.suggestionsContainer}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
+          >
             {/* Product Suggestions */}
             {suggestions.length > 0 && (
               <View style={styles.suggestionSection}>
@@ -154,7 +158,12 @@ const AdvancedSearch = ({
                   <TouchableOpacity
                     key={product._id}
                     style={styles.suggestionItem}
-                    onPress={() => onSelectSuggestion(product.name)}
+                    onPress={() => {
+                      console.log('Product suggestion pressed:', product.name);
+                      onSelectSuggestion(product);
+                    }}
+                    activeOpacity={0.7}
+                    delayPressIn={0}
                   >
                     <Image source={{ uri: product.image_url }} style={styles.suggestionImage} />
                     <View style={styles.suggestionTextContainer}>
@@ -282,6 +291,10 @@ export default function Home() {
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   
+  // Refs to handle touch events properly
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSelectingSuggestion = useRef(false);
+  
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
   const [selectedFilter, setSelectedFilter] = useState('all');
@@ -339,12 +352,24 @@ export default function Home() {
   // Save search term với validation
   const saveSearchTerm = async (term: string) => {
     const validation = homeService.validateSearchQuery(term);
-    if (!validation.isValid || searchHistory.includes(validation.sanitizedQuery!)) {
+    if (!validation.isValid) {
       return;
     }
 
     const sanitizedTerm = validation.sanitizedQuery!;
-    const newHistory = [sanitizedTerm, ...searchHistory.slice(0, 9)];
+    const noAccentTerm = homeService.removeVietnameseTones(sanitizedTerm);
+    
+    // Kiểm tra xem từ khóa đã tồn tại chưa (cả có dấu và không dấu)
+    if (searchHistory.includes(sanitizedTerm) || searchHistory.includes(noAccentTerm)) {
+      return;
+    }
+
+    // Thêm cả từ khóa gốc và không dấu nếu khác nhau
+    const termsToAdd = sanitizedTerm === noAccentTerm 
+      ? [sanitizedTerm] 
+      : [sanitizedTerm, noAccentTerm];
+    
+    const newHistory = [...termsToAdd, ...searchHistory].slice(0, 10);
     setSearchHistory(newHistory);
     
     try {
@@ -377,16 +402,58 @@ export default function Home() {
   };
 
   // Handle search suggestion selection với validation
-  const handleSelectSuggestion = async (suggestion: string) => {
-    const validation = homeService.validateSearchQuery(suggestion);
+  const handleSelectSuggestion = async (suggestion: string | Product) => {
+    console.log('handleSelectSuggestion called:', suggestion);
+    
+    // Set flag để prevent blur timeout
+    isSelectingSuggestion.current = true;
+    
+    // Clear any pending blur timeout
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+    }
+    
+    // Nếu suggestion là product object, chuyển đến trang chi tiết
+    if (typeof suggestion === 'object' && suggestion._id) {
+      console.log('Navigating to Detail for product:', suggestion._id);
+      
+      try {
+        await saveUserData({ value: suggestion._id, key: 'productID' });
+        setIsSearchFocused(false);
+        
+        // Navigate
+        setTimeout(() => {
+          try {
+            (navigation as any).getParent()?.navigate('Detail');
+          } catch (error) {
+            console.log('Navigation error:', error);
+            (navigation as any).navigate('Detail');
+          }
+          
+          // Reset flag after navigation
+          isSelectingSuggestion.current = false;
+        }, 100);
+        
+      } catch (error) {
+        console.error('Error saving product ID:', error);
+        isSelectingSuggestion.current = false;
+      }
+      return;
+    }
+
+    // Nếu là string, thực hiện tìm kiếm như bình thường
+    const searchTerm = typeof suggestion === 'string' ? suggestion : suggestion.name;
+    const validation = homeService.validateSearchQuery(searchTerm);
     if (!validation.isValid) {
-      console.warn('Invalid suggestion:', validation.message);
+      isSelectingSuggestion.current = false;
       return;
     }
 
     setSearchText(validation.sanitizedQuery!);
-    setIsSearchFocused(false);
     await saveSearchTerm(validation.sanitizedQuery!);
+    
+    setIsSearchFocused(false);
+    isSelectingSuggestion.current = false;
   };
 
   // Load rating for product
@@ -494,6 +561,15 @@ export default function Home() {
     return unsubscribe;
   }, [navigation]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Auto scroll banner
   useEffect(() => {
     const timer = setInterval(() => {
@@ -560,7 +636,13 @@ export default function Home() {
         rating={rating}
         onPress={async () => {
           await saveUserData({ value: item._id, key: 'productID' });
-          (navigation as any).navigate('Detail');
+          
+          try {
+            (navigation as any).getParent()?.navigate('Detail');
+          } catch (error) {
+            console.log('Navigation error:', error);
+            (navigation as any).navigate('Detail');
+          }
         }}
         onLoadRating={loadRatingForProduct}
       />
@@ -602,8 +684,19 @@ export default function Home() {
           <AdvancedSearch
             searchText={searchText}
             onSearchChange={handleSearchChange}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setTimeout(() => setIsSearchFocused(false), 150)}
+            onFocus={() => {
+              if (blurTimeoutRef.current) {
+                clearTimeout(blurTimeoutRef.current);
+              }
+              setIsSearchFocused(true);
+            }}
+            onBlur={() => {
+              if (!isSelectingSuggestion.current) {
+                blurTimeoutRef.current = setTimeout(() => {
+                  setIsSearchFocused(false);
+                }, 200);
+              }
+            }}
             isSearchFocused={isSearchFocused}
             searchHistory={searchHistory}
             onSelectSuggestion={handleSelectSuggestion}
@@ -1263,6 +1356,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
     zIndex: 2000,
+    marginBottom: Platform.OS === 'ios' ? 34 : 60,
+    
   },
 
   modalBackground: {
@@ -1271,8 +1366,7 @@ const styles = StyleSheet.create({
 
   sortModal: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 24,
     paddingBottom: Platform.OS === 'ios' ? 34 : 24,
   },
 

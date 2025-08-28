@@ -100,13 +100,13 @@ export default function ShipTabNavigator() {
       // App bị ẩn hoặc vuốt bỏ → set offline
       await axios.post(`${BASE_URL}/shippers/updateStatus`, {
         _id: shipperId,
-        is_online: "offline",
+        is_online: 'false',
       });
     } else if (nextAppState === "active") {
       // App bật lại → set online
       await axios.post(`${BASE_URL}/shippers/updateStatus`, {
         _id: shipperId,
-        is_online: "online",
+        is_online: 'true',
       });
     }
   });

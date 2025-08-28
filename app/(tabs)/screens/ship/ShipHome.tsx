@@ -72,11 +72,12 @@ interface ShipperInfo {
   image: string;
   license_number: string;
   vehicle_type: string;
-  is_online: 'offline' | 'online' | 'busy';
+  is_online: 'true' | 'false' | 'busy';
 }
 
 const ShipHome: React.FC = () => {
-  const [isOnline, setIsOnline] = useState<'online' | 'offline' | 'busy'>('offline');
+  type OnlineStatus = 'true' | 'false' | 'busy';
+  const [isOnline, setIsOnline] = useState<OnlineStatus>("false");
   const [refreshing, setRefreshing] = useState(false);
   const [shipperInfo, setShipperInfo] = useState<ShipperInfo | null>(null);
   const [todayStats, setTodayStats] = useState<OrderStats | null>(null);
@@ -85,7 +86,6 @@ const ShipHome: React.FC = () => {
   const { showActionSheetWithOptions } = useActionSheet();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  type OnlineStatus = 'online' | 'offline' | 'busy';
 
   useFocusEffect(
     useCallback(() => {
@@ -99,7 +99,7 @@ const ShipHome: React.FC = () => {
       const shipper = await fetchShipperInfo();
       if (!shipper) throw new Error('Không tìm thấy thông tin shipper');
       setShipperInfo(shipper);
-      setIsOnline(shipper.is_online ?? 'offline');
+      setIsOnline(shipper.is_online ?? 'false');
     } catch (error) {
       console.error('❌ Lỗi khi lấy thông tin shipper:', error);
       Alert.alert('Lỗi', 'Không thể tải thông tin shipper.');
@@ -190,7 +190,7 @@ const ShipHome: React.FC = () => {
 
   const handleAcceptOrder = async (billId: string) => {
     if (!shipperInfo?._id) return;
-    if (isOnline === 'offline') {
+    if (isOnline === "false") {
       Alert.alert('Thông báo', 'Bạn cần bật chế độ Online để nhận đơn hàng.');
       return;
     }
@@ -212,36 +212,33 @@ const ShipHome: React.FC = () => {
   
 
   const toggleOnlineStatus = async () => {
-  const newStatus: OnlineStatus = isOnline === 'offline' ? 'online' : 'offline';
-  
-  if (isOnline === 'busy') {
-    Alert.alert('Thông báo', 'Bạn đang bận, không thể chuyển trạng thái.');
-    return;
-  }
+    if (isOnline === "busy") {
+      Alert.alert("Thông báo", "Bạn đang bận, không thể chuyển trạng thái.");
+      return;
+    }
 
-  console.log('🔄 Toggling online status from', shipperInfo?._id);
-  console.log('🔄 Chuyển trạng thái online:', newStatus);
+    const newStatus: OnlineStatus = isOnline === "false" ? "true" : "false";
 
-  try {
-    await updateShipperStatus(
-      shipperInfo?._id || '',
-      newStatus.toLowerCase() as OnlineStatus   // 👈 ép về lowercase trước khi gọi API
-    );
+    try {
+      await updateShipperStatus(shipperInfo?._id || '', newStatus);
+      setIsOnline(newStatus);
+      Alert.alert(
+        "Trạng thái thay đổi",
+        newStatus === "true" ? "Bạn đã bật chế độ nhận đơn" : "Bạn đã tắt chế độ nhận đơn"
+      );
+    } catch (error) {
+      console.error("❌ Lỗi khi cập nhật trạng thái online:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật trạng thái online.");
+    }
+  };
 
-    setIsOnline(newStatus);
-    Alert.alert(
-      'Trạng thái thay đổi',
-      `Bạn đã ${newStatus === 'online' ? 'bật chế độ nhận đơn' : 'tắt chế độ nhận đơn'}`
-    );
-  } catch (error) {
-    console.error('❌ Lỗi khi cập nhật trạng thái online:', error);
-    Alert.alert('Lỗi', 'Không thể cập nhật trạng thái online.');
-  }
-};
 
 
   const setBusyStatus = async () => {
     try {
+      console.log('====================================');
+      console.log('setBusyStatus called',shipperInfo?._id, isOnline);
+      console.log('====================================');
       await updateShipperStatus(shipperInfo?._id || '', 'busy');
       setIsOnline('busy');
     } catch (error) {
@@ -342,7 +339,7 @@ const ShipHome: React.FC = () => {
               styles.onlineToggle,
               {
                 backgroundColor:
-                  isOnline === "online"
+                  isOnline === "true"
                     ? "#10B981" // xanh lá
                     : isOnline === "busy"
                     ? "#F59E0B" // cam
@@ -353,7 +350,7 @@ const ShipHome: React.FC = () => {
           >
             <View style={styles.toggleIndicator} />
             <Text style={styles.onlineText}>
-              {isOnline === "online"
+              {isOnline === "false"
                 ? "Online"
                 : isOnline === "busy"
                 ? "Busy"
@@ -455,12 +452,15 @@ const ShipHome: React.FC = () => {
               </View>
 
               {/* ✅ Nút nhận đơn */}
-              <TouchableOpacity
-                style={styles.acceptButton}
-                onPress={() => handleAcceptOrder(order._id)}
-              >
-                <Text style={styles.acceptButtonText}>Nhận đơn</Text>
-              </TouchableOpacity>
+              {isOnline === "true" && (
+                <TouchableOpacity
+                  style={styles.acceptButton}
+                  onPress={() => handleAcceptOrder(order._id)}
+                >
+                  <Text style={styles.acceptButtonText}>Nhận đơn</Text>
+                </TouchableOpacity>
+              )}
+
             </TouchableOpacity>
           ))}
         </View>

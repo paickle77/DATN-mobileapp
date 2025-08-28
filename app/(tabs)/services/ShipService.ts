@@ -4,7 +4,8 @@ import moment from 'moment';
 import { getUserData, saveUserData } from '../screens/utils/storage';
 import { BASE_URL } from './api';
 
-export type OnlineStatus = 'online' | 'offline' | 'busy';
+export type OnlineStatus = 'true' | 'false' | 'busy';
+
 
 export type OrderDetail = {
   _id: string;
@@ -148,7 +149,7 @@ export const assignOrderToShipper = async (orderId: string, shipperId: string) =
 export const completeOrder = async (
   orderId: string,
   shipperId: string,
-  proof_images: string
+  proof_images?: string
 ) => {
   const res = await axios.post(`${BASE_URL}/bills/CompleteOrder`, {
     orderId,
@@ -162,7 +163,7 @@ export const completeOrder = async (
 export const failedOrder = async (
   orderId: string,
   shipperId: string,
-  proof_images: string
+  proof_images?: string
 ) => {
   const res = await axios.post(`${BASE_URL}/bills/FailedOrder`, {
     orderId,

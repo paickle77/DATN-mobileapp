@@ -1,9 +1,8 @@
-import { AntDesign, Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { NavigationProp, RouteProp, useRoute } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import { useEffect, useState } from 'react'; // ✅ Thêm useEffect
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AddPaymentModal from '../../component/AddPaymentModal';
 
 type PaymentMethod = {
   id: string;
@@ -55,39 +54,40 @@ const PaymentMethodsScreen = () => {
       accountNumber: 'sandbox',
       isDefault: false,
     },
-    {
-      id: 'momo-sandbox',
-      type: 'momo',
-      name: 'Ví MoMo - Test',
-      accountNumber: 'test-account',
-      isDefault: false,
-    },
   ]);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedType, setSelectedType] = useState<'momo' | 'vnpay' | 'zalopay' | 'card'>('momo');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cardholderName, setCardholderName] = useState('');
   const route = useRoute<RouteProp<Record<string, PaymentMethodsRouteParams>, string>>();
   const initialSelectedId = route.params?.selectedPaymentMethod?.id ?? 'cod';
   const canUseCOD = route.params?.canUseCOD ?? true; // ✅ Lấy thông tin COD eligibility
   const [selectedPaymentId, setSelectedPaymentId] = useState<string>(initialSelectedId);
+  const [hasShownAutoSelectAlert, setHasShownAutoSelectAlert] = useState(false); // ✅ Kiểm soát alert
 
   // ✅ Tự động chuyển sang phương thức khác nếu COD bị disable và đang được chọn
   useEffect(() => {
-    if (!canUseCOD && selectedPaymentId === 'cod') {
-      // Tự động chọn VNPAY nếu có sẵn, hoặc để rỗng
-      const firstOnlineMethod = paymentMethods.find(method => method.type !== 'cod');
+    if (!canUseCOD && selectedPaymentId === 'cod' && !hasShownAutoSelectAlert) {
+      // Tự động chọn VNPAY nếu có sẵn
+      const firstOnlineMethod = paymentMethods[0]; // Chọn phương thức đầu tiên
       if (firstOnlineMethod) {
         setSelectedPaymentId(firstOnlineMethod.id);
+        // ✅ Hiển thị thông báo tự động chuyển phương thức
+        Alert.alert(
+          'Tự động chuyển phương thức thanh toán',
+          `Do bạn đã từng từ chối nhận hàng COD, hệ thống đã tự động chọn "${firstOnlineMethod.name}" cho bạn.`,
+          [{ text: 'Đã hiểu' }]
+        );
+        setHasShownAutoSelectAlert(true);
       } else {
         // Nếu không có phương thức nào, chọn VNPAY sandbox mặc định
         setSelectedPaymentId('vnpay-sandbox');
+        Alert.alert(
+          'Tự động chọn phương thức thanh toán',
+          'Do bạn đã từng từ chối nhận hàng COD, hệ thống đã tự động chọn "VNPAY - Sandbox" cho bạn.',
+          [{ text: 'Đã hiểu' }]
+        );
+        setHasShownAutoSelectAlert(true);
       }
     }
-  }, [canUseCOD, selectedPaymentId, paymentMethods]);
+  }, [canUseCOD, selectedPaymentId, paymentMethods, hasShownAutoSelectAlert]);
 
 
   const getPaymentIcon = (type: string) => {
@@ -127,58 +127,6 @@ const PaymentMethodsScreen = () => {
     setSelectedPaymentId(id);
   };
 
-  const handleDeletePayment = (id: string) => {
-    Alert.alert(
-      'Xóa phương thức thanh toán',
-      'Bạn có chắc chắn muốn xóa phương thức thanh toán này?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: () => {
-            setPaymentMethods(prev => prev.filter(method => method.id !== id));
-            // Nếu phương thức đang được chọn bị xóa, chuyển về COD
-            if (selectedPaymentId === id) {
-              setSelectedPaymentId('cod');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const handleAddPayment = () => {
-    if (selectedType === 'card') {
-      if (!cardNumber || !expiryDate || !cardholderName) {
-        Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin thẻ');
-        return;
-      }
-    } else {
-      if (!accountNumber) {
-        Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
-        return;
-      }
-    }
-
-    const newPayment: PaymentMethod = {
-      id: Date.now().toString(),
-      type: selectedType,
-      name: getPaymentName(selectedType),
-      accountNumber: selectedType !== 'card' ? accountNumber : undefined,
-      cardNumber: selectedType === 'card' ? cardNumber : undefined,
-      expiryDate: selectedType === 'card' ? expiryDate : undefined,
-      isDefault: false,
-    };
-
-    setPaymentMethods(prev => [...prev, newPayment]);
-    setShowAddModal(false);
-    setAccountNumber('');
-    setCardNumber('');
-    setExpiryDate('');
-    setCardholderName('');
-  };
-
   const handleComplete = () => {
     let selectedPaymentMethod;
 
@@ -204,8 +152,16 @@ const PaymentMethodsScreen = () => {
     }
 
     if (selectedPaymentMethod && route.params?.onSelectPayment) {
-      route.params.onSelectPayment(selectedPaymentMethod); // Gửi dữ liệu về
-      navigation.goBack(); // Quay về màn Checkout
+      // ✅ Gửi dữ liệu về Checkout ngay lập tức, không cần alert xác nhận
+      route.params.onSelectPayment(selectedPaymentMethod);
+      navigation.goBack();
+    } else {
+      // ✅ Hiển thị thông báo lỗi nếu không có phương thức nào được chọn
+      Alert.alert(
+        'Lỗi',
+        'Vui lòng chọn một phương thức thanh toán hợp lệ.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -322,35 +278,18 @@ const PaymentMethodsScreen = () => {
                     </Text>
                   </View>
                 </View>
-                <View style={styles.paymentActions}>
-                  <View style={styles.radioButton}>
-                    <View style={[
-                      styles.radioOuter,
-                      selectedPaymentId === method.id && styles.radioSelected
-                    ]}>
-                      {selectedPaymentId === method.id && <View style={styles.radioInner} />}
-                    </View>
+                <View style={styles.radioButton}>
+                  <View style={[
+                    styles.radioOuter,
+                    selectedPaymentId === method.id && styles.radioSelected
+                  ]}>
+                    {selectedPaymentId === method.id && <View style={styles.radioInner} />}
                   </View>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeletePayment(method.id)}
-                  >
-                    <Feather name="trash-2" size={18} color="#F44336" />
-                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
         )}
-
-        {/* Add Payment Button */}
-        <TouchableOpacity
-          style={styles.addPaymentButton}
-          onPress={() => setShowAddModal(true)}
-        >
-          <AntDesign name="plus" size={20} color="#795548" />
-          <Text style={styles.addPaymentText}>Thêm phương thức thanh toán</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* Complete Button */}
@@ -362,22 +301,6 @@ const PaymentMethodsScreen = () => {
           <Text style={styles.completeButtonText}>Hoàn thành</Text>
         </TouchableOpacity>
       </View>
-
-      <AddPaymentModal
-        visible={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        selectedType={selectedType}
-        setSelectedType={setSelectedType}
-        accountNumber={accountNumber}
-        setAccountNumber={setAccountNumber}
-        cardNumber={cardNumber}
-        setCardNumber={setCardNumber}
-        expiryDate={expiryDate}
-        setExpiryDate={setExpiryDate}
-        cardholderName={cardholderName}
-        setCardholderName={setCardholderName}
-        handleAddPayment={handleAddPayment}
-      />
     </View>
   );
 };
@@ -499,10 +422,6 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     fontWeight: '500',
   },
-  paymentActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   radioButton: {
     marginRight: 12,
   },
@@ -538,23 +457,6 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 8,
   },
-  addPaymentButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#795548',
-    borderStyle: 'dashed',
-  },
-  addPaymentText: {
-    fontSize: 16,
-    color: '#795548',
-    fontWeight: '500',
-    marginLeft: 8,
-  },
   // Footer với nút Hoàn thành
   footer: {
     padding: 16,
@@ -573,113 +475,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#222',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#222',
-    marginBottom: 12,
-  },
-  typeSelection: {
-    marginBottom: 20,
-  },
-  typeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginBottom: 8,
-  },
-  typeOptionSelected: {
-    borderColor: '#795548',
-    backgroundColor: '#FFF8F5',
-  },
-  typeOptionText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 12,
-  },
-  typeOptionTextSelected: {
-    color: '#795548',
-    fontWeight: '500',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#222',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
-  },
-  addButton: {
-    flex: 1,
-    backgroundColor: '#795548',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
   },
   // ✅ Thêm styles cho disabled COD
   disabledPaymentItem: {

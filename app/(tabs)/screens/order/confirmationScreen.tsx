@@ -284,7 +284,7 @@ const ConfirmationScreen: React.FC<PaymentConfirmationProps> = ({
     const method = paymentMethod?.toLowerCase() || '';
     
     if (method.includes('cod') || method.includes('tiền mặt') || method.includes('khi nhận')) {
-      return 'Thanh toán khi nhận hàng (COD)';
+      return 'Thanh toán khi nhận hàng ';
     }
     if (method.includes('momo')) {
       return 'Ví MoMo';
