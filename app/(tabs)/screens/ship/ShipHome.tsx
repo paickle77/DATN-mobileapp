@@ -135,7 +135,8 @@ const ShipHome: React.FC = () => {
           "Thông báo",
           "Bạn đang có đơn hàng đang giao. Vui lòng hoàn thành trước khi nhận đơn mới."
         );
-        await setBusyStatus(); // ép sang busy
+        await updateShipperStatus(shipperId, 'busy') // ép sang busy
+        setIsOnline('busy');
       }
       const doneOrders = todayOrders.filter(
         (o: any) => o.status === 'done' && o.shipper_id === shipperId
@@ -202,7 +203,7 @@ const ShipHome: React.FC = () => {
       const shipperID = await getUserData('shipperID');
       await assignOrderToShipper(billId, shipperID);
       Alert.alert('Thành công', 'Bạn đã nhận đơn hàng.');
-      await setBusyStatus();
+      await updateShipperStatus(shipperInfo?._id , 'busy');
       await loadData();
     } catch (error: any) {
       console.error('❌ Lỗi khi nhận đơn:', error);
