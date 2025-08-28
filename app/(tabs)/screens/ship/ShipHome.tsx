@@ -340,7 +340,7 @@ const ShipHome: React.FC = () => {
               styles.onlineToggle,
               {
                 backgroundColor:
-                  isOnline === "true"
+                  isOnline === 'true'
                     ? "#10B981" // xanh lá
                     : isOnline === "busy"
                     ? "#F59E0B" // cam
@@ -351,7 +351,7 @@ const ShipHome: React.FC = () => {
           >
             <View style={styles.toggleIndicator} />
             <Text style={styles.onlineText}>
-              {isOnline === "false"
+              {isOnline === "true"
                 ? "Online"
                 : isOnline === "busy"
                 ? "Busy"
